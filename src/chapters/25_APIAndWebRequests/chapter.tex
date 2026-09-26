@@ -1,0 +1,963 @@
+\chapter{API 串接小專案}
+\label{ch:api}
+
+到目前為止，這本書裡「資料從哪裡來」這件事，答案幾乎都是同一種：你自己在程式裡打出來
+的，或是存在電腦裡的一個檔案，第 \ref{ch:csv} 章讀的 CSV 也是這樣，那是一份早就寫好、存在硬碟
+上的靜態檔案，你打開它、讀它，它不會自己變。
+
+軟體要用到的資料，很多時候是這一秒才剛剛
+發生、存在別人家伺服器上的東西，例如現在台北的氣溫幾度、現在一美元換多少日圓，不會乖乖
+躺在你電腦裡等你讀取。
+
+這一章要讓你動手做一件新事：讓你自己寫的程式，直接開口跟另一支
+（跑在世界某個角落的）程式要資料，即時拿到答案。第 \ref{ch:industry} 章你已經認識了「API」這個詞，
+知道它大致上是「軟體跟軟體溝通的窗口」；這一章要讓這個詞第一次真正被你自己的手打過
+一次。
+
+這一章分成六段推進：
+
+\begin{itemize}
+\item 第一段讓你實際打一次公開的 API，看到最原始的回應長什麼樣子，建立
+「軟體真的可以直接跟另一支軟體要資料」的具體體感，順便把網址後面那一長串「問號加參數」
+的寫法講清楚。
+\item 第二段把那包看起來雜亂的回應，拆解成你早就很熟的字典跟串列，變成真正能
+拿來用的資訊。
+\item 第三段刻意換一個完全不同的服務再打一次，這次查的是即時匯率，用來確認你
+剛剛學的技巧不是天氣查詢專屬的招式，換一個 API 一樣管用，也順便提一下有些 API 不像這
+兩個，必須先申請一把專屬的金鑰才能查詢，那把金鑰又該怎麼收好。
+\item 第四段把焦點轉到「這中間
+會出什麼錯」，網路斷線、伺服器忙線、網址打錯，這些狀況跟你在第 \ref{ch:files-exceptions} 章學過的檔案讀取一樣，
+都是「本來就可能失敗的操作」，正好是 \texttt{try}/\texttt{except} 的主場。
+\item 第五段把抓回來
+的資料存成 CSV 檔、畫成圖表，跟第 \ref{ch:csv}、\ref{ch:data-tools} 章學過的工具接起來。
+\item 第六段把前面學到的東西全部
+串成一支小工具，讓你輸入城市或幣別，就能查到即時的天氣或匯率，親手完整跑一次「一支程式
+去跟另一支程式要東西」的流程。
+\end{itemize}
+
+跟第 \ref{ch:automating} 章的整合應用專案不一樣，\ref{ch:automating} 章的任務是把前面十七章
+學過的程式技巧全部兜在一起，服務的是這本書「自己動手寫程式解決瑣事」這個目標；這一章
+刻意窄很多，只聚焦在一件事，具體示範軟體之間怎麼溝通，服務的是「看懂軟體世界怎麼運作」
+這個目標。
+
+\section{第一次打 API：看到「軟體跟軟體對話」長什麼樣子}
+\label{sec:first-api-call}
+
+要跟另一支程式要資料，第一步得先知道去哪裡要。跟你在瀏覽器打網址很像，軟體之間溝通
+用的也是一個網址，只是這個網址背後跑的是一支專門用來回答「查詢」的程式，回來的東西
+是一包給程式讀的資料。這一節要用的是 Open-Meteo 這個公開的天氣查詢服務
+（\texttt{api.open-meteo.com}），它有一個很適合初學者的優點：不用註冊帳號、不用申請
+金鑰，只要帶上經緯度，就能直接查到那個地點的天氣。
+
+要在 Python 裡發出這種請求，得先借助別人寫好的工具，也就是 \texttt{requests} 這個套件。
+還記得第 \ref{ch:data-tools} 章提過，要用別人寫好的套件，得先用 \texttt{pip install} 把它裝進你的環境嗎？
+\texttt{requests} 就是一個很典型的例子：在終端機打 \texttt{pip install requests}
+（有些系統要打 \texttt{pip3 install requests}），裝好之後，就能在程式裡
+\texttt{import requests} 直接使用了。
+
+\begin{code}{python}{Making a GET Request}
+import requests
+
+response = requests.get(url)   # url 是你要查詢的網址字串
+print(response.status_code)    # 伺服器的狀態碼，200 代表成功
+print(response.text)           # 伺服器實際回傳的內容，是一段文字
+\end{code}
+
+\texttt{requests.get(url)} 會真的連到那個網址，把伺服器回應的東西整包帶回來，貼上一張
+名字牌叫 \texttt{response}，跟你在第 \ref{ch:variables} 章學過的一樣，這只是一張貼在「這次請求結果」這個
+物件上的名字牌而已。這個物件裡有兩個你現在用得到的欄位：\texttt{status\_code} 是一個
+數字，用來告訴你這次請求順不順利（\texttt{200} 是最常見的「一切正常」）；\texttt{text}
+則是伺服器實際回傳的內容，本質上就是一段文字。
+\index{response 物件}
+
+\begin{example}{python}{(first-weather-request.py) Checking Taipei's Weather}
+import requests
+
+url = (
+    "https://api.open-meteo.com/v1/forecast"
+    "?latitude=25.0330&longitude=121.5654"
+    "&current_weather=true"
+)
+response = requests.get(url)
+
+print(response.status_code)
+print(response.text)
+\end{example}
+
+\iosample{}{200 \\}
+
+狀態碼印出 \texttt{200}，代表請求成功。但如果你接著把 \texttt{response.text} 印出來，
+會看到這樣一長串、擠成一坨的文字（下面這一整段其實是同一行，紙本排版沒辦法印出一行
+一百多個字，這裡手動斷開，實際在你的螢幕上會看到它自動換行，但邏輯上仍然是同一行；
+其中 \texttt{generationtime\_ms} 是伺服器處理這次請求花的時間，每次呼叫都不一樣，這裡
+只保留三位小數方便閱讀）：
+
+\begin{verbatim}
+{"latitude":25.06151,"longitude":121.5194,
+"generationtime_ms":0.137,"utc_offset_seconds":0,
+"timezone":"GMT","timezone_abbreviation":"GMT",
+"elevation":12.0,"current_weather_units":{
+"time":"iso8601","interval":"seconds",
+"temperature":"°C","windspeed":"km/h",
+"winddirection":"°","is_day":"","weathercode":
+"wmo code"},"current_weather":{
+"time":"2026-09-01T15:00","interval":900,
+"temperature":25.6,"windspeed":1.0,
+"winddirection":239,"is_day":0,"weathercode":80}}
+\end{verbatim}
+
+有兩件事值得注意。第一，這包東西看起來很像你已經學過的字典跟串列：大括號、方括號、
+冒號、逗號，只是全部擠在一起、沒有任何排版，這不是巧合，下一節會正式解釋為什麼。第二，
+仔細看你會發現回應裡的經緯度（\texttt{25.06151}、\texttt{121.5194}）跟你查詢時帶的
+（\texttt{25.0330}、\texttt{121.5654}）不完全一樣，原因是 Open-Meteo 的天氣資料來自
+固定間距的氣象網格，它會自動幫你抓最接近的那個網格點，不是查詢地點本身沒有天氣資料。
+
+\begin{example}[label=ex:browser-check]{text}{(Paste into a Browser) The Same URL}
+https://api.open-meteo.com/v1/forecast?latitude=25.0330
+&longitude=121.5654&current_weather=true
+\end{example}
+
+這其實是同一個網址，只是紙本排版沒辦法印出一行一百多個字，這裡在
+\texttt{latitude} 跟 \texttt{longitude} 之間手動斷開，真的要貼進瀏覽器時，記得把它
+接回同一行、中間不要留空格或換行。把這個網址整段複製、貼到瀏覽器網址列，按下 Enter，
+你會看到瀏覽器畫面上出現的內容，
+跟剛剛 \texttt{print(response.text)} 印出來的其實是同一包東西（多數瀏覽器還會貼心地
+幫你加上顏色、縮排，方便閱讀，但骨子裡的資料一模一樣）。
+
+這件事值得停下來體會一下：所謂
+「打 API」，說穿了就是拿程式去發一個網址請求，跟你手動在瀏覽器貼網址是同一件事，只是
+瀏覽器把結果畫成一個網頁給\emph{人}看，你的程式則是把結果讀進變數裡，給\emph{另一支
+程式}接著處理。
+
+\keypoint{API 本質上就是一個網址，差別只在於它回來的資料是設計給程式讀的，不是設計給人
+看的排版網頁。你在瀏覽器貼過的每一個普通網址，跟你剛剛用 \texttt{requests.get()} 打的
+這個網址，走的其實是同一套機制。}
+
+眼尖的話，你可能已經注意到剛剛那個網址裡，問號後面接了一串用 \& 連起來的
+\texttt{latitude=...}、\texttt{longitude=...}、\texttt{current\_weather=...}，這種寫法
+有一個正式名字，叫做「查詢字串」（query string）。下一節要把這件事講清楚，順便介紹一個
+比手動拼字串更保險的寫法。
+
+\section{網址裡的問號和 \&：query string 參數怎麼運作}
+\label{sec:query-strings}
+
+一個網址其實可以拆成兩段。問號前面那一段，是你要查詢哪一支程式，例如
+\texttt{https://api.open-meteo.com/v1/forecast} 就是「Open-Meteo 這個服務裡負責回答
+天氣預報的那一支程式」。問號後面那一段，叫做查詢字串，是你要把哪些條件交給那支程式：
+每一組條件寫成「鍵=值」的形式，好幾組條件之間用 \texttt{\&} 串起來。
+\index{查詢字串 (query string)}
+
+這個形狀，其實你
+一點都不陌生：查詢字串本質上就是把一個字典壓平、塞進網址裡的寫法，鍵就是字典的 key、
+值就是字典的 value，只是字典原本用大括號、逗號分隔，查詢字串改用問號、\texttt{\&}、
+等號來分隔而已。
+
+前一節的範例是自己手動把這些「鍵=值」拼成一個長字串，遇到參數不多的時候還好，一旦
+參數變多，手動拼字串很容易漏加一個 \texttt{\&}、或是打錯一個等號的位置，程式碼也會
+變得很難讀。\texttt{requests} 提供了一個更好的做法：把所有查詢條件包成一個 Python
+字典，交給 \texttt{requests.get()} 的 \texttt{params} 這個關鍵字引數，剩下的組字串
+工作交給套件自己處理。
+\index{params 引數}
+
+\begin{code}{python}{Passing Query Parameters with a params Dictionary}
+params = {
+    "key1": value1,
+    "key2": value2,
+}
+response = requests.get(url, params=params)
+\end{code}
+
+\begin{example}{python}{(query-string-params.py) Querying Weather with a Parameter Dictionary}
+import requests
+
+url = "https://api.open-meteo.com/v1/forecast"
+params = {
+    "latitude": 25.0330,
+    "longitude": 121.5654,
+    "current_weather": "true",
+    "timezone": "Asia/Taipei",
+}
+response = requests.get(url, params=params, timeout=5)
+
+print(response.url)
+data = response.json()
+temperature = data["current_weather"]["temperature"]
+print(f"Current temperature: {temperature}°C")
+\end{example}
+
+執行後 \texttt{response.url} 印出的內容如下（這是 \texttt{requests} 幫你組好、真正送出去
+的完整網址，跟你自己寫程式裡的 \texttt{params} 字典比對一下，會發現每一組鍵值都乖乖
+出現在網址裡，字典裡的順序也保留下來了）：
+\index{response.url}
+
+\begin{verbatim}
+https://api.open-meteo.com/v1/forecast?latitude=25.033&longitude=121.5654&current_weather=true&timezone=Asia%2FTaipei
+\end{verbatim}
+
+\iosample{}{Current temperature: 25.4°C \\}
+
+值得多看一眼的是 \texttt{timezone} 這個值：你在 Python 字典裡寫的是
+\texttt{"Asia/Taipei"}，中間有一個斜線，但網址裡印出來的是 \texttt{Asia\%2FTaipei}。
+
+斜線在網址裡有特殊意義（用來分隔路徑），如果直接把它原封不動塞進查詢字串，某些伺服器
+或某些工具可能會誤判網址的結構，所以正式的做法是把這類特殊符號轉換成「百分號加兩位
+十六進位數字」的形式，這叫做 URL 編碼，\texttt{\%2F} 就是斜線編碼過後的樣子。空白字元、
+中文字，甚至逗號，都有各自對應的編碼結果。
+\index{URL 編碼}
+
+這件事你不需要自己動手轉換，這正是把參數包成
+\texttt{params} 字典交給 \texttt{requests} 處理的好處：只要值來自使用者輸入、有可能包含
+空白或特殊符號，交給 \texttt{params} 遠比自己手動拼字串可靠，該轉換的它會自動幫你轉換好。
+
+\stylepoint{查詢參數固定不變、只有一兩個的時候，手動拼字串（像本章第一節那樣）還算
+看得懂；但只要參數有機會來自使用者輸入、或是參數一多，優先用 \texttt{params} 字典交給
+\texttt{requests} 處理，比自己動手拼字串更不容易出錯，也更容易在程式裡新增或刪掉某一個
+查詢條件。}
+
+\begin{drills}[label=drills:query-strings]
+\item 如果 \texttt{params = \{"city": "New York"\}}，你猜 \texttt{requests} 組出來的
+網址裡，\texttt{city} 這個值會被轉換成什麼樣子（提示：空白字元在查詢字串裡通常會被轉成
+加號或 \texttt{\%20}）？
+\item 承上題，如果你自己手動把網址寫成 \texttt{...?city=New York}（中間留一個沒有轉換
+過的空白），實際貼到瀏覽器網址列時通常還是能用，因為多數瀏覽器會自動幫你補做轉換。但
+在程式裡呢？為什麼書裡建議優先用 \texttt{params} 字典，而不是依賴這種「剛好可以動」的
+手動寫法？
+\end{drills}
+
+\section{把回應拆開：JSON 其實就是你已經很熟的字典和串列}
+\label{sec:parsing-json}
+
+上一節印出來的那一整坨文字，格式其實有名字，叫做 JSON（發音類似「傑森」），這是網路
+服務之間交換資料時最常用的格式，而它長的樣子，剛好就是 Python 字典跟串列的樣子：大括號
+包起來的是字典，方括號包起來的是串列，裡面可以一層包一層。這代表你不需要學一套全新的
+語法來讀懂 API 回來的東西，只要把這包文字轉成真正的 Python 字典跟串列，接下來就是你
+已經很熟的操作。
+
+\begin{code}{python}{Converting a Response to Python Data and Extracting Fields}
+data = response.json()             # 把 JSON 文字轉成字典或串列
+value = data["key"]                # 確定這個欄位一定存在時使用
+value = data.get("key", default_value) # 欄位可能不存在時，給一個預設值
+\end{code}
+
+\texttt{response.json()} 會把 \texttt{response.text} 那包文字，直接轉成對應的 Python
+字典（或串列，要看最外層是 \texttt{\{\}} 還是 \texttt{[]}）。轉完之後，接下來要拿哪個
+欄位，就跟你平常操作字典完全一樣，用中括號、或用 \texttt{.get()}。
+\index{response.json()}
+
+\begin{example}{python}{(current-weather-fields.py) Extracting Fields from Weather Data}
+import requests
+
+url = (
+    "https://api.open-meteo.com/v1/forecast"
+    "?latitude=25.0330&longitude=121.5654"
+    "&current_weather=true"
+)
+response = requests.get(url)
+data = response.json()
+
+temperature = data["current_weather"]["temperature"]
+print(f"Current temperature: {temperature}°C")
+
+wind_speed = data.get("current_weather", {}).get("windspeed", "no data")
+print(f"Current wind speed: {wind_speed} km/h")
+
+# 刻意查一個這包資料裡沒有的欄位，用來示範 .get() 的預設值
+sunshine = data.get("current_weather", {}).get("sunshine_hours", "this field is not provided")
+print(f"Sunshine duration: {sunshine}")
+\end{example}
+
+\iosample{}{Current temperature: 25.6°C \\ Current wind speed: 1.0 km/h \\ Sunshine duration: this field is not provided \\}
+
+\texttt{data["current\_weather"]["temperature"]} 這種一路用中括號往下挖的寫法，前提是
+你很確定每一層都真的存在，如果查的欄位剛好不存在，中括號會直接讓程式當掉。假設你把上面
+範例最後一段改成直接用中括號查 \texttt{sunshine\_hours}（而不是用 \texttt{.get()}）：
+
+\begin{verbatim}
+data = {
+    "current_weather": {"temperature": 25.6, "windspeed": 1.0}
+}
+print(data["current_weather"]["sunshine_hours"])
+\end{verbatim}
+
+執行後會看到：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "bracket-keyerror-demo.py", line 4, in <module>
+    print(data["current_weather"]["sunshine_hours"])
+          ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+KeyError: 'sunshine_hours'
+\end{verbatim}
+
+這就是為什麼上面的範例查 \texttt{sunshine\_hours} 時改用 \texttt{.get()}，它在欄位不
+存在的時候，能安全地回傳你指定的預設值，不會讓程式當掉。但這裡先留一個問題：如果連
+「查詢這個動作本身」都失敗了呢？比如網路斷線、伺服器忙線，這種情況根本沒能拿到任何一包
+資料，也就沒有哪個欄位存在或不存在的問題，\texttt{.get()} 這時候完全派不上用場，答案
+留到第四節用 \texttt{try}/\texttt{except} 正式處理。
+
+API 回來的資料常常沒有「一個城市配一個溫度」這麼單純，經常是一個地點底下還包著一長串
+按時間排列的資料，這種「字典包串列、串列裡每個元素又是字典」的巢狀結構，在真實世界的
+API 裡非常常見，值得單獨練習一次。
+
+\begin{example}{python}{(hourly-forecast.py) Unpacking Nested Hourly Forecast Data}
+import requests
+
+url = (
+    "https://api.open-meteo.com/v1/forecast"
+    "?latitude=25.0330&longitude=121.5654"
+    "&hourly=temperature_2m"
+    "&timezone=Asia%2FTaipei"
+    "&forecast_days=1"
+)
+response = requests.get(url)
+data = response.json()
+
+hourly = data["hourly"]            # 這是一個字典，裡面裝著好幾個等長的串列
+times = hourly["time"]             # 一串時間戳記
+temperatures = hourly["temperature_2m"]  # 一串對應的氣溫，跟 times 一一對齊
+
+for time, temperature in zip(times[:5], temperatures[:5]):
+    print(f"{time}: {temperature}°C")
+\end{example}
+
+\iosample{}{2026-09-01T00:00: 26.7°C \\ 2026-09-01T01:00: 26.3°C \\ 2026-09-01T02:00: 26.6°C \\ 2026-09-01T03:00: 26.3°C \\ 2026-09-01T04:00: 26.2°C \\}
+
+拆解這種巢狀結構的訣竅，是一層一層剝，不用急著一次想通整包資料的形狀：先確認最外層
+\texttt{data} 是字典還是串列、印出它的 \texttt{.keys()} 或長度看看裡面有什麼；再往下一
+層做一樣的事，直到挖到你要的那個欄位為止。這裡 \texttt{data["hourly"]} 底下裝的是好幾個
+「等長的串列」，\texttt{time} 跟 \texttt{temperature\_2m} 的長度永遠一樣，第 $i$ 個時間
+對應第 $i$ 個氣溫，所以才能用 \texttt{zip()} 把它們兩個串列一組一組配對起來，交給
+\texttt{for} 迴圈一起走一遍。
+\index{zip()}
+
+\stylepoint{面對一包沒看過的 JSON，不要急著憑猜測寫程式碼，先把它轉成 Python 物件、
+用 \texttt{print()} 或互動模式一層一層看它的形狀，確認每一層是字典還是串列、鍵長什麼
+樣子，再動手寫抓取欄位的程式碼。這比對照文件憑空想像可靠得多。}
+
+\section{換一個 API 對照著看：查詢即時匯率}
+\label{sec:currency-api}
+
+前三節用的都是 Open-Meteo 這一個服務，這裡刻意換一個完全不同的服務再打一次，看看剛剛
+學的那一套流程（發請求、轉 JSON、拆字典）是不是換個場景照樣管用。這一節要用的是
+Frankfurter 這個公開的匯率查詢服務（\texttt{api.frankfurter.dev}），一樣不用註冊帳號、
+不用申請金鑰，資料來源是歐洲央行公布的參考匯率，每個工作日更新一次。
+
+Frankfurter 查最新匯率的網址固定是 \texttt{https://api.frankfurter.dev/v1/latest}，
+常用的查詢參數有三個：\texttt{base} 指定「以哪個幣別為基準」（例如 \texttt{"USD"}
+代表美元）、\texttt{symbols} 指定「想看哪個幣別的匯率」（可以用逗號隔開一次查好幾個）、
+\texttt{amount} 指定「換算多少金額」，不帶這個參數時預設等於 1。
+
+\begin{code}{python}{The Standard Pattern for Querying an Exchange Rate}
+url = "https://api.frankfurter.dev/v1/latest"
+params = {"base": base_currency, "symbols": target_currency}
+response = requests.get(url, params=params, timeout=5)
+data = response.json()
+rate = data["rates"][target_currency]
+\end{code}
+
+\begin{example}{python}{(usd-to-jpy-rate.py) Checking the USD-to-JPY Exchange Rate}
+import requests
+
+url = "https://api.frankfurter.dev/v1/latest"
+params = {"base": "USD", "symbols": "JPY"}
+response = requests.get(url, params=params, timeout=5)
+response.raise_for_status()
+data = response.json()
+
+print(data)
+
+rate = data["rates"]["JPY"]
+print(f"1 USD is about {rate} JPY")
+\end{example}
+
+\iosample{}{\{'amount': 1.0, 'base': 'USD', 'date': '2026-09-01', 'rates': \{'JPY': 160.16\}\} \\ 1 USD is about 160.16 JPY \\}
+
+先看 \texttt{print(data)} 印出來的整包字典：最外層有 \texttt{amount}、\texttt{base}、
+\texttt{date}、\texttt{rates} 四個鍵，跟第一節看到的天氣資料形狀不一樣（那邊最外層是
+\texttt{latitude}、\texttt{current\_weather} 這些鍵），但骨子裡的道理完全相同：一樣是
+先確認最外層字典有哪些鍵，再往你要的那個鍵一路挖下去。這裡 \texttt{data["rates"]} 本身
+又是一個字典，鍵是幣別代碼、值是匯率，跟天氣資料裡 \texttt{current\_weather} 底下又包著
+一個字典的巢狀寫法，是同一套結構。
+
+\texttt{symbols} 也可以一次帶好幾個幣別，用逗號分隔：
+
+\begin{example}{python}{(multi-currency-rates.py) Checking Rates for Three Currencies at Once}
+import requests
+
+url = "https://api.frankfurter.dev/v1/latest"
+params = {"base": "USD", "symbols": "JPY,EUR,GBP"}
+response = requests.get(url, params=params, timeout=5)
+response.raise_for_status()
+data = response.json()
+
+for currency, rate in data["rates"].items():
+    print(f"1 USD = {rate} {currency}")
+\end{example}
+
+\iosample{}{1 USD = 0.86281 EUR \\ 1 USD = 0.73904 GBP \\ 1 USD = 160.16 JPY \\}
+
+這裡 \texttt{data["rates"]} 是一個裝著三組鍵值的字典，用第 \ref{ch:dict-set} 章學過的
+\texttt{.items()} 就能同時走訪鍵（幣別代碼）跟值（匯率），不用另外分兩次分別取鍵跟值。
+
+再加上 \texttt{amount} 這個參數，就能直接算好換算後的金額，不用自己另外乘一次：
+
+\begin{example}{python}{(currency-converter.py) Converting an Amount}
+import requests
+
+
+def get_converted_amount(base, target, amount):
+    url = "https://api.frankfurter.dev/v1/latest"
+    params = {"base": base, "symbols": target, "amount": amount}
+    response = requests.get(url, params=params, timeout=5)
+    response.raise_for_status()
+    data = response.json()
+    return data["rates"][target]
+
+
+amount = 100
+converted = get_converted_amount("USD", "JPY", amount)
+print(f"{amount} USD is about {round(converted, 1)} JPY")
+\end{example}
+
+\iosample{}{100 USD is about 16016 JPY \\}
+
+這支函式把「組網址、發請求、拆欄位」包在 \texttt{get\_converted\_amount()} 裡面，呼叫端
+只要給基準幣別、目標幣別、金額三個值，不用管底下實際打了哪一支 API，這是第 \ref{ch:functions} 章學過的
+函式最基本的好處：把細節封裝起來，呼叫的人不用重複看一次實作。這裡也用到了第 \ref{ch:data-tools} 章介紹
+過的 \texttt{round()}，把換算結果四捨五入到小數點下一位，畢竟匯率乘出來的小數位數常常
+很長，直接印出來反而不好讀。
+
+\keypoint{把 Open-Meteo 換成 Frankfurter，程式碼的骨架幾乎沒有變：一樣是
+\texttt{requests.get(url, params=params)}，一樣是 \texttt{response.raise\_for\_status()}
+加上 \texttt{response.json()}，一樣是照著回應的形狀一層一層挖出你要的欄位。真正會變的
+只有網址跟參數名稱，這正是這一章想讓你親手體會的事：「軟體跟軟體對話」有一套通用的骨架，
+換一個服務，套用同一套骨架，換掉細節就好。}
+
+\begin{drills}[label=drills:currency-api]
+\item 如果把 \texttt{params} 裡的 \texttt{symbols} 改成 \texttt{"SGD"}（新加坡幣），
+你覺得 \texttt{data["rates"]} 這個字典裡會有幾組鍵值？ 那如果改成 \texttt{"TWD"}
+（新台幣）呢？（提示：這一題請你真的跑跑看，兩次的結果不一樣。）
+\item 承〈換算一筆金額〉那支範例：如果呼叫變成
+\texttt{get\_converted\_amount("EUR", "GBP", 50)}，這支函式實際發出去的查詢參數
+\texttt{base} 跟 \texttt{symbols} 分別會是什麼？
+\item 如果完全不帶 \texttt{amount} 這個參數，你猜 \texttt{data["amount"]} 印出來會是
+多少？（提示：回頭看〈查一次美金兌日圓的匯率〉那支範例印出的整包字典。）
+\end{drills}
+
+\section{會失敗，就是 EAFP 的主場：處理網路請求出錯}
+\label{sec:eafp-requests}
+
+打開檔案這件事，你在第 \ref{ch:files-exceptions} 章學過一個重要的心法：直接嘗試打開它，出了問題再用
+\texttt{try}/\texttt{except} 接住，不用一路寫一堆「先確認檔案存不存在」的檢查，這叫
+EAFP（先做，錯了再處理），是 Python 慣用的風格。
+
+發網路請求，是這個心法最貼切的另一個
+應用場景，甚至比檔案更極端：檔案至少還在你自己的電腦上，網路請求要仰賴的東西完全不在
+你的掌控範圍，對方的伺服器可能當機、你的網路可能斷線、封包可能在路上就不見了。
+
+就算你
+事先花力氣「檢查」網路正不正常，檢查完到你真正發出請求之間，狀態也隨時可能又變了。
+Python 面對這種「本來就可能失敗」的操作，一貫的態度是：直接做，錯了再處理。
+
+\begin{code}{python}{Wrapping a Request in try/except}
+try:
+    response = requests.get(url, timeout=5)
+    response.raise_for_status()   # 如果狀態碼不是 2xx，就丟出例外
+except requests.exceptions.ConnectionError:
+    # 處理連不上網路的情況
+    ...
+except requests.exceptions.Timeout:
+    # 處理伺服器回應太慢的情況
+    ...
+except requests.exceptions.HTTPError:
+    # 處理伺服器回傳錯誤狀態碼的情況
+    ...
+else:
+    # 只有在完全沒出錯時才會執行到這裡，可以安心處理 response
+    ...
+\end{code}
+
+\texttt{timeout=5} 是告訴 \texttt{requests}：最多等 5 秒，等太久就直接放棄、丟出
+\texttt{Timeout} 例外，不要讓程式卡死在那裡乾等。
+\index{requests.get(url, timeout=秒數)}
+\texttt{raise\_for\_status()} 則是一個
+方便的檢查：如果狀態碼代表失敗（例如 404、500），它會主動丟出 \texttt{HTTPError}，讓你
+可以跟其他錯誤一樣，用同一套 \texttt{try}/\texttt{except} 接住，不用自己另外寫
+\texttt{if response.status\_code != 200} 這種判斷。
+\index{response.raise\_for\_status()}
+
+\begin{example}{python}{(safe-weather-request.py) Safely Checking the Weather}
+import requests
+
+url = (
+    "https://api.open-meteo.com/v1/forecast"
+    "?latitude=25.0330&longitude=121.5654"
+    "&current_weather=true"
+)
+
+try:
+    response = requests.get(url, timeout=5)
+    response.raise_for_status()
+except requests.exceptions.ConnectionError:
+    print("Can't reach the network, please check your connection")
+except requests.exceptions.Timeout:
+    print("The server took too long to respond, timed out, try again later")
+except requests.exceptions.HTTPError:
+    print(f"The server returned an error, status code: {response.status_code}")
+else:
+    data = response.json()
+    temperature = data["current_weather"]["temperature"]
+    print(f"Current temperature: {temperature}°C")
+\end{example}
+
+\iosample{}{Current temperature: 25.6°C \\}
+
+\keypoint{檔案可能不存在、網路可能斷線，這兩件事的心法完全一樣：先做，錯了再處理，不要
+一路寫一堆「先檢查網路正不正常」「先確認伺服器有沒有回應」的程式碼。你在第 \ref{ch:files-exceptions} 章學檔案
+讀取、第 \ref{ch:debugging} 章學讀懂錯誤訊息時已經看過這個心法兩次，網路請求是它最不受你控制、也最能
+體現「為什麼 Python 偏好先做再處理」的一個場景，因為根本沒有「先檢查」這種選項，你檢查
+完到真正發出請求之間，網路狀況隨時可能又不一樣了。}
+
+事實上，只要網址打錯或伺服器回了非預期的東西，錯誤訊息長什麼樣子、該怎麼讀，也值得
+實際看一次，不要只靠想像。
+
+\begin{example}{python}{(check-url-typo.py) What Happens with a Typo in the URL}
+import requests
+
+# 情況一：網域打錯字，requests 連不上伺服器
+bad_url = "https://api.open-meteoo.com/v1/forecast"
+try:
+    requests.get(bad_url, timeout=5)
+except requests.exceptions.ConnectionError as error:
+    print("Connection failed:")
+    print(error)
+
+# 情況二：路徑打錯字，伺服器收到請求，但回傳 404
+url = (
+    "https://api.open-meteo.com/v1/foercast"
+    "?latitude=25.03&longitude=121.56"
+    "&current_weather=true"
+)
+response = requests.get(url, timeout=5)
+print("Status code:", response.status_code)
+
+try:
+    response.raise_for_status()
+except requests.exceptions.HTTPError as error:
+    print("Error raised by raise_for_status():")
+    print(error)
+\end{example}
+
+情況一（網域打成 \texttt{open-meteoo.com}，多了一個 \texttt{o}）印出的內容，實際在這台
+機器上跑起來是這樣（原本是同一行，這裡一樣手動斷開方便印在紙上）：
+
+\begin{verbatim}
+Connection failed:
+HTTPSConnectionPool(host='api.open-meteoo.com', port=443):
+Max retries exceeded with url: /v1/forecast (Caused by
+NameResolutionError("HTTPSConnection(
+host='api.open-meteoo.com', port=443): Failed to resolve
+'api.open-meteoo.com' ([Errno 8] nodename nor servname
+provided, or not known)"))
+\end{verbatim}
+
+這段訊息看起來嚇人，但抓重點就好：關鍵字 \texttt{Failed to resolve} 是說「找不到這個
+網域」，這正是網址打錯字最典型的癥狀，跟你在瀏覽器打錯網址會看到
+「找不到這個網站」是同一回事。情況二（路徑打成 \texttt{foercast}）的結果不一樣：網域是
+對的，所以連得上，伺服器也確實回了東西，只是內容是「找不到這個路徑」：
+
+\begin{verbatim}
+Status code: 404
+Error raised by raise_for_status():
+404 Client Error: Not Found for url:
+https://api.open-meteo.com/v1/foercast?latitude=25.03
+&longitude=121.56&current_weather=true
+\end{verbatim}
+
+這裡的關鍵差異，正好對應到前面片語裡的兩個不同 \texttt{except}：連不上網域，是
+\texttt{ConnectionError}，通常代表網址本身打錯了、或裝置根本沒有網路；連得上但伺服器
+說「這不是我認得的東西」，是 \texttt{HTTPError}，代表網址有一部分（路徑、參數）不對，
+或是你查詢的東西伺服器那邊剛好沒有。
+\index{requests.exceptions.ConnectionError／Timeout／HTTPError}
+
+舉個例子，如果你把緯度打成一個超出地球範圍的數字
+（例如 \texttt{999}），Open-Meteo 也會用同一種方式告訴你哪裡不對，回應狀態碼 400，
+內容是 \texttt{"reason":"Latitude must be in range of -90 to 90°. Given: 999.0."}，
+一樣可以被 \texttt{raise\_for\_status()} 抓到、當成 \texttt{HTTPError} 處理。
+
+換一個服務結果也一樣：如果你把上一節查匯率用的 \texttt{symbols} 改成一個根本不存在的
+幣別代碼（例如 \texttt{XXX}），Frankfurter 回應的狀態碼是 404，內容是
+\texttt{\{"message":"not found"\}}，跟前面 Open-Meteo 回的 400 加上一句人話說明的格式
+完全不一樣。
+
+\begin{example}{python}{(bad-currency-code.py) Querying a Nonexistent Currency Code}
+import requests
+
+url = "https://api.frankfurter.dev/v1/latest"
+params = {"base": "USD", "symbols": "XXX"}
+
+try:
+    response = requests.get(url, params=params, timeout=5)
+    response.raise_for_status()
+except requests.exceptions.HTTPError as error:
+    print("Error raised by raise_for_status():")
+    print(error)
+\end{example}
+
+\begin{verbatim}
+Error raised by raise_for_status():
+404 Client Error: Not Found for url: https://api.frankfurter.dev/v1/latest?base=USD&symbols=XXX
+\end{verbatim}
+
+不同服務「查詢失敗」的長相不一定一樣，有的用 400、有的用 404，錯誤訊息的措辭也各自
+不同，但只要統一用 \texttt{raise\_for\_status()} 搭配 \texttt{try}/\texttt{except
+HTTPError} 接住，就不用為每一個服務各自另外記一套判斷邏輯，這也是這一節想讓你體會的：
+EAFP 這套心法不只省了「先檢查」的力氣，還讓你的程式碼不用管背後那支服務用哪個狀態碼、
+怎麼措辭，反正失敗了就是丟例外，接住、處理，這件事永遠是同一套寫法。
+
+\begin{drills}[label=drills:eafp-requests]
+\item 用前面〈安全地查一次天氣〉那支程式當範本：如果這次網域打錯字，導致連線失敗，
+螢幕上會印出哪一行？
+\item 如果這次伺服器在 5 秒內沒有回應（觸發逾時），螢幕上會印出哪一行？
+\item 如果這次請求成功連上伺服器，但伺服器回了狀態碼 404，螢幕上會印出哪一行？（提示：
+別忘了程式裡呼叫了 \texttt{response.raise\_for\_status()}。）
+\item 如果這次查匯率、幣別代碼打錯字，導致伺服器回了 404，〈查一個不存在的幣別代碼〉
+這支程式螢幕上會印出哪兩行？
+\end{drills}
+
+\section{把抓到的資料存下來：寫成 CSV、畫成圖表}
+\label{sec:save-and-chart}
+
+前面每一節查完一次資料，程式一結束，那包資料也就跟著消失了，下次要看還得重新打一次
+API。實際上，API 抓回來的資料常常值得保存下來，之後不用重新查詢就能直接拿來用，或是
+畫成圖表讓人一眼看懂。這一節要做的事，其實就是把第 \ref{ch:csv} 章學過的 \texttt{csv} 模組跟
+第 \ref{ch:data-tools} 章學過的 matplotlib，接到這一章新學的 \texttt{requests} 後面：查一次 API，把
+結果存成一份 CSV 檔，再從那份 CSV 檔畫出一張圖。
+
+\begin{code}{python}{The Standard Pattern for Saving Fetched Data as CSV}
+import csv
+
+with open("filename.csv", "w", newline="") as f:
+    writer = csv.writer(f)
+    writer.writerow([field1, field2])
+    for value1, value2 in zip(list1, list2):
+        writer.writerow([value1, value2])
+\end{code}
+
+\begin{example}{python}{(fetch-hourly-to-csv.py) Saving a Day's Hourly Temperatures as CSV}
+import csv
+import requests
+
+url = "https://api.open-meteo.com/v1/forecast"
+params = {
+    "latitude": 25.0330,
+    "longitude": 121.5654,
+    "hourly": "temperature_2m",
+    "timezone": "Asia/Taipei",
+    "forecast_days": 1,
+}
+response = requests.get(url, params=params, timeout=5)
+response.raise_for_status()
+data = response.json()
+
+hourly = data["hourly"]
+times = hourly["time"]
+temperatures = hourly["temperature_2m"]
+
+with open("taipei_hourly.csv", "w", newline="") as f:
+    writer = csv.writer(f)
+    writer.writerow(["time", "temperature"])
+    for time, temperature in zip(times, temperatures):
+        writer.writerow([time, temperature])
+
+print(f"Wrote {len(times)} rows to taipei_hourly.csv")
+\end{example}
+
+\iosample{}{Wrote 24 rows to taipei\_hourly.csv \\}
+
+留意 \texttt{open()} 那一行多寫了 \texttt{newline=""} 這個參數，第 \ref{ch:csv} 章已經解釋過，
+這是使用 \texttt{csv.writer()} 時官方文件明講的固定寫法，忘記加的話，某些系統上可能會
+在每一列中間多出一行空白，不是程式邏輯錯了，養成每次都加上它的習慣就好。執行完之後，
+打開 \texttt{taipei\_hourly.csv} 會看到（這裡只列出前五列）：
+
+\begin{verbatim}
+time,temperature
+2026-09-01T00:00,25.6
+2026-09-01T01:00,25.6
+2026-09-01T02:00,25.4
+2026-09-01T03:00,25.2
+2026-09-01T04:00,25.1
+\end{verbatim}
+
+這份檔案存下來之後，就跟第 \ref{ch:csv} 章讀過的任何一份 CSV 沒有兩樣了，可以用
+\texttt{csv.DictReader} 讀回來，接著用第 \ref{ch:data-tools} 章學過的 \texttt{plt.bar()} 畫成圖：
+
+\begin{example}{python}{(chart-from-csv.py) Reading the CSV Back and Plotting a Bar Chart}
+import csv
+import matplotlib.pyplot as plt
+
+times = []
+temperatures = []
+with open("taipei_hourly.csv") as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        times.append(row["time"][-5:])            # 只留下最後 5 個字元，"HH:MM"
+        temperatures.append(float(row["temperature"]))
+
+plt.bar(times[:8], temperatures[:8])
+plt.xlabel("Hour")
+plt.ylabel("Temperature (C)")
+plt.title("Taipei Hourly Temperature")
+plt.show()
+\end{example}
+
+這裡有兩個地方值得多看一眼。第一，\texttt{row["time"][-5:]} 用的是第 \ref{ch:strings} 章學過的切片，
+從像 \texttt{"2026-09-01T00:00"} 這樣完整的時間字串裡，只留下最後五個字元
+（\texttt{"00:00"}），圖表的橫軸才不會擠得看不清楚。第二，\texttt{float(row["temperature"])}
+不能省略：CSV 檔案裡存的所有內容，讀回來都是字串，就算看起來像數字，第 \ref{ch:csv} 章已經強調過
+這件事，這裡的溫度也不例外，要拿來畫圖或做任何數學運算之前，得先轉型別。
+
+執行完你會看到
+一個彈出的視窗，裡面是 8 根長條，代表凌晨前八個小時的氣溫變化，跟第 \ref{ch:data-tools} 章畫班級平均分數
+長條圖的結果長得很像，只是這次橫軸換成了時間、資料來源換成了剛剛存下來的 CSV 檔，不是
+你自己手打的清單。
+
+\begin{drills}[label=drills:save-and-chart]
+\item 如果 \texttt{open("taipei\_hourly.csv", "w", newline="")} 那一行不小心漏寫
+\texttt{newline=""}，在某些系統上會有什麼後果？（提示：回頭看第 \ref{ch:csv} 章學過的坑。）
+\item 如果只想存下前 12 小時的資料，〈把一整天的每小時氣溫存成 CSV〉那支程式裡的
+\texttt{zip(times, temperatures)} 該怎麼改？
+\item 〈讀回 CSV、畫成長條圖〉這支程式裡，如果漏寫 \texttt{float()}，直接把
+\texttt{row["temperature"]} 這個字串傳給 \texttt{plt.bar()}，你覺得畫出來的圖會有什麼
+問題？
+\end{drills}
+
+\section{API 金鑰：需要認證的服務，怎麼安全存放}
+\label{sec:api-keys}
+
+這一章從頭到尾用的 Open-Meteo 跟 Frankfurter，刻意挑的都是不需要帳號、不需要金鑰的
+服務，方便你專心體會「打 API」這件事本身。
+
+但實際情況裡，更多公開 API（地圖服務、部分
+天氣服務、翻譯服務都很常見）要求你先註冊一個帳號，換到一組專屬於你的「API 金鑰」（API
+key）才能查詢。金鑰本質上是一段文字，用來讓伺服器知道「這次請求是誰發出來的」，通常是
+為了控制每個人能查詢的次數，或是把使用量跟你的帳號對起來計費。
+
+大部分服務的做法，是把這組金鑰當成第二節學過的查詢參數之一，跟其他條件一起放進
+\texttt{params} 字典：
+
+\begin{code}{python}{The Standard Pattern for Querying with an API Key}
+API_KEY = "the-long-string-you-registered-for"
+params = {
+    "q": query,
+    "appid": API_KEY,
+}
+response = requests.get(url, params=params, timeout=5)
+\end{code}
+
+第 \ref{ch:industry} 章已經完整講過這裡真正要注意的事：金鑰是機密資訊，絕對不能像上面片語那樣，直接
+把一長串文字寫死在會被 commit 進版本控制系統的程式碼裡，一旦某次 commit 留下紀錄，之後
+就算刪掉那一行重新 commit，舊的紀錄裡還是找得到。
+
+第 \ref{ch:industry} 章介紹過的 \texttt{.env} 檔案跟
+\texttt{.gitignore}，就是為了應付這種情況：把金鑰放進一個獨立、不會被記錄進版本控制
+系統的檔案裡，程式執行的時候再讀進來用，這樣即使你把程式碼分享出去、甚至公開在網路上，
+金鑰也不會跟著外流。
+
+這一章不深入示範讀取 \texttt{.env} 的細節，記住這個原則就好：申請到
+金鑰的那一刻起，就把它當成密碼對待，不要圖方便直接寫死在程式碼裡。
+
+\section{小專案：串成一支查詢小工具}
+\label{sec:weather-tool}
+
+前面每一節分別學了怎麼發出請求、怎麼帶查詢參數、怎麼拆解回應、怎麼處理失敗、怎麼存下
+結果，這一節要把這些東西串成一支真正能用的小工具：讓使用者選擇要查天氣還是查匯率，輸入
+對應的城市或幣別，程式就去查詢、把結果講成一句人看得懂的話，查完可以繼續查下一筆，直到
+使用者想離開為止。
+
+跟第 \ref{ch:automating} 章的整合應用專案不一樣，\ref{ch:automating} 章的目標是把整本書學過的程式技巧
+全部兜在一起、做出一支功能完整的小工具；這裡刻意窄很多，不做快取、不做介面、也不處理
+需要申請帳號才能查到的項目，唯一目的就是完整走一次「你的程式主動跟外部服務要資料」的
+流程，
+
+順便親手體會一次：同一支程式裡，接兩支完全不同的 API，用的是同一套骨架，讓「軟體
+怎麼跟軟體溝通」這件事，變成你自己動手做過、不是只在書上讀過的東西。
+
+\begin{example}{python}{(weather-currency-tool.py) A Weather-or-Exchange-Rate Lookup Tool}
+import requests
+
+CITIES = {
+    "Taipei": (25.0330, 121.5654),
+    "Taichung": (24.1477, 120.6736),
+    "Kaohsiung": (22.6273, 120.3014),
+    "Hualien": (23.9871, 121.6015),
+}
+
+CURRENCIES = ["JPY", "EUR", "GBP"]
+
+
+def get_weather(latitude, longitude):
+    url = "https://api.open-meteo.com/v1/forecast"
+    params = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "current_weather": "true",
+    }
+    response = requests.get(url, params=params, timeout=5)
+    response.raise_for_status()
+    return response.json()["current_weather"]
+
+
+def get_rate(target):
+    url = "https://api.frankfurter.dev/v1/latest"
+    params = {"base": "USD", "symbols": target}
+    response = requests.get(url, params=params, timeout=5)
+    response.raise_for_status()
+    return response.json()["rates"][target]
+
+
+while True:
+    choice = input("Enter w for weather, e for exchange rate, q to quit: ")
+    if choice == "q":
+        print("Goodbye!")
+        break
+
+    if choice == "w":
+        city = input(f"Which city? ({'/'.join(CITIES)}): ")
+        if city not in CITIES:
+            print("Only Taipei, Taichung, Kaohsiung, and Hualien are supported, please try again")
+            continue
+        latitude, longitude = CITIES[city]
+        try:
+            weather = get_weather(latitude, longitude)
+        except requests.exceptions.ConnectionError:
+            print("Can't reach the network, please check your connection")
+            continue
+        except requests.exceptions.Timeout:
+            print("The server took too long to respond, try again later")
+            continue
+        except requests.exceptions.HTTPError:
+            print("The server returned an error, please try again later")
+            continue
+        temperature = weather["temperature"]
+        wind_speed = weather["windspeed"]
+        print(f"{city}: temperature {temperature}°C, wind speed {wind_speed} km/h")
+
+    elif choice == "e":
+        target = input(f"Convert USD to which currency? ({'/'.join(CURRENCIES)}): ")
+        if target not in CURRENCIES:
+            print("Only JPY, EUR, and GBP are supported, please try again")
+            continue
+        try:
+            rate = get_rate(target)
+        except requests.exceptions.ConnectionError:
+            print("Can't reach the network, please check your connection")
+            continue
+        except requests.exceptions.Timeout:
+            print("The server took too long to respond, try again later")
+            continue
+        except requests.exceptions.HTTPError:
+            print("The server returned an error, please try again later")
+            continue
+        print(f"1 USD = {rate} {target}")
+
+    else:
+        print("Unrecognized command, please try again")
+\end{example}
+
+\iosample{w \\ Taipei \\ e \\ JPY \\ x \\ q \\}{Enter w for weather, e for exchange rate, q to quit: Which city? (Taipei/Taichung/Kaohsiung/Hualien): Taipei: temperature 25.4°C, wind speed 3.5 km/h \\ Enter w for weather, e for exchange rate, q to quit: Convert USD to which currency? (JPY/EUR/GBP): 1 USD = 160.16 JPY \\ Enter w for weather, e for exchange rate, q to quit: Unrecognized command, please try again \\ Enter w for weather, e for exchange rate, q to quit: Goodbye! \\}
+
+這支程式把前面每一節都用上了：
+
+\begin{itemize}
+\item \texttt{CITIES} 跟 \texttt{CURRENCIES} 兩個容器把使用者
+能查詢的範圍固定下來，省去每次都要自己輸入座標或幣別代碼的麻煩。
+\item \texttt{get\_weather()}
+跟 \texttt{get\_rate()} 兩支函式，各自包著第一節學的 \texttt{requests.get()} 加上第二節
+學的 \texttt{params} 字典，還有第四節的 \texttt{raise\_for\_status()}。
+\item 拿到回應之後，用
+第三節學的中括號取出需要的欄位。
+\item 每一種查詢外層都用 \texttt{try}/\texttt{except} 接住
+所有可能的失敗，讓程式只印一句話、讓使用者可以繼續查下一筆，不會因為一次查詢失敗就整個
+當掉。
+\item 最外層的 \texttt{while True} 搭配 \texttt{if}/\texttt{elif}/\texttt{else}，讓
+使用者不用每查一次就重新執行一次程式，也能在天氣跟匯率之間自由切換。
+\end{itemize}
+
+\begin{drills}[label=drills:weather-tool]
+\item 開放式練習：幫這支程式加一個功能，例如多印一句更口語化的天氣描述（提示：
+\texttt{weather["weathercode"]} 是一個數字代碼，代表當下的天氣狀況，你可以查
+Open-Meteo 文件裡代碼跟天氣描述的對照表，寫一個小字典把常見代碼轉成「晴天」「多雲」
+「下雨」這類文字）；或是在 \texttt{CITIES} 字典裡多加幾個你自己感興趣的城市。
+\item 開放式練習：幫這支程式加一個「記錄」功能，不管使用者查的是天氣還是匯率，每查
+一次就用第五節學過的 \texttt{csv.writer()} 加一列記錄，寫進一個 \texttt{log.csv} 檔案
+裡（提示：記錄的欄位不完全一樣，天氣要記城市跟氣溫，匯率要記幣別跟匯率，可以用一個共通
+的「查詢類型」欄位區分兩種紀錄）。
+\end{drills}
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:query-strings}~節}
+\begin{enumerate}
+\item 空白字元通常會被轉成加號 \texttt{+} 或 \texttt{\%20}，實際結果依 \texttt{requests}
+內部使用的編碼規則而定，但重點是它不會原封不動地留下一個空白字元。
+\item 手動寫的那個網址「剛好能動」是因為瀏覽器或這台伺服器剛好願意寬容處理沒編碼過的
+空白，不代表所有伺服器都會這樣。程式裡用 \texttt{params} 字典交給 \texttt{requests}
+處理，可以確保不管值裡出現什麼特殊符號，都會照標準規則轉換好，不用賭對方伺服器夠不夠
+寬容。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:currency-api}~節}
+\begin{enumerate}
+\item 改成 \texttt{"SGD"} 是一組——\texttt{symbols} 只帶一個幣別代碼，
+\texttt{data["rates"]} 就只會有 \texttt{"SGD"} 這一個鍵。 但改成 \texttt{"TWD"} 你會拿到
+一個 \texttt{HTTPError}：Frankfurter 用的是歐洲央行公布的參考匯率，總共只有三十種幣別，
+裡面\textbf{沒有新台幣}，查不到的幣別它回的是 404，於是
+\texttt{response.raise\_for\_status()} 當場把程式擋下來，根本走不到
+\texttt{data["rates"]} 那一行。 這件事值得記住：一支 API 能回答什麼，是它自己決定的，
+不會因為那個資料「聽起來理所當然存在」就一定查得到。 遇到這種情況，要嘛換一個查得到的
+服務，要嘛接受這個服務的範圍——第 \ref{ch:capstone} 章的專案就會真的碰上這個決定。
+\item \texttt{base} 會是 \texttt{"EUR"}，\texttt{symbols} 會是 \texttt{"GBP"}，因為
+函式呼叫時第一個引數對應 \texttt{base}、第二個引數對應 \texttt{target}（也就是
+\texttt{symbols}）。
+\item 會是 \texttt{1.0}。不帶 \texttt{amount} 這個參數時，Frankfurter 預設把它當成 1，
+所以 \texttt{data["amount"]} 印出來是 \texttt{1.0}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:eafp-requests}~節}
+\begin{enumerate}
+\item 印出「Can't reach the network, please check your connection」，網域打錯字會讓
+\texttt{requests.get()} 丟出 \texttt{ConnectionError}，被對應的 \texttt{except} 接住。
+\item 印出「The server took too long to respond, timed out, try again later」，超過
+\texttt{timeout=5} 秒沒有回應會丟出 \texttt{Timeout}，被對應的 \texttt{except} 接住。
+\item 印出「The server returned an error, status code: 404」，雖然請求本身成功連上了
+伺服器，但 \texttt{response.raise\_for\_status()} 看到狀態碼是 404，會主動丟出
+\texttt{HTTPError}，被對應的 \texttt{except} 接住。
+\item 印出「Error raised by raise\_for\_status():」，接著印出
+\texttt{404 Client Error: Not Found for url: https://api.frankfurter.dev/v1/latest?base=USD\&symbols=XXX}
+這一行，道理跟前一題一樣：狀態碼 404 讓 \texttt{raise\_for\_status()} 丟出
+\texttt{HTTPError}，被對應的 \texttt{except} 接住並印出來。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:save-and-chart}~節}
+\begin{enumerate}
+\item 在某些系統上，每一列中間可能會多出一行空白，這是文字模式處理換行符號的方式跟
+\texttt{csv} 模組預期的不一致所導致，不是程式邏輯本身有錯誤，但仍然會讓輸出的 CSV 檔案
+格式跑掉，養成一律加上 \texttt{newline=""} 的習慣才不用擔心這件事。
+\item 改成 \texttt{zip(times[:12], temperatures[:12])}，用切片先把兩個串列都只留下前
+12 個元素，再交給 \texttt{zip()} 配對。
+\item \texttt{plt.bar()} 會拿到一串字串而不是數字，長條圖的高度沒辦法正確反映氣溫的
+大小關係，甚至可能直接因為型別不對而報錯，這正是第 \ref{ch:csv} 章一直強調「CSV 讀回來的內容全部
+是字串」這件事在這裡的具體後果。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:weather-tool}~節}
+\begin{enumerate}
+\item 開放性練習，只要程式仍然能正常執行、確實新增了你描述的功能即可，例如把
+\texttt{weathercode} 轉成文字描述時，記得處理「代碼不在你自己寫的對照表裡」的情況，
+可以用 \texttt{.get()} 給一個「未知天氣狀況」之類的預設值。
+\item 開放性練習，重點是每次查詢完（不管成功或失敗）都要記得幫 CSV 加一列記錄，並且
+留意 \texttt{open()} 要用附加模式（第 \ref{ch:files-exceptions} 章學過的 \texttt{'a'} 模式）打開記錄檔，而不是
+每次都用 \texttt{'w'} 模式，不然前面查過的紀錄會被整個清空重寫。
+\end{enumerate}

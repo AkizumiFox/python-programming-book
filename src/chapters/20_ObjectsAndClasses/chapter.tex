@@ -1,0 +1,930 @@
+\chapter{物件與類別基礎}
+\label{ch:objects}
+
+前面十四章，你已經很會用 Python 內建的資料結構（list、dict、tuple）把資料存起來、
+一個一個處理。但如果要記錄的是「一個學生」這種東西，這個學生有姓名、有分數，那個學生
+也有姓名、有分數，一次要記好幾份，彼此獨立，還不能搞混，用一堆各自獨立的變數，或是一層
+疊一層的 dict，程式會越寫越亂，稍微一個地方漏改一個欄位名稱，就整個對不上。
+
+這一章要教的「類別」（class）跟「物件」（object），就是 Python 用來解決這個問題的辦法：
+你先寫一份「模板」，說清楚「這種東西應該長什麼樣子、會做什麼事」，之後每次要用就照著模板
+造一個出來，各自獨立，互不影響。
+
+這一章分成幾段走：
+
+\begin{itemize}
+\item 先從一個你其實已經很熟的東西重新認識一次「物件」這個詞：你前面章節一路用到現在的
+list、字串、dict，全部都是物件。
+\item 接著動手寫你自己的第一個類別，搞懂 \texttt{class}、\texttt{\_\_init\_\_}、
+\texttt{self} 這幾個新語法到底在做什麼，還有方法怎麼定義、怎麼呼叫，甚至怎麼在同一個
+物件裡互相借用彼此的結果。
+\item 再來會處理兩個物件互動的情境：一個方法怎麼接住另一個物件當參數，直接拿它身上的
+屬性跟自己比較。
+\item 最後把範圍拉大一點，處理一個很多初學者會卡住的地方，「每個物件自己的屬性」跟
+「整個類別共用的屬性」是兩回事，還有為什麼值得花力氣把資料跟操作綁在一起、寫這些額外的
+語法。
+\end{itemize}
+
+這一章只處理「基礎」，類別怎麼定義、物件怎麼建立、屬性怎麼分兩種；「一個類別可以繼承
+另一個類別的能力」這件事，留到下一章。
+
+\section{重新認識「物件」：你其實早就在用了}
+\label{sec:objects-recap}
+
+回頭看一下你這幾章寫過的程式碼，你可能已經打過類似這樣的東西：
+
+\begin{quote}
+\ttfamily
+my\_list.append(3) \\
+"hello".upper() \\
+my\_dict.keys()
+\end{quote}
+
+這些寫法有一個共通的形狀：\texttt{東西.動作(...)}。\texttt{my\_list} 這個 list、
+\texttt{"hello"} 這個字串、\texttt{my\_dict} 這個 dict，本身就「帶著」一堆你可以直接
+呼叫的動作，這些動作直接「長」在這個東西身上，用一個點接著呼叫，不用另外寫一個函式、把
+資料傳進去。
+
+像這樣「資料」跟「可以對這份資料做的動作」綁在一起的東西，在 Python 裡就叫做
+\textbf{物件}（object）；那些長在物件身上、用點記法呼叫的動作，叫做\textbf{方法}
+（method）。所以「物件」不是一個要重新學的陌生東西，你從很早以前就一直在用了，只是還
+沒有人跟你點名這件事而已。
+
+那為什麼還需要自己定義新的物件呢？因為 Python 內建的物件種類就那幾種，數字、字串、
+list、dict、tuple，但真實世界要處理的東西千奇百怪，「一個學生」「一筆訂單」「一台
+車」，這些東西各自帶著好幾種資料，還會被重複建立很多份，內建的物件種類完全不夠用。
+
+想像一下你要辦一場活動，需要每個報名的人填一張報名表：表格本身長什麼樣子（有姓名欄、
+有生日欄、有聯絡電話欄）是固定的設計，這張設計只需要做一次；但每個人各自填了自己的
+姓名、自己的生日，彼此互不影響，也不會因為小美填了她的姓名，阿凱那張表上的姓名欄就跟著
+變。
+
+「類別」就是那張空白表格的設計，你只寫一次，說清楚「這種東西應該有哪些欄位、能做哪些
+事」；「物件」則是照著這張設計、每次實際造出來的一份，各自獨立。這一章接下來要做的事，
+就是學會怎麼自己設計這種「表格」，以及怎麼照著表格造出一份份獨立的「物件」。
+\index{類別（class）}
+
+你在第 \ref{ch:variables} 章學過，變數不是裝著值的盒子，是貼在物件上的名字牌。這一章要教的，是怎麼自己
+造一種新的「可以被貼名字牌的東西」，不管是內建的 list、字串，還是你等一下要自己定義的
+「學生」，都遵守同一套規則。
+
+\section{動手寫第一個類別：\texttt{class}、\texttt{\_\_init\_\_}、屬性}
+\label{sec:class-init}
+
+要造一種新的物件，第一步是用 \texttt{class} 關鍵字定義它的「表格設計」長什麼樣子。
+一個類別裡最常見不過的一段，是一個叫 \texttt{\_\_init\_\_} 的方法，它的名字裡那兩對
+底線是 Python 的固定寫法，意思大致是「初始化」：每次你照著這個類別造一個新物件，Python
+都會自動呼叫這個方法一次，負責幫這個新物件把該有的資料填好。
+\index{\_\_init\_\_}
+
+\begin{code}{python}{定義最基本的類別}
+class ClassName:
+    def __init__(self, param1, param2):
+        self.attr1 = param1
+        self.attr2 = param2
+\end{code}
+
+這裡有兩個第一次看到的東西特別值得說明。第一個是 \texttt{self}：它永遠是
+\texttt{\_\_init\_\_}（以及等一下會教的其他方法）的第一個參數，代表「這個正在被造出來
+的物件自己」，你不用自己傳這個參數，Python 會自動幫你補上。
+\index{self}
+第二個是
+\texttt{self.attr1 = param1} 這種寫法：等號左邊多了一個 \texttt{self.}，意思是「把
+這個值存到\textit{這個物件自己身上}的 \texttt{attr1} 這個位置」，這種存在物件身上的
+資料就叫做\textbf{屬性}（attribute）。
+\index{屬性（attribute）}
+
+定義好類別之後，用「類別名稱(...)」的形式就能造出一個新物件，這個動作叫做
+\textbf{建立實例}（instantiation）；造出來的物件則叫做這個類別的一個\textbf{實例}
+（instance）。
+\index{建立實例（instantiation）}
+\index{實例（instance）}
+
+\begin{example}{python}{(student.py) 記錄一個學生的姓名與分數}
+class Student:
+    def __init__(self, name, score):
+        self.name = name
+        self.score = score
+
+
+s1 = Student("Alice", 88)
+s2 = Student("Bob", 76)
+
+print(s1.name, s1.score)
+print(s2.name, s2.score)
+\end{example}
+
+\iosample{}{Alice 88 \\ Bob 76 \\}
+
+\texttt{Student("Alice", 88)} 這一行，就是照著 \texttt{Student} 這個模板造出一個新物件，
+Python 自動把 \texttt{s1} 這個還沒建好的物件當成 \texttt{self}、把 \texttt{"Alice"}
+當成 \texttt{name}、把 \texttt{88} 當成 \texttt{score}，傳進 \texttt{\_\_init\_\_} 裡
+執行，於是 \texttt{s1} 這個物件身上就有了 \texttt{name} 跟 \texttt{score} 兩個屬性。
+之後想取用某個物件的某個屬性，就用「物件.屬性名稱」這種點記法，跟你之前呼叫方法的形狀
+很像，只是這裡取的是資料，不是動作。
+
+順帶一提，如果你這時候把 \texttt{print(s1.name)} 換成直接 \texttt{print(s1)}，印整個
+物件本身，會看到類似這樣的東西：
+
+\begin{verbatim}
+<__main__.Student object at 0x1053a2f90>
+\end{verbatim}
+
+這串位址（\texttt{0x} 開頭那串數字）每次執行都不一樣，不用背它，也不用理解它，這只是
+Python 目前還不知道你想把這個物件印成什麼樣子，所以印出了一個很陽春的預設格式。這行字
+確實不好讀，下一章會教你怎麼換成好讀的格式，這裡先知道有這回事就好。
+
+初學者在這一步最容易犯的錯，是漏寫 \texttt{self.} 這個前綴。看看下面這段哪裡怪怪的：
+
+\begin{example}{python}{(student-broken-self.py) 忘記寫 self.\ 前綴會怎樣}
+class Student:
+    def __init__(self, name, score):
+        name = name          # 漏寫 self.，只是一個普通的區域變數
+        self.score = score
+
+
+s1 = Student("Alice", 88)
+print(s1.name)
+\end{example}
+
+執行後看到的是：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "student-broken-self.py", line 8, in <module>
+    print(s1.name)
+          ^^^^^^^
+AttributeError: 'Student' object has no attribute 'name'
+\end{verbatim}
+
+\keypoint{\texttt{self.attr = param} 是「把名字牌 \texttt{attr} 貼到這個物件身上」；
+如果漏寫 \texttt{self.}，\texttt{name = name} 只是在 \texttt{\_\_init\_\_} 這個方法
+執行完就消失的一個普通區域變數，根本沒有貼在物件上，物件建立完之後，身上壓根沒有
+\texttt{name} 這個屬性，所以之後想用 \texttt{s1.name} 去讀，Python 才會抱怨
+\texttt{AttributeError}，說這個物件沒有這個屬性。}
+
+\begin{drills}[label=drills:class-init]
+\item 這段程式執行後會印出什麼？
+\begin{verbatim}
+class Item:
+    def __init__(self, name, price):
+        self.name = name
+        self.price = price
+
+item = Item("notebook", 45)
+print(item.name, item.price)
+\end{verbatim}
+\item 這段程式碼裡 \texttt{price} 那一行漏寫了 \texttt{self.}，執行
+\texttt{print(item.price)} 時會發生什麼事？錯誤類型是什麼？
+\begin{verbatim}
+class Item:
+    def __init__(self, name, price):
+        self.name = name
+        price = price
+
+item = Item("notebook", 45)
+print(item.price)
+\end{verbatim}
+\item 幫 \texttt{Item} 類別的 \texttt{\_\_init\_\_} 補上第三個屬性
+\texttt{in\_stock}（布林值，代表是否有庫存），並建立一個 \texttt{Item("pencil", 10)}
+的物件，把 \texttt{in\_stock} 設成 \texttt{True}。你會怎麼修改
+\texttt{\_\_init\_\_} 的參數列跟裡面的兩行 \texttt{self.} 賦值？
+\end{drills}
+
+\section{方法與 self：讓物件自己會做事}
+\label{sec:methods-and-self}
+
+\texttt{\_\_init\_\_} 只負責在物件剛造出來的時候填好資料，但一個物件通常還需要能「做
+點什麼」，像是印出自己的摘要、更新自己的某個屬性。這些額外的動作，就是定義在類別裡、
+\texttt{\_\_init\_\_} 以外的一般方法。
+
+\begin{code}{python}{幫類別加上方法}
+class ClassName:
+    def __init__(self, param):
+        self.attr = param
+
+    def method_name(self):
+        # 用 self.attr 做點什麼
+        ...
+\end{code}
+
+跟 \texttt{\_\_init\_\_} 一樣，每一個方法的第一個參數都要是 \texttt{self}，代表「呼叫
+這個方法的那個物件自己」。呼叫的時候你不用自己傳它，寫 \texttt{s1.describe()}，Python
+會自動把 \texttt{s1} 傳給方法裡的 \texttt{self}，所以你在方法裡才能用
+\texttt{self.attr} 存取到「呼叫者自己」的那份資料。
+
+\begin{example}{python}{(student-methods.py) 幫學生類別加上方法}
+class Student:
+    def __init__(self, name, score):
+        self.name = name
+        self.score = score
+
+    def describe(self):
+        print(f"Name: {self.name}, Score: {self.score}")
+
+    def update_score(self, new_score):
+        self.score = new_score
+
+
+s1 = Student("Alice", 88)
+s2 = Student("Bob", 76)
+
+s1.describe()
+s2.describe()
+
+s1.update_score(95)
+print("After update:")
+s1.describe()
+s2.describe()
+\end{example}
+
+\iosample{}{Name: Alice, Score: 88 \\ Name: Bob, Score: 76 \\ After update: \\ Name: Alice, Score: 95 \\ Name: Bob, Score: 76 \\}
+
+這裡有兩件事值得停下來看清楚。第一，\texttt{update\_score} 除了 \texttt{self} 之外還
+多了一個 \texttt{new\_score} 參數，一個方法可以像一般函式一樣，在 \texttt{self} 後面
+再接其他參數，呼叫的時候只要補上那些額外的參數就好（\texttt{self} 永遠是自動的），所以
+\texttt{s1.update\_score(95)} 實際上是把 \texttt{s1} 當 \texttt{self}、把 \texttt{95}
+當 \texttt{new\_score}。
+
+第二，也是這一節最重要的一件事：\texttt{s1.update\_score(95)} 只改了 \texttt{s1} 自己的
+\texttt{score}，\texttt{s2} 完全沒被影響，因為 \texttt{s1} 跟 \texttt{s2} 是兩個各自
+獨立的物件，各自的屬性存在各自身上，改一個不會動到另一個，即使它們是照著同一個類別造
+出來的也一樣。
+
+方法定義時忘記寫 \texttt{self}，是初學者另一個很容易犯的錯：
+
+\begin{example}{python}{(student-broken-method.py) 方法忘記寫 self 參數會怎樣}
+class Student:
+    def __init__(self, name, score):
+        self.name = name
+        self.score = score
+
+    def describe():          # 忘記在參數列裡加上 self
+        print(f"Name: {self.name}, Score: {self.score}")
+
+
+s1 = Student("Alice", 88)
+s1.describe()
+\end{example}
+
+執行後看到的是：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "student-broken-method.py", line 11, in <module>
+    s1.describe()
+TypeError: Student.describe() takes 0 positional arguments but 1 was given
+\end{verbatim}
+
+\keypoint{呼叫 \texttt{s1.describe()} 的時候，Python 一定會自動把 \texttt{s1} 當成
+第一個參數傳進去，不管你有沒有在方法定義裡準備好位置接它。上面這個 \texttt{describe}
+定義時完全沒寫參數，所以 Python 抱怨「說好 0 個參數，卻收到 1 個」，這個「多收到的
+1 個」正是 Python 自動塞進來的 \texttt{s1}。看到這種訊息，第一件事就是回頭檢查方法的
+參數列有沒有把 \texttt{self} 放進去。}
+
+\begin{drills}[label=drills:methods-and-self]
+\item 這段程式執行後會印出什麼？
+\begin{verbatim}
+class Car:
+    def __init__(self, brand):
+        self.brand = brand
+
+    def honk(self):
+        print(f"{self.brand} says: Honk honk!")
+
+car = Car("Toyota")
+car.honk()
+\end{verbatim}
+\item 下面這段程式呼叫 \texttt{car.honk()} 時會出現錯誤，錯誤類型是什麼？哪裡需要修正？
+\begin{verbatim}
+class Car:
+    def __init__(self, brand):
+        self.brand = brand
+
+    def honk():
+        print(f"{self.brand} says: Honk honk!")
+
+car = Car("Toyota")
+car.honk()
+\end{verbatim}
+\item 這段程式執行後會印出什麼？
+\begin{verbatim}
+class Car:
+    def __init__(self, brand):
+        self.brand = brand
+
+    def rename(self, new_brand):
+        self.brand = new_brand
+
+car1 = Car("Toyota")
+car2 = Car("Honda")
+car1.rename("BMW")
+print(car1.brand, car2.brand)
+\end{verbatim}
+\end{drills}
+
+\section{方法之間互相呼叫}
+\label{sec:method-calls-method}
+
+一個物件通常不會只有一個方法，而一個方法的邏輯，也常常需要用到另一個方法已經算好的
+結果。既然 \texttt{self} 代表「這個物件自己」，那在一個方法裡面，只要用
+\texttt{self.其他方法名稱(...)} 這種寫法，就能呼叫同一個物件身上的另一個方法，跟你在
+外面直接寫 \texttt{s1.其他方法名稱(...)} 呼叫方法的道理完全一樣，只是呼叫的起點換成了
+\texttt{self}。
+
+這件事在 \ref{ch:functions} 章學函式的時候就出現過類似的精神：與其把所有邏輯塞進同一個函式裡，不如拆成
+幾個各自負責一件事的小函式、讓它們互相呼叫，程式會更好讀、也更好維護；方法之間互相呼叫，
+就是同一個精神用在物件身上。
+
+\begin{code}{python}{一個方法呼叫另一個方法}
+class ClassName:
+    def helper_method(self):
+        # 計算一個中間結果
+        ...
+        return result
+
+    def main_method(self):
+        result = self.helper_method()
+        # 用 result 做更多事
+        ...
+\end{code}
+
+\begin{example}{python}{(student-passed.py) 讓 describe 借用 passed 算好的結果}
+class Student:
+    def __init__(self, name, score):
+        self.name = name
+        self.score = score
+
+    def passed(self):
+        return self.score >= 60
+
+    def describe(self):
+        status = "Pass" if self.passed() else "Fail"
+        print(f"Name: {self.name}, Score: {self.score}, Status: {status}")
+
+
+s1 = Student("Alice", 88)
+s2 = Student("Charlie", 52)
+
+s1.describe()
+s2.describe()
+\end{example}
+
+\iosample{}{Name: Alice, Score: 88, Status: Pass \\ Name: Charlie, Score: 52, Status: Fail \\}
+
+\texttt{describe} 這個方法裡用到的 \texttt{self.passed()}，做的事跟你在外面寫
+\texttt{s1.passed()} 完全一樣，只不過它是「從物件內部呼叫自己身上的另一個方法」。因為
+\texttt{self} 在 \texttt{describe} 執行的當下，代表的正是呼叫它的那個物件（可能是
+\texttt{s1}，也可能是 \texttt{s2}），所以 \texttt{self.passed()} 用的自然也是同一個
+物件身上的 \texttt{score}，不用把 \texttt{score} 這個值再重新傳一次進去。
+
+這正是把資料跟操作綁在同一個物件上的好處之一：方法之間可以直接互相借用彼此的結果，不用
+每次呼叫都重新把資料搬來搬去。
+
+方法互相呼叫時，一樣很容易漏寫 \texttt{self.} 前綴，而且這種錯誤特別容易發生，因為方法
+名稱單獨看起來就像一個普通函式：
+
+\begin{example}{python}{(student-broken-method-call.py) 呼叫另一個方法忘記寫 self.\ 會怎樣}
+class Student:
+    def __init__(self, name, score):
+        self.name = name
+        self.score = score
+
+    def passed(self):
+        return self.score >= 60
+
+    def describe(self):
+        status = "Pass" if passed() else "Fail"   # 忘記寫 self.
+        print(f"Name: {self.name}, Score: {self.score}, Status: {status}")
+
+
+s1 = Student("Alice", 88)
+s1.describe()
+\end{example}
+
+執行後看到的是：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "student-broken-method-call.py", line 15, in <module>
+    s1.describe()
+    ~~~~~~~~~~~^^
+  File "student-broken-method-call.py", line 10, in describe
+    status = "Pass" if passed() else "Fail"   # 忘記寫 self.
+                       ^^^^^^
+NameError: name 'passed' is not defined. Did you mean: 'self.passed'?
+\end{verbatim}
+
+\keypoint{在方法裡面呼叫「同一個物件自己的另一個方法」，一定要寫 \texttt{self.}，不能
+只寫方法名稱。\texttt{passed()} 這樣裸著呼叫，Python 只會去找一個叫 \texttt{passed} 的
+獨立函式或變數，找不到就是 \texttt{NameError}；只有 \texttt{self.passed()} 才是「呼叫
+掛在這個物件身上的 \texttt{passed} 方法」。上面這則錯誤訊息其實還很貼心地提示了
+\texttt{Did you mean: 'self.passed'?}，看到這種提示，通常就是漏寫 \texttt{self.} 的
+訊號。}
+
+\begin{drills}[label=drills:method-calls-method]
+\item 這段程式執行後會印出什麼？
+\begin{verbatim}
+class Car:
+    def __init__(self, brand, speed):
+        self.brand = brand
+        self.speed = speed
+
+    def is_fast(self):
+        return self.speed >= 200
+
+    def describe(self):
+        label = "Sports Car" if self.is_fast() else "Normal Speed"
+        print(f"{self.brand}: {label}")
+
+car = Car("Ferrari", 320)
+car.describe()
+\end{verbatim}
+\item 下面這段程式呼叫 \texttt{car.describe()} 時會出現錯誤，錯誤類型是什麼？哪一行
+需要修正？
+\begin{verbatim}
+class Car:
+    def __init__(self, brand, speed):
+        self.brand = brand
+        self.speed = speed
+
+    def is_fast(self):
+        return self.speed >= 200
+
+    def describe(self):
+        label = "Sports Car" if is_fast() else "Normal Speed"
+        print(f"{self.brand}: {label}")
+
+car = Car("Ferrari", 320)
+car.describe()
+\end{verbatim}
+\item 幫上面的 \texttt{Car} 類別加一個方法 \texttt{warn(self)}：如果
+\texttt{self.is\_fast()} 回傳 \texttt{True}，就印出「小心駕駛」；否則什麼都不做。這個
+方法要怎麼寫？
+\end{drills}
+
+\section{兩個實例互動：讓方法比較另一個物件}
+\label{sec:comparing-instances}
+
+到目前為止，方法用到的都只有自己身上的屬性。但很多時候你需要拿兩個物件互相比較，例如
+「這兩個學生誰的分數比較高」，這時候一個方法可以像一般函式一樣，在 \texttt{self} 之外
+再接一個參數，只是這個參數傳進來的通常\textit{是另一個同類別的物件}，不只是數字或字串。
+在方法裡面，你可以直接用點記法讀這個「另一個物件」身上的屬性，跟讀 \texttt{self} 身上
+的屬性寫法一模一樣。
+
+\begin{code}{python}{一個方法接住另一個物件當參數}
+class ClassName:
+    def compare_method(self, other):
+        return self.attr > other.attr
+\end{code}
+
+\begin{example}{python}{(student-compare.py) 比較兩個學生的分數}
+class Student:
+    def __init__(self, name, score):
+        self.name = name
+        self.score = score
+
+    def higher_score_than(self, other):
+        return self.score > other.score
+
+
+s1 = Student("Alice", 88)
+s2 = Student("Bob", 76)
+
+if s1.higher_score_than(s2):
+    print(f"{s1.name}'s score is higher than {s2.name}'s")
+else:
+    print(f"{s1.name}'s score is not higher than {s2.name}'s")
+
+print(s2.higher_score_than(s1))
+\end{example}
+
+\iosample{}{Alice's score is higher than Bob's \\ False \\}
+
+這裡的 \texttt{other} 不是 Python 的保留字，只是一個常用的慣例名稱，代表「另外那個
+物件」，你可以取任何名字，只是 \texttt{other} 讀起來最順、也最不容易跟 \texttt{self}
+搞混。
+
+呼叫 \texttt{s1.higher\_score\_than(s2)} 的時候，Python 自動把 \texttt{s1} 傳給
+\texttt{self}，把你寫在括號裡的 \texttt{s2} 傳給 \texttt{other}；方法裡面
+\texttt{self.score} 讀的是 \texttt{s1} 的分數，\texttt{other.score} 讀的是
+\texttt{s2} 的分數。因為 \texttt{self} 跟 \texttt{other} 都是同一個 \texttt{Student}
+類別造出來的物件，形狀完全一樣，所以才能用同一套點記法分別取出兩邊的屬性。最後一行把
+呼叫者跟參數對調，\texttt{s2.higher\_score\_than(s1)} 這時候 \texttt{self} 換成
+\texttt{s2}、\texttt{other} 換成 \texttt{s1}，結果自然也跟著反過來，變成 \texttt{False}。
+
+如果傳進去的 \texttt{other} 不是同一個類別的物件，方法裡想讀 \texttt{other.score} 就
+會出問題：
+
+\begin{example}{python}{(student-compare-wrong-type.py) other 傳錯型別會怎樣}
+class Student:
+    def __init__(self, name, score):
+        self.name = name
+        self.score = score
+
+    def higher_score_than(self, other):
+        return self.score > other.score
+
+
+s1 = Student("Alice", 88)
+s1.higher_score_than(76)
+\end{example}
+
+執行後看到的是：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "student-compare-wrong-type.py", line 11, in <module>
+    s1.higher_score_than(76)
+    ~~~~~~~~~~~~~~~~~~~~^^^^
+  File "student-compare-wrong-type.py", line 7, in higher_score_than
+    return self.score > other.score
+                         ^^^^^^^^^^^
+AttributeError: 'int' object has no attribute 'score'
+\end{verbatim}
+
+\keypoint{\texttt{76} 這個整數身上根本沒有 \texttt{score} 這個屬性，所以
+\texttt{other.score} 一執行就抱怨 \texttt{AttributeError}。呼叫
+\texttt{s1.higher\_score\_than(76)} 的當下，Python 並不會先檢查 \texttt{76} 是不是一個
+\texttt{Student}，要等到方法裡真的用到 \texttt{other.score} 那一行才會發現不對，這也是
+為什麼呼叫這種「接另一個物件當參數」的方法時，要自己留意傳進去的東西是不是正確的類別。}
+
+順帶一提，你可能會在其他人寫的程式碼裡，看到方法參數旁邊多了一小段像
+\texttt{other: "Student"} 這樣的文字，這叫「型別提示」，用來跟看程式碼的人（以及編輯器）
+說明「這個參數應該是一個 \texttt{Student} 物件」。寫這一行程式碼的當下，
+\texttt{Student} 這個類別本身還沒定義完成，Python 還看不到這個名字，所以型別提示才會
+用引號包起來，先當一個字串占位。
+
+這只是給人看的說明文字，Python 執行時並不會真的去檢查傳進來的東西是不是
+\texttt{Student}，也不會因此擋掉前面示範的那個 \texttt{AttributeError}。這一章不深入
+型別提示的細節，這裡知道有這種寫法、看得懂在做什麼就好。
+
+\begin{code}{python}{幫方法參數加上型別提示（選用寫法）}
+class ClassName:
+    def compare_method(self, other: "ClassName") -> bool:
+        return self.attr > other.attr
+\end{code}
+
+\begin{drills}[label=drills:comparing-instances]
+\item 這段程式執行後會印出什麼？
+\begin{verbatim}
+class Book:
+    def __init__(self, title, pages):
+        self.title = title
+        self.pages = pages
+
+    def thicker_than(self, other):
+        return self.pages > other.pages
+
+b1 = Book("The Three-Body Problem", 302)
+b2 = Book("The Little Prince", 96)
+print(b1.thicker_than(b2))
+print(b2.thicker_than(b1))
+\end{verbatim}
+\item 這段程式碼執行 \texttt{b1.thicker\_than(100)} 時會發生什麼事？錯誤類型是什麼？
+為什麼？
+\begin{verbatim}
+class Book:
+    def __init__(self, title, pages):
+        self.title = title
+        self.pages = pages
+
+    def thicker_than(self, other):
+        return self.pages > other.pages
+
+b1 = Book("The Three-Body Problem", 302)
+b1.thicker_than(100)
+\end{verbatim}
+\item 如果要幫 \texttt{thicker\_than} 的 \texttt{other} 參數加上型別提示，提示
+\texttt{other} 應該是一個 \texttt{Book}，這一行方法定義要怎麼寫？為什麼型別要用引號
+包起來？
+\end{drills}
+
+\section{兩種屬性：instance attribute 與 class attribute}
+\label{sec:instance-vs-class-attr}
+
+前面用到的 \texttt{name}、\texttt{score}，都是寫在 \texttt{\_\_init\_\_} 裡、用
+\texttt{self.} 存起來的屬性，每個物件各自有一份，改一個不會動到另一個，這種屬性叫
+\textbf{instance attribute}（實例屬性）。
+\index{instance attribute（實例屬性）}
+但有些資料其實所有物件都該共用同一份，例如
+「這個班上所有學生的學校名稱」，沒必要每個 \texttt{Student} 物件各自存一份一模一樣的
+資料。這種寫在類別本體裡、\texttt{\_\_init\_\_} 外面的屬性，叫做 \textbf{class
+attribute}（類別屬性），所有這個類別造出來的物件預設都共用同一份。
+\index{class attribute（類別屬性）}
+
+\begin{code}{python}{定義 class attribute}
+class ClassName:
+    shared_attr = value   # 寫在 __init__ 外面，屬於類別本體
+
+    def __init__(self, param):
+        self.own_attr = param
+\end{code}
+
+這聽起來簡單，但實際用起來有個地方很容易搞混：如果你透過某個物件去改這個共用屬性，改到
+的到底是「這個物件自己的一份」還是「大家共用的那一份」？直接看三個步驟：
+
+\begin{example}{python}{(student-school.py) instance attribute 與 class attribute 的差別}
+class Student:
+    school_name = "Yangming Middle School"   # 類別屬性
+
+    def __init__(self, name, score):
+        self.name = name
+        self.score = score
+
+
+s1 = Student("Alice", 88)
+s2 = Student("Bob", 76)
+
+# 步驟一：兩個實例目前共用同一份類別屬性
+print("Step 1:", s1.school_name, s2.school_name)
+
+# 步驟二：只改 s1 自己的 school_name
+s1.school_name = "Yangming High School"
+print("Step 2:", s1.school_name, s2.school_name)
+
+# 步驟三：直接改動類別本身的 school_name
+Student.school_name = "Yangming Experimental School"
+print("Step 3:", s1.school_name, s2.school_name)
+\end{example}
+
+\iosample{}{Step 1: Yangming Middle School Yangming Middle School \\ Step 2: Yangming High School Yangming Middle School \\ Step 3: Yangming High School Yangming Experimental School \\}
+
+一步一步看：
+
+\begin{enumerate}
+\item \texttt{s1} 跟 \texttt{s2} 都還沒被個別改過，兩個都直接讀到類別共用的那一份，
+所以一樣。
+\item \texttt{s1.school\_name = "Yangming High School"} 這一行，實際上是幫
+\texttt{s1} 這個物件\textit{另外造一份自己專屬的} \texttt{school\_name}，不是真的去
+「修改」類別共用的那一份。之後 \texttt{s1.school\_name} 會優先讀這份自己的，不再去看
+類別共用的那份；\texttt{s2} 完全沒被動到，還是讀類別共用的那份。
+\item \texttt{Student.school\_name = "..."} 才是真的改動類別本身共用的那份，這時候
+\texttt{s2} 因為從來沒被個別覆寫過，會跟著一起變；但 \texttt{s1} 因為在步驟二已經有了
+自己專屬的一份，就不會再跟著類別變動了。
+\end{enumerate}
+
+這裡有個轉折值得先講清楚：前面說類別是「表格設計」、物件是「照著設計造出來的東西」，
+兩者是不同角色；但步驟三的 \texttt{Student.school\_name = "..."}，卻是直接對
+\texttt{Student} 這個類別本身賦值。這是因為在 Python 裡，類別本身其實也是一個物件，
+只是它是一個特殊的、專門用來造出其他物件的物件。
+
+這就是為什麼你可以像對待一般物件一樣，直接對 \texttt{Student} 這個類別本身設定像
+\texttt{school\_name} 這樣的屬性：「表格設計」這張紙本身，原來在 Python 眼裡也是可以
+被貼名字牌、可以被賦值的一個東西，不是只有照著它造出來的那些物件才算數。
+
+\keypoint{這跟你在第 \ref{ch:variables} 章學過的「指定是貼名字牌」是同一套邏輯，只是這裡多了「這個名字牌
+是貼在『類別』這個物件上，還是貼在『個別實例』這個物件上」的差別。\texttt{s1.school\_name
+= "..."} 是幫 \texttt{s1} 這個物件新貼一張屬於它自己的名字牌，蓋過原本「找不到就往類別
+身上找」的預設路徑；\texttt{Student.school\_name = "..."} 才是真的改動貼在類別這個物件
+本身上的那張名字牌。}
+
+\begin{drills}[label=drills:instance-vs-class-attr]
+\item 這段程式執行後會印出什麼？
+\begin{verbatim}
+class Book:
+    genre = "Novel"
+
+    def __init__(self, title):
+        self.title = title
+
+b1 = Book("The Three-Body Problem")
+b2 = Book("Harry Potter")
+b1.genre = "Sci-Fi Novel"
+print(b1.genre, b2.genre)
+\end{verbatim}
+\item 這段程式執行後會印出什麼？
+\begin{verbatim}
+class Book:
+    genre = "Novel"
+
+    def __init__(self, title):
+        self.title = title
+
+b1 = Book("The Three-Body Problem")
+b2 = Book("Harry Potter")
+Book.genre = "Translated Literature"
+print(b1.genre, b2.genre)
+\end{verbatim}
+\item 這段程式執行後會印出什麼？
+\begin{verbatim}
+class Book:
+    genre = "Novel"
+
+    def __init__(self, title):
+        self.title = title
+
+b1 = Book("The Three-Body Problem")
+b2 = Book("Harry Potter")
+b1.genre = "Sci-Fi Novel"
+Book.genre = "Translated Literature"
+print(b1.genre, b2.genre)
+\end{verbatim}
+\end{drills}
+
+\section{資料跟操作為什麼要綁在一起：方法與獨立函式的差別}
+\label{sec:methods-vs-functions}
+
+你可能會想：既然方法說穿了也是一段程式碼，那為什麼不乾脆繼續寫成 \ref{ch:functions} 章教過的獨立函式，
+把資料當參數傳進去就好，何必特地定義一個類別？
+
+答案跟「把資料跟操作綁在一起」這件事本身有關：資料如果放在物件外面，每次呼叫函式，都要
+靠你自己記得把正確配對的那幾個值一起傳進去；資料一多、呼叫的地方一多，光靠人工記憶去
+配對，出錯的機會就會越來越大。
+
+\begin{example}{python}{(functions-vs-methods-plain.py) 資料跟函式分開寫}
+def describe_student(name, score):
+    print(f"Name: {name}, Score: {score}")
+
+
+name1, score1 = "Alice", 88
+name2, score2 = "Bob", 76
+
+describe_student(name1, score1)
+describe_student(name2, score2)
+
+# 打錯了：把 Bob 的分數跟 Alice 的姓名配在一起傳入
+describe_student(name1, score2)
+\end{example}
+
+\iosample{}{Name: Alice, Score: 88 \\ Name: Bob, Score: 76 \\ Name: Alice, Score: 76 \\}
+
+最後一行印出「Name: Alice, Score: 76」，這是一個貨真價實的 bug，但 Python 完全不會抱怨，
+因為 \texttt{name1} 跟 \texttt{score2} 各自都是型別正確、內容合法的值，只是配對配錯了。
+這種錯誤沒有錯誤訊息可以讀，只能靠你自己盯著輸出、發現「怎麼分數兜不起來」才抓得到，比
+前面幾節那些會直接跳出 \texttt{AttributeError}、\texttt{NameError} 的錯誤更難察覺。
+
+改用類別，把 \texttt{name} 跟 \texttt{score} 綁進同一個 \texttt{Student} 物件之後，
+這種配對錯誤在結構上就不可能發生：
+
+\begin{example}{python}{(functions-vs-methods-bundled.py) 資料跟方法綁在同一個物件裡}
+class Student:
+    def __init__(self, name, score):
+        self.name = name
+        self.score = score
+
+    def describe(self):
+        print(f"Name: {self.name}, Score: {self.score}")
+
+
+s1 = Student("Alice", 88)
+s2 = Student("Bob", 76)
+
+s1.describe()
+s2.describe()
+\end{example}
+
+\iosample{}{Name: Alice, Score: 88 \\ Name: Bob, Score: 76 \\}
+
+呼叫 \texttt{s1.describe()} 的時候，方法裡的 \texttt{self.name}、\texttt{self.score}
+永遠讀的是同一個 \texttt{s1} 身上的資料，不需要你在呼叫的當下重新指定一次「這次是哪個
+姓名配哪個分數」，因為姓名跟分數從 \texttt{Student} 物件被建立的那一刻起，就已經綁在
+同一個地方了。想印出 \texttt{s2} 的摘要，就只能呼叫 \texttt{s2.describe()}，沒有機會
+不小心把 \texttt{s1} 的分數混進 \texttt{s2} 的姓名裡，因為根本沒有一個步驟需要你手動把
+兩者重新配對。
+
+\stylepoint{獨立函式不是不好，\ref{ch:functions} 章學過的函式在很多情境下依然是最直接的寫法。但當一批
+資料本來就該綁在同一份、還會被重複造出很多份、又需要好幾個操作圍著它打轉時，把資料跟
+操作一起包進一個類別，能讓「這些值本來就是同一份資料」這件事變成程式結構的一部分，不用
+只靠你自己在每次呼叫時記得把值配對正確。}
+
+\section{為什麼要用物件組織程式}
+\label{sec:why-objects}
+
+前一節看到的是一筆資料的情境；這一節把場景拉大：如果要同時記錄好幾筆長得很像的資料，
+用跟不用物件的差別會更明顯。直接對照一次同一個任務最清楚，假設你要記錄三個
+學生的姓名跟分數，不用物件的話，可能會寫成一個 dict 疊 dict：
+
+\begin{example}{python}{(record-students-plain.py) 不用物件記錄多筆學生資料}
+students = {
+    "Alice": {"name": "Alice", "score": 88},
+    "Bob": {"name": "Bob", "score": 76},
+    "Charlie": {"name": "Charlie", "score": 92},
+}
+
+for key in students:
+    info = students[key]
+    print(f"Name: {info['name']}, Score: {info['score']}")
+
+# 幫 Alice 加 5 分；記得外層的 key 跟內層的 "score" key 都要對上
+students["Alice"]["score"] += 5
+print(f"Name: {students['Alice']['name']}, Score: {students['Alice']['score']}")
+\end{example}
+
+\iosample{}{Name: Alice, Score: 88 \\ Name: Bob, Score: 76 \\ Name: Charlie, Score: 92 \\ Name: Alice, Score: 93 \\}
+
+能動，但每次存取都要記得「先用姓名當 key 找到那一份資料，再用 \texttt{"score"} 這個字串
+去內層找分數」，兩層 key 名稱只要哪裡拼錯一個字，Python 在你寫錯的當下不會抱怨，通常要
+等到真的執行到那一行才出錯，很容易漏改、漏查。改用前面幾節寫好的 \texttt{Student}
+類別，同樣的任務長這樣：
+
+\begin{example}{python}{(record-students-objects.py) 改用 Student 物件記錄多筆學生資料}
+class Student:
+    def __init__(self, name, score):
+        self.name = name
+        self.score = score
+
+    def describe(self):
+        print(f"Name: {self.name}, Score: {self.score}")
+
+
+students = [
+    Student("Alice", 88),
+    Student("Bob", 76),
+    Student("Charlie", 92),
+]
+
+for student in students:
+    student.describe()
+
+# 直接用屬性存取幫 Alice 加 5 分，不用記兩層 key 名稱
+students[0].score += 5
+students[0].describe()
+\end{example}
+
+\iosample{}{Name: Alice, Score: 88 \\ Name: Bob, Score: 76 \\ Name: Charlie, Score: 92 \\ Name: Alice, Score: 93 \\}
+
+兩段程式印出的結果一模一樣，但 \texttt{Student} 版本每個學生只是 list 裡的一個元素，
+存取屬性用 \texttt{.name}、\texttt{.score} 這種固定的點記法，不用自己維護「哪個字串是
+哪個欄位的 key」這種容易對不上的細節；要印出摘要，直接呼叫 \texttt{describe()}，不用
+每次都重新拼一次那行 f-string。資料筆數一多、要做的操作一多，這個差距只會越拉越大。
+
+\stylepoint{不是所有情況都該定義類別。如果你要處理的東西很簡單，只有一兩個值、不會被
+重複造出很多份、也不需要自己的方法，直接用變數或 tuple 可能比特地寫一個類別更省事。
+物件是用來處理「資料形狀重複出現、還帶著一些相關動作」的情況，不是每個任務的預設答案。}
+
+前面十四章你已經很熟怎麼用內建的物件；這一章你多會了一整套技能：自己設計一種新的物件
+形狀、讓方法之間互相合作、讓兩個物件互相比較，還有為什麼值得把資料跟操作綁在一起。下一章
+會告訴你，其實「一個類別可以借用另一個類別已經寫好的東西，再加上自己的新花樣」這件事，
+跟這一章學的邏輯是同一套延伸，沒有想像中神祕。
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:class-init}~節}
+\begin{enumerate}
+\item 會印出：notebook 45。
+\item 印出 \texttt{item.price} 時會出現 \texttt{AttributeError}，訊息是
+\texttt{'Item' object has no attribute 'price'}，因為 \texttt{price = price} 漏了
+\texttt{self.}，只是 \texttt{\_\_init\_\_} 裡一個執行完就消失的區域變數，沒有真的存到
+物件身上。
+\item 把 \texttt{\_\_init\_\_} 改成
+\texttt{def \_\_init\_\_(self, name, price, in\_stock):}，裡面補上
+\texttt{self.in\_stock = in\_stock}；建立實例時寫成
+\texttt{Item("pencil", 10, True)}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:methods-and-self}~節}
+\begin{enumerate}
+\item 會印出：Toyota says: Honk honk!
+\item 錯誤類型是 \texttt{TypeError}，訊息類似
+\texttt{Car.honk() takes 0 positional arguments but 1 was given}，因為呼叫
+\texttt{car.honk()} 時 Python 會自動傳入 \texttt{car} 當第一個參數，但
+\texttt{honk} 的定義完全沒有參數可以接；修正方式是把 \texttt{def honk():} 改成
+\texttt{def honk(self):}。
+\item 會印出：BMW Honda。\texttt{car1.rename("BMW")} 只改了 \texttt{car1} 自己的
+\texttt{brand}，\texttt{car2} 是完全獨立的另一個物件，不會被影響。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:method-calls-method}~節}
+\begin{enumerate}
+\item 會印出：Ferrari: Sports Car。
+\item 錯誤類型是 \texttt{NameError}，訊息類似
+\texttt{name 'is\_fast' is not defined. Did you mean: 'self.is\_fast'?}，因為
+\texttt{describe} 裡呼叫 \texttt{is\_fast()} 時漏寫了 \texttt{self.}，Python 只會去找
+一個獨立存在、叫 \texttt{is\_fast} 的名字，找不到就丟這個錯；修正方式是把
+\texttt{is\_fast()} 改成 \texttt{self.is\_fast()}。
+\item 大致寫法：
+\begin{verbatim}
+def warn(self):
+    if self.is_fast():
+        print("小心駕駛")
+\end{verbatim}
+\end{enumerate}
+
+\paragraph{第~\ref{sec:comparing-instances}~節}
+\begin{enumerate}
+\item 會印出：True，接著 False。\texttt{b1.thicker\_than(b2)} 裡 \texttt{self} 是
+\texttt{b1}（302 頁）、\texttt{other} 是 \texttt{b2}（96 頁），302 大於 96 所以是
+\texttt{True}；反過來呼叫 \texttt{b2.thicker\_than(b1)} 時 \texttt{self} 換成
+\texttt{b2}，96 不大於 302，所以是 \texttt{False}。
+\item 會出現 \texttt{AttributeError}，訊息類似
+\texttt{'int' object has no attribute 'pages'}，因為 \texttt{100} 這個整數身上沒有
+\texttt{pages} 這個屬性，方法裡執行到 \texttt{other.pages} 時就出錯，Python 不會事先
+檢查傳進去的 \texttt{100} 是不是一個 \texttt{Book}。
+\item 寫成
+\texttt{def thicker\_than(self, other: "Book") -> bool:}；型別要用引號包起來，是因為
+寫這一行程式碼的當下，\texttt{Book} 這個類別本身還沒定義完成，Python 還看不到這個名字，
+只能先用字串占位。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:instance-vs-class-attr}~節}
+\begin{enumerate}
+\item 會印出：Sci-Fi Novel Novel。\texttt{b1.genre = "Sci-Fi Novel"} 幫 \texttt{b1} 造了一份
+自己專屬的 \texttt{genre}，\texttt{b2} 沒被改過，還是讀類別共用的那份。
+\item 會印出：Translated Literature Translated Literature。\texttt{b1}、\texttt{b2} 都還沒被個別覆寫過，
+\texttt{Book.genre = "Translated Literature"} 直接改動的是類別共用的那份，兩個都跟著變。
+\item 會印出：Sci-Fi Novel Translated Literature。\texttt{b1} 在第一行已經有了自己專屬的
+\texttt{genre}，之後改類別本身的 \texttt{genre} 不會再影響到它；\texttt{b2} 因為從來
+沒被個別覆寫過，會跟著類別一起變。
+\end{enumerate}

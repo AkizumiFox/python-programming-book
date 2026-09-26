@@ -1,0 +1,1158 @@
+\chapter{List}
+\label{ch:lists}
+
+前面幾章，你手上能用的變數一次只能裝一個東西：一個數字、一個字串、一個真假值。可是生活
+裡要記的事情很少是單獨一件，你要記的是「這禮拜要買的東西」，是「今天要做的三件事」，是
+「一班同學的名字」。
+
+這一章要教的 list（中文有時翻成「清單」或「串列」，這本書直接用
+list 這個字），就是 Python 用來裝「一整批、有順序的東西」的方式。整條路線大致是這樣：
+
+\begin{itemize}
+\item 先學會建立一份清單、用位置把裡面的東西一個一個拿出來、用迴圈把整份清單走一遍。
+\item 接著讓你動手改這份清單，加東西進去、把東西拿掉，這時你會第一次真正碰到「list 是
+可以被改動的」這件事，跟前面學過的數字、字串完全不一樣。
+\item 再來是這一章真正的重頭戲：當你把同一份清單「借」給另一個名字的時候，會發生一件
+一開始很反直覺的事——改其中一個，另一個也跟著變了。這件事不是 bug，是 Python 處理
+「指定」這件事本來的運作方式，第 \ref{ch:variables} 章已經先預告過一次「名字牌」的比喻，這一章你會第一次
+在真實情境裡撞見它，也學會怎麼在真的需要「另外複製一份」時做到。
+\item 中段會補齊排序、常用工具方法，以及清單裡再放一份清單的寫法。
+\item 最後初步認識一種更精簡的寫法，叫 list comprehension，讓你看得懂、用得出來就好，
+還不用追求寫得又快又漂亮。
+\end{itemize}
+
+\section{建立一份清單、用位置拿東西}
+\label{sec:list-basics}
+
+想像你手上有這一整週要做的事情，通常一次會有好幾件，不會只有一件孤零零的事。Python 讓你
+用一對方括號把這些東西通通裝進同一個變數裡，這就是 list。你在第 \ref{ch:strings} 章字串已經學過索引
+（index）這個概念，這裡 list 一樣可以用同樣的中括號語法取值。
+\index{list}
+
+\begin{code}{python}{建立 list、用索引取值}
+my_list = [item1, item2, item3]
+my_list[i]
+\end{code}
+
+\texttt{my\_list} 只是名字，你可以取任何合法的變數名；\texttt{item1}、\texttt{item2}
+這些位置放什麼型別都可以，數字、字串、甚至混著放也合法。\texttt{[i]} 裡的 \texttt{i}
+就是索引，第一個東西的索引是 0，不是 1，這一點常常讓剛學的人卡關，多練幾次就會習慣。
+
+\begin{example}{python}{(todo-list.py) 建立代辦清單、取出項目}
+todo_list = ["do homework", "take out trash", "wash dishes", "mop floor"]
+print(todo_list[0])
+print(todo_list[2])
+print(todo_list[-1])
+\end{example}
+
+\iosample{}{do homework \\ wash dishes \\ mop floor \\}
+
+\texttt{todo\_list[0]} 拿到第一項「do homework」，\texttt{todo\_list[2]} 拿到第三項「wash dishes」。
+最後一行的 \texttt{todo\_list[-1]} 用的是負索引：\texttt{-1} 代表「倒數第一個」，
+\texttt{-2} 代表「倒數第二個」，以此類推。
+
+這個寫法特別方便的地方是：你常常不確定一份
+清單到底有幾項，但只要你想拿「最後一個」，直接寫 \texttt{[-1]} 就好，不用先去算清單的
+長度是多少。空清單也是合法的寫法，例如 \texttt{empty\_list = []}，代表「目前還沒有任何
+東西，之後會陸續加進去」。
+
+清單裡放的東西也不用是同一種型別。前面幾章學過的 int、str、bool，全部都可以混在同一份
+清單裡，Python 不會因此抱怨。
+
+\begin{example}{python}{(mixed-info.py) 一份清單裝不同型別的東西}
+info = ["Alice", 15, True]
+print(info)
+print(info[0], info[1], info[2])
+print(type(info[0]))
+print(type(info[1]))
+\end{example}
+
+\iosample{}{['Alice', 15, True] \\{} Alice 15 True \\{} <class 'str'> \\{} <class 'int'> \\}
+
+\texttt{info} 這份清單同時裝了字串、整數、布林值，Python 完全不介意。每個位置存的東西，
+型別是記在物件自己身上的，不是記在清單這個容器上，還記得第 \ref{ch:variables} 章「型別長在物件上，不是長在
+變數上」這件事嗎？list 只是把好幾個各自帶著自己型別的物件，依照順序收在同一個容器裡而已。
+
+如果你打的索引超出了清單的範圍呢？
+
+\begin{example}{python}{(todo-list-error.py) 索引超出範圍}
+todo_list = ["do homework", "take out trash", "wash dishes", "mop floor"]
+print(todo_list[4])
+\end{example}
+
+這份清單一共只有 4 項，合法的索引是 0 到 3，\texttt{[4]} 已經超出去了。執行後你會看到：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "todo-list-error.py", line 2, in <module>
+    print(todo_list[4])
+          ~~~~~~~~~^^^
+IndexError: list index out of range
+\end{verbatim}
+
+由下往上讀：最後一行 \texttt{IndexError: list index out of range}，還記得第 \ref{ch:strings} 章字串
+也會有的 \texttt{IndexError} 嗎？list 一樣會發生，道理相同，只是訊息換成了
+\texttt{list index out of range}。之後只要清單長度沒你想的長，就很容易撞見它，記得
+回頭數一下清單裡到底有幾項。
+
+\begin{drills}[label=drills:list-indexing]
+\item 給定 \texttt{fruits = ["apple", "banana", "orange", "grape"]}，\texttt{print(fruits[1])}
+會印出什麼？
+\item 承上題，\texttt{print(fruits[-2])} 會印出什麼？
+\item 如果你想拿到 \texttt{fruits} 的最後一項，但不確定這份清單一共有幾項，你會怎麼寫
+索引，才能不用先數清單長度就拿到它？
+\item 給定 \texttt{info = ["Emma", 20, False]}，\texttt{type(info[2])} 的結果會是哪一種
+型別？
+\end{drills}
+
+\section{切片：取一段清單}
+\label{sec:list-slicing}
+
+這個語法你在第 \ref{ch:strings} 章字串那裡已經學過一次了，list 的切片用法跟字串完全一樣，這裡只給
+一兩個例子喚醒你的記憶，不重講切片的基本概念本身。
+
+\begin{code}{python}{list 切片}
+my_list[start:end]
+my_list[:]
+\end{code}
+
+\texttt{my\_list[start:end]} 取出從 \texttt{start} 開始、到 \texttt{end}（不含）為止
+的一段；把 \texttt{start} 或 \texttt{end} 留空，就代表「從最開頭」或「到最後」；兩個都
+留空，也就是 \texttt{my\_list[:]}，代表「取整份清單」。
+
+\begin{example}{python}{(weekly-menu.py) 複習切片}
+week_menu = ["egg pancake", "rice ball", "sandwich", "egg pancake", "bread", "sushi", "dumplings"]
+print(week_menu[1:4])
+print(week_menu[:3])
+
+copy_menu = week_menu[:]
+copy_menu.append("pizza")
+print(week_menu)
+print(copy_menu)
+\end{example}
+
+\iosample{}{['rice ball', 'sandwich', 'egg pancake'] \\{} ['egg pancake', 'rice ball', 'sandwich'] \\{} ['egg pancake', 'rice ball', 'sandwich', 'egg pancake', 'bread', 'sushi', 'dumplings'] \\{} ['egg pancake', 'rice ball', 'sandwich', 'egg pancake', 'bread', 'sushi', 'dumplings', 'pizza'] \\}
+
+這裡先埋一個伏筆：\texttt{copy\_menu = week\_menu[:]} 這一行做完之後，接下來不管你怎麼改
+\texttt{copy\_menu}（例如上面用 \texttt{append} 多加一項披薩），原本的 \texttt{week\_menu}
+都不會被影響，這兩份清單做完切片之後就是「各自獨立」的。
+
+至於為什麼需要「特地」用這種
+寫法才能做到「各自獨立」，這件事聽起來理所當然，但其實不是每種寫法都會有這個效果，完整
+的解釋留到第~\ref{sec:aliasing}~節，你會在那裡看到不特地複製會發生什麼事。
+
+切片還有一個跟索引不一樣的地方：如果 \texttt{start} 或 \texttt{end} 給的數字超出了清單
+的範圍，並不會像單一索引那樣丟出 \texttt{IndexError}，而是自動夾到有效範圍內。
+
+\begin{example}{python}{(slice-out-of-range.py) 切片的範圍超過清單長度}
+scores = [70, 85, 90, 60, 100]
+print(scores[2:100])
+print(scores[-100:3])
+print(scores[100:200])
+\end{example}
+
+\iosample{}{[90, 60, 100] \\{} [70, 85, 90] \\{} [] \\}
+
+\texttt{scores[2:100]} 裡的 \texttt{100} 遠遠超過清單長度，但 Python 不會抱怨，直接切到
+清單結尾為止；\texttt{scores[-100:3]} 裡的 \texttt{-100} 也一樣，直接從最開頭切起；第三
+行 \texttt{scores[100:200]} 起點跟終點都超出範圍，切出來的結果是一份空清單
+\texttt{[]}，也不是錯誤。這跟單一索引很不一樣，切片對「範圍抓太大」比較寬容。
+
+\begin{drills}[label=drills:list-slicing]
+\item 給定 \texttt{names = ["Alice", "Bob", "Charlie", "Taylor", "David"]}，
+\texttt{names[1:3]} 會印出什麼？
+\item 承上題，\texttt{names[:2]} 會印出什麼？
+\item 給定 \texttt{names} 跟上題一樣，\texttt{names[2:100]} 會印出什麼？會不會報錯？
+\end{drills}
+
+\section{用迴圈走訪整份清單}
+\label{sec:list-loop}
+
+第 \ref{ch:loops} 章教過的 \texttt{for} 迴圈，那時候你多半是拿它配 \texttt{range()} 產生一串數字。
+其實 \texttt{for} 迴圈真正拿手的，是直接對一份清單裡「真正的東西」跑一遍，一個一個處理，
+不用透過索引繞一圈。
+
+\begin{example}{python}{(todo-list-loop.py) 走訪代辦清單}
+todo_list = ["do homework", "take out trash", "wash dishes"]
+
+for task in todo_list:
+    print("Todo:", task)
+
+print(len(todo_list))
+print("wash dishes" in todo_list)
+print("mop floor" in todo_list)
+\end{example}
+
+\iosample{}{Todo: do homework \\ Todo: take out trash \\ Todo: wash dishes \\ 3 \\ True \\ False \\}
+
+\texttt{for task in todo\_list:} 這一行，每繞一圈，\texttt{task} 就會依序變成清單裡的
+下一項，直到走完整份清單為止，你不用自己管索引跑到第幾個了，Python 幫你處理。
+\texttt{len(todo\_list)} 告訴你這份清單一共有幾項；
+\index{len()}
+還記得第 \ref{ch:loops} 章的 \texttt{in} 運算子
+嗎？一樣可以用在 list 上，問「這個東西在不在清單裡」，回傳的 \texttt{True}／\texttt{False}
+就是第 \ref{ch:conditionals} 章學過的布林值。
+
+迴圈除了走訪、印東西出來，另一個很常見的用法是邊走訪、邊挑、邊把符合條件的東西收進一份
+新的清單。這個組合之後會反覆出現，這裡先看一次、感覺一下它的長相。
+
+\begin{example}{python}{(steps-over-8000.py) 用迴圈篩出符合條件的項目}
+weekday_steps = [8000, 10500, 6200, 7300, 9100]
+
+over_8000 = []
+for steps in weekday_steps:
+    if steps > 8000:
+        over_8000.append(steps)
+
+print(over_8000)
+\end{example}
+
+\iosample{}{[10500, 9100] \\}
+
+這裡先造一份空清單 \texttt{over\_8000}，用第 \ref{ch:conditionals} 章教過的 \texttt{if} 判斷「這一步數是不是
+超過 8000」，符合的才用 \texttt{append} 收進去，不符合就什麼都不做、直接進下一輪。這種
+「造空清單、跑迴圈、視情況 append」的組合非常常見，本章最後一節會教你一種更精簡的寫法，把
+這整個組合濃縮成一行。
+
+清單裡除了放數字、字串，也可以再放一份清單進去，變成清單裡面裝著清單。這種寫法之後常常
+拿來表示表格狀的資料，本章稍後會有一整節專門介紹它，這裡先知道有這回事就好。
+
+\begin{drills}[label=drills:list-loop]
+\item 這段程式執行後，螢幕上依序會印出什麼？
+\begin{verbatim}
+colors = ["red", "green", "blue"]
+for c in colors:
+    print(c + " color")
+\end{verbatim}
+\item 這段程式執行後，最後 \texttt{print(total)} 會印出什麼？
+\begin{verbatim}
+nums = [3, 1, 4, 1, 5]
+total = 0
+for n in nums:
+    total = total + n
+print(total)
+\end{verbatim}
+\item 給定 \texttt{nums = [3, 8, 15, 4, 20]}，如果你要用迴圈篩出所有大於 10 的數字、
+收進一份新清單 \texttt{big\_nums}，程式碼要怎麼寫？\texttt{big\_nums} 最後會是什麼？
+\end{drills}
+
+\section{修改與新增元素}
+\label{sec:list-add}
+
+前面幾章學過的數字、字串、布林值，一旦造出來，內容就不能被「原地」改掉，你只能造一個
+新的值，重新指定給同一個名字。
+
+list 完全不同：它是\textbf{可變的（mutable）}，你可以直接
+在原本那份清單上動手，加東西、改東西，不用造一份新的出來取代它。這是這一章要花時間立
+起來的一個新性質，之後很多行為都建立在這個性質上。
+\index{可變（mutable）}
+
+\begin{code}{python}{修改與新增元素}
+my_list[i] = new_value
+my_list.append(new_item)
+my_list.insert(i, new_item)
+\end{code}
+
+\texttt{my\_list[i] = new\_value} 把第 \texttt{i} 個位置的東西整個換掉；
+\index{索引賦值}
+\texttt{my\_list.append(new\_item)} 把新東西加到清單最尾端；
+\index{append()}
+\texttt{my\_list.insert(i,
+new\_item)} 把新東西插進第 \texttt{i} 個位置，原本在那個位置（以及後面）的東西都往後
+挪一格。
+\index{insert()}
+
+\begin{example}{python}{(todo-list-update.py) 修改與新增代辦事項}
+todo_list = ["do homework", "take out trash", "wash dishes"]
+
+todo_list[0] = "do math homework"
+print(todo_list)
+
+todo_list.append("take out recycling")
+print(todo_list)
+
+todo_list.insert(0, "reply to client email")
+print(todo_list)
+\end{example}
+
+\iosample{}{['do math homework', 'take out trash', 'wash dishes'] \\{} ['do math homework', 'take out trash', 'wash dishes', 'take out recycling'] \\{} ['reply to client email', 'do math homework', 'take out trash', 'wash dishes', 'take out recycling'] \\}
+
+第一步先把「do homework」改成更精確的「do math homework」，這是索引賦值；接著臨時多想到一件事要辦
+（take out recycling），用 \texttt{append} 加到清單最後面；最後又想到一件更急、得插隊處理的事
+（reply to client email），用 \texttt{insert(0, ...)} 直接塞到最前面。三種寫法各自對應「換掉」
+「加到尾巴」「插進指定位置」三種不同的需求。
+
+跟切片一樣，\texttt{insert()} 對「位置給太大」也很寬容：如果你給的索引超過清單目前的
+長度，Python 不會報錯，只會直接把新東西放到最後面。
+
+\begin{example}{python}{(insert-clamp.py) insert 位置超出範圍}
+todo_list = ["do homework", "take out trash", "wash dishes"]
+todo_list.insert(100, "mop floor")
+print(todo_list)
+\end{example}
+
+\iosample{}{['do homework', 'take out trash', 'wash dishes', 'mop floor'] \\}
+
+這份清單明明只有 3 項，\texttt{insert(100, "拖地")} 給的索引 100 遠遠超過，但 Python 把
+它當成「反正就是放最後面」處理，不會像單一索引取值那樣丟出 \texttt{IndexError}。
+
+\begin{drills}[label=drills:list-add]
+\item 給定 \texttt{cart = ["apple", "banana"]}，執行 \texttt{cart.append("orange")} 之後，
+\texttt{cart} 會變成什麼？
+\item 接續上題，再執行 \texttt{cart.insert(1, "watermelon")}，\texttt{cart} 會變成什麼？
+\item 接續上題，再執行 \texttt{cart[0] = "guava"}，\texttt{cart} 最後會變成什麼？
+\end{drills}
+
+\section{一次加入很多項：extend()}
+\label{sec:list-extend}
+
+\texttt{append()} 每次只能加一個東西進去。如果你手上已經有另一份清單，想把它裡面的每一項
+都個別加進來（而不是把整份清單當成「一個東西」塞進去），\texttt{append()} 就不是你要的
+工具了。
+
+\begin{code}{python}{extend()：展開另一份清單，逐項加入}
+my_list.extend(other_list)
+\end{code}
+
+\begin{example}{python}{(extend-vs-append.py) append 跟 extend 的差別}
+cart_a = ["apple", "banana"]
+cart_b = ["apple", "banana"]
+
+new_items = ["orange", "grape"]
+
+cart_a.append(new_items)
+print(cart_a)
+
+cart_b.extend(new_items)
+print(cart_b)
+\end{example}
+
+\iosample{}{['apple', 'banana', ['orange', 'grape']] \\{} ['apple', 'banana', 'orange', 'grape'] \\}
+
+\texttt{cart\_a.append(new\_items)} 把整份 \texttt{new\_items} 當成「一個東西」加進去，
+所以 \texttt{cart\_a} 最後變成三項，其中第三項本身又是一份清單，也就是清單裡面裝著清單；
+\texttt{cart\_b.extend(new\_items)} 則是把 \texttt{new\_items} 裡的每一項一個一個拆開，
+分別加進 \texttt{cart\_b}，結果是四個平行的項目，沒有多出一層清單。
+
+\keypoint{\texttt{append(x)} 永遠只增加「一項」，就算 \texttt{x} 本身是一份清單也一樣，
+會整份塞進去變成清單裡的清單；\texttt{extend(x)} 則是把 \texttt{x} 裡的每一項逐一攤開、
+分別加進來。想合併兩份清單的內容、又不想多一層，要用 \texttt{extend()}，不能用
+\texttt{append()}。}
+\index{extend()}
+
+\begin{drills}[label=drills:list-extend]
+\item 給定 \texttt{a = [1, 2]}、\texttt{b = [3, 4]}，執行 \texttt{a.append(b)} 之後，
+\texttt{a} 會變成什麼？
+\item 承上題，如果一開始執行的是 \texttt{a.extend(b)}，\texttt{a} 會變成什麼？
+\end{drills}
+
+\section{刪除元素}
+\label{sec:list-remove}
+
+清單裡的東西除了加，當然也要能刪。Python 給了三種刪除的寫法，選哪一種要看你手上有的
+資訊是什麼。
+
+\begin{code}{python}{刪除元素}
+del my_list[i]
+my_list.pop(i)
+my_list.remove(value)
+\end{code}
+
+判斷的口訣很簡單：
+
+\begin{itemize}
+\item 知道位置、也不需要留著那個值，用 \texttt{del}。
+\index{del}
+\item 知道位置、但還想留著被移除的那個值（例如接下來要用它），用 \texttt{pop()}。
+\index{pop()}
+\item 只知道值本身、不知道它在清單裡的位置，用 \texttt{remove()}。
+\index{remove()}
+\end{itemize}
+
+（其實 \texttt{del} 不只能刪清單裡的元素，也能整個刪掉一個
+變數本身，這裡我們只示範刪清單元素的用法，不展開這個旁支。）
+
+\begin{example}{python}{(todo-list-delete.py) 三種刪除方式}
+todo_list = ["do homework", "take out trash", "wash dishes", "mop floor"]
+
+del todo_list[1]
+print(todo_list)
+
+removed_task = todo_list.pop(0)
+print(todo_list)
+print(removed_task)
+
+todo_list.remove("mop floor")
+print(todo_list)
+\end{example}
+
+\iosample{}{['do homework', 'wash dishes', 'mop floor'] \\{} ['wash dishes', 'mop floor'] \\ do homework \\{} ['wash dishes'] \\}
+
+\texttt{del todo\_list[1]} 直接把「take out trash」從清單上抹掉，不留下任何值；
+\texttt{todo\_list.pop(0)} 把「do homework」拿掉，同時把它回傳給 \texttt{removed\_task}，
+所以你還留著這個值可以用；\texttt{todo\_list.remove("mop floor")} 則是直接告訴 Python
+「把值是『mop floor』的那一項刪掉」，不用管它現在排第幾個。
+
+\texttt{pop()} 其實還有一個很常用的省略寫法：如果括號裡什麼都不寫，預設拿掉的是「最後一
+項」，效果等於 \texttt{pop(-1)}。
+
+\begin{example}{python}{(pop-default.py) pop() 不給位置，預設拿最後一項}
+stack = ["Plate 1", "Plate 2", "Plate 3"]
+top = stack.pop()
+print(top)
+print(stack)
+\end{example}
+
+\iosample{}{Plate 3 \\{} ['Plate 1', 'Plate 2'] \\}
+
+\texttt{stack.pop()} 沒有給任何位置，Python 預設幫你拿掉並回傳「最後一項」，這裡是最後
+疊上去的「Plate 3」。這種「每次都處理最後加進來的那一個」的用法很常見，例如疊盤子、瀏覽器
+的上一頁紀錄，之後你只要看到 \texttt{.pop()} 沒帶引數，就知道它動的是清單最尾端。
+
+這裡有一個新手很容易踩到的坑：\texttt{pop()}、\texttt{append()}、\texttt{insert()}、
+\texttt{remove()} 這些會修改清單的方法，大多數都直接回傳 \texttt{None}（也就是「沒有
+值」），不是回傳一份改好的新清單。如果你把它們的結果重新指定回原本的變數，會發生什麼事？
+\index{None}
+
+\begin{example}{python}{(todo-list-remove-bug.py) 常見錯誤：把方法結果指定回原變數}
+todo_list = ["do homework", "take out trash", "wash dishes"]
+todo_list = todo_list.remove("take out trash")
+print(todo_list)
+todo_list.append("mop floor")
+\end{example}
+
+執行後你會看到：
+
+\begin{verbatim}
+None
+Traceback (most recent call last):
+  File "todo-list-remove-bug.py", line 4, in <module>
+    todo_list.append("mop floor")
+    ^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'append'
+\end{verbatim}
+
+第一行先印出 \texttt{None}，因為 \texttt{remove()} 把清單裡的「take out trash」刪掉之後，
+回傳的是 \texttt{None}，而 \texttt{todo\_list = todo\_list.remove("take out trash")} 這一行，
+把這個 \texttt{None} 重新指定回了 \texttt{todo\_list}，原本那份「刪完之後」的清單，
+就這樣被 \texttt{None} 蓋掉、再也拿不回來了。
+
+下一行想對 \texttt{todo\_list} 呼叫
+\texttt{append}，但這時候 \texttt{todo\_list} 已經是 \texttt{None}，不是清單了，
+所以 Python 抱怨 \texttt{'NoneType' object has no attribute 'append'}，意思是
+「\texttt{None} 這種東西身上根本沒有 \texttt{append} 這個方法可以叫」。
+\index{AttributeError}
+
+\keypoint{\texttt{remove()}、\texttt{append()}、\texttt{insert()}、\texttt{pop()}
+這些會直接修改清單的方法，大多數回傳的都是 \texttt{None}，不是一份改好的新清單。正確的
+用法是直接呼叫它們（\texttt{todo\_list.remove("take out trash")}），不用、也不能把結果重新指定
+回原本的變數。}
+
+你會發現，很多 list 方法動的是清單本身、不是回傳一份新的，這跟接下來第~\ref{sec:aliasing}~
+節要講的「名字牌」有關，先記住這個感覺就好。
+
+\begin{drills}[label=drills:list-remove]
+\item 給定 \texttt{items = ["A", "B", "C", "D"]}，執行 \texttt{del items[0]} 之後，
+\texttt{items} 會變成什麼？
+\item 接續上題，執行 \texttt{x = items.pop(1)} 之後，\texttt{items} 跟 \texttt{x}
+分別會是什麼？
+\item 給定 \texttt{plates = ["Plate A", "Plate B", "Plate C"]}，執行
+\texttt{last = plates.pop()} 之後，\texttt{last} 跟 \texttt{plates} 分別會是什麼？
+\item 抓蟲：這段程式碼哪裡有問題？\texttt{data} 最後會是什麼？
+\begin{verbatim}
+data = [5, 2, 8]
+data = data.remove(2)
+print(data)
+\end{verbatim}
+\end{drills}
+
+\section{兩個名字，同一份清單：別名行為}
+\label{sec:aliasing}
+
+前一節你已經確實看到 list 是「可變的」，現在要把這件事再往前推一步，這也是這一章概念
+強度最高的地方，值得放慢腳步看清楚。
+
+想像你把手上的代辦清單「借」給室友看，不是影印一份給他，是直接把同一張紙遞過去。如果
+室友在上面多寫了一項，你把紙拿回來的時候，那一項當然也在上面，因為根本是同一張紙，只是
+一時之間有兩個人在看它。Python 裡的變數賦值，做的正是這件事。
+
+\begin{code}{python}{別名賦值}
+other_name = my_list
+\end{code}
+
+這一行看起來像是「把 \texttt{my\_list} 複製一份給 \texttt{other\_name}」，但 Python
+實際做的完全不是這樣。
+
+\begin{example}{python}{(borrow-list.py) 借給室友看的代辦清單}
+my_list = ["wash dishes", "take out trash"]
+roommate_list = my_list
+roommate_list.append("buy soy sauce")
+print(my_list)
+print(roommate_list)
+\end{example}
+
+\iosample{}{['wash dishes', 'take out trash', 'buy soy sauce'] \\{} ['wash dishes', 'take out trash', 'buy soy sauce'] \\}
+
+你只對 \texttt{roommate\_list} 呼叫了 \texttt{append}，明明沒有動 \texttt{my\_list}
+半根手指頭，但 \texttt{print(my\_list)} 卻也印出多了一項「buy soy sauce」的結果，兩份清單
+變成一模一樣，因為它們根本就是同一份。
+
+\keypoint{\texttt{=} 不是複製一份新的放進另一個變數，是幫同一個物件多貼一張名字牌。
+\texttt{roommate\_list = my\_list} 的意思是「把另一張名字牌 \texttt{roommate\_list}
+也貼到 \texttt{my\_list} 指的那份清單上」，兩張名字牌指著同一個東西，透過任何一張
+名字牌改動內容，另一張名字牌看到的也是改過的結果。}
+\index{別名（aliasing）}
+
+\begin{center}
+\begin{tikzpicture}[node distance=1.1cm and 3.4cm]
+\node[rectangle, rounded corners=4pt, draw=coreStroke, thick, fill=coreFill,
+      minimum width=2.9cm, minimum height=0.9cm, font=\ttfamily\small] (nameA) {my\_list};
+\node[rectangle, rounded corners=4pt, draw=coreStroke, thick, fill=coreFill,
+      minimum width=2.9cm, minimum height=0.9cm, font=\ttfamily\small,
+      below=1.1cm of nameA] (nameB) {roommate\_list};
+\node[rectangle, rounded corners=4pt, draw=memStroke, thick, fill=memFill,
+      minimum width=6.4cm, minimum height=1.3cm, font=\ttfamily\small,
+      right=3.4cm of nameA] (obj) {["wash dishes", "take out trash", "buy soy sauce"]};
+\draw[diagarrow] (nameA.east) -- ++(0.7,0) |- (obj.west);
+\draw[diagarrow] (nameB.east) -- ++(0.7,0) |- (obj.west);
+\end{tikzpicture}
+\end{center}
+\diagcaption{\texttt{my\_list} 跟 \texttt{roommate\_list} 是貼在同一份清單物件上的
+兩張名字牌，不是兩份各自獨立的清單，改其中一張名字牌看到的內容，等於改了另一張。}
+
+那如果你真的想要「另外造一份」，兩份清單各自獨立、互不影響呢？第~\ref{sec:list-slicing}~
+節已經先示範過 \texttt{[:]} 切片可以做到這件事；除此之外，Python 還提供了 \texttt{.copy()}
+跟 \texttt{list()} 兩種寫法，效果是一樣的。
+\index{copy()}
+
+\begin{example}{python}{(copy-list.py) 真正複製一份獨立的清單}
+my_list = ["wash dishes", "take out trash"]
+copy_list = my_list.copy()
+copy_list.append("buy soy sauce")
+print(my_list)
+print(copy_list)
+\end{example}
+
+\iosample{}{['wash dishes', 'take out trash'] \\{} ['wash dishes', 'take out trash', 'buy soy sauce'] \\}
+
+這次 \texttt{copy\_list} 是用 \texttt{.copy()} 造出來的一份全新清單，跟 \texttt{my\_list}
+不再是同一個物件，所以對 \texttt{copy\_list} 呼叫 \texttt{append} 之後，\texttt{my\_list}
+完全沒被影響。\texttt{copy\_list = my\_list.copy()}、\texttt{copy\_list = list(my\_list)}、
+\texttt{copy\_list = my\_list[:]} 這三種寫法，效果完全一樣，挑你順手的用即可。
+
+既然「兩份清單內容一樣」跟「兩份清單根本是同一份」是兩件不同的事，Python 也提供了兩種不
+一樣的問法：\texttt{==} 問的是「內容一不一樣」，\texttt{is} 問的是「是不是貼在同一個物件
+上」。
+
+\begin{example}{python}{(equal-vs-is.py) == 跟 is 的差別}
+my_list = ["wash dishes", "take out trash"]
+roommate_list = my_list
+copy_list = my_list.copy()
+
+print(my_list == roommate_list)
+print(my_list is roommate_list)
+print(my_list == copy_list)
+print(my_list is copy_list)
+\end{example}
+
+\iosample{}{True \\ True \\ True \\ False \\}
+
+\texttt{my\_list} 跟 \texttt{roommate\_list} 不只內容一樣（\texttt{==} 是 True），根本
+是同一個物件（\texttt{is} 也是 True）；\texttt{my\_list} 跟 \texttt{copy\_list} 內容也
+一樣（\texttt{==} 是 True），但因為 \texttt{copy\_list} 是另外造出來的，兩者不是同一個
+物件（\texttt{is} 是 False）。大多數時候你想問的是「內容一不一樣」，該用 \texttt{==}；
+\texttt{is} 通常只用來確認「是不是同一份」這種比較少見、但這一章正好用得上的情境，之後在
+第 \ref{ch:functions} 章、第 \ref{ch:tuples} 章還會再遇到它。
+
+這也是為什麼把 list 傳給函式之後，函式裡面對它做的修改，你在外面也會看到，第 \ref{ch:functions} 章教函式
+的時候會完整說明，這裡先知道有這回事就好。
+
+\begin{drills}[label=drills:aliasing]
+\item 這段程式碼執行後，\texttt{print(a)} 會印出什麼？
+\begin{verbatim}
+a = [1, 2, 3]
+b = a
+b.append(4)
+print(a)
+\end{verbatim}
+\item 這段程式碼執行後，\texttt{print(x)} 會印出什麼？
+\begin{verbatim}
+x = ["red", "green"]
+y = x
+y[0] = "yellow"
+print(x)
+\end{verbatim}
+\item 改寫題：\texttt{original = [1, 2, 3]} 之後執行 \texttt{new\_list = original}，
+如果你希望之後改動 \texttt{new\_list} 不會影響到 \texttt{original}，這一行程式碼要
+怎麼改？
+\item 給定 \texttt{p = [1, 2]}、\texttt{q = p}、\texttt{r = p.copy()}，
+\texttt{p is q}、\texttt{p is r} 這兩個問句的結果分別會是什麼？
+\end{drills}
+
+\section{\texttt{sort()} 跟 \texttt{sorted()}：原地排序 vs 造一份新的}
+\label{sec:sort-vs-sorted}
+
+排序是這一章對「別名／可變」這個概念的第二次具體練習。Python 給了兩種排序的寫法，差別
+剛好就是上一節談的「改動原本那份」跟「另外造一份新的」。
+
+\begin{code}{python}{排序 list}
+my_list.sort()
+sorted(my_list)
+\end{code}
+
+\texttt{my\_list.sort()} 改的是 \texttt{my\_list} 這份清單本身，跟第~\ref{sec:aliasing}~
+節「同一個物件被改動」是同一件事，排序完之後原本的順序就回不去了；
+\index{sort()}
+\texttt{sorted(my\_list)}
+則是造一份新的、排好序的清單回傳給你，原本那份 \texttt{my\_list} 完全不受影響。
+\index{sorted()}
+
+\begin{example}{python}{(sort-vs-sorted.py) 依優先順序排序代辦清單}
+tasks = ["wash dishes", "take out trash", "do homework"]
+tasks.sort()
+print(tasks)
+
+scores = [82, 95, 67]
+sorted_scores = sorted(scores)
+print(scores)
+print(sorted_scores)
+\end{example}
+
+\iosample{}{['do homework', 'take out trash', 'wash dishes'] \\{} [82, 95, 67] \\{} [67, 82, 95] \\}
+
+\texttt{tasks.sort()} 之後，\texttt{tasks} 直接變成排好序的樣子；但 \texttt{sorted(scores)}
+不一樣，呼叫完之後 \texttt{scores} 還是原本的順序沒有變，排好序的結果被存進了另一個名字
+\texttt{sorted\_scores} 裡。想留住原本的順序、又要用到排序後的結果，就該用
+\texttt{sorted()}；確定不需要原本的順序了，直接 \texttt{sort()} 比較省事。
+
+\begin{drills}[label=drills:sort-vs-sorted]
+\item 這段程式碼執行後，\texttt{print(nums)} 會印出什麼？
+\begin{verbatim}
+nums = [5, 3, 8, 1]
+nums.sort()
+print(nums)
+\end{verbatim}
+\item 這段程式碼執行後，\texttt{nums} 跟 \texttt{result} 分別會是什麼？
+\begin{verbatim}
+nums = [5, 3, 8, 1]
+result = sorted(nums)
+print(nums)
+print(result)
+\end{verbatim}
+\end{drills}
+
+\section{進階排序：reverse 與 key 參數}
+\label{sec:sort-key}
+
+\texttt{sort()} 跟 \texttt{sorted()} 預設是由小到大排序，但實際上兩者都還接受兩個很常
+用的選擇性引數：\texttt{reverse} 決定要不要反過來排，\texttt{key} 決定排序時真正拿來比較
+的是什麼。
+
+\begin{code}{python}{reverse 與 key 參數}
+my_list.sort(reverse=True)
+my_list.sort(key=function_name)
+sorted(my_list, key=function_name, reverse=True)
+\end{code}
+
+\texttt{reverse=True} 讓排序結果由大到小，不寫的話預設是 \texttt{reverse=False}（由小到
+大）；
+\index{sort()／sorted() 的 reverse 參數}
+\texttt{key=function\_name} 則是告訴 Python：「排序的時候，先對清單裡每一項呼叫
+這個函式一次，拿它的回傳值來決定順序，不要直接比較元素本身」。這裡 \texttt{key} 接的是
+函式這個東西本身，不是呼叫函式之後的結果，所以名字後面不加括號。
+\index{sort()／sorted() 的 key 參數}
+
+\begin{example}{python}{(sort-key.py) 用 reverse 跟 key 客製化排序}
+words = ["banana", "kiwi", "fig", "watermelon"]
+words.sort(key=len)
+print(words)
+
+scores = [82, 95, 67, 71]
+scores.sort(reverse=True)
+print(scores)
+
+places = ["home", "school", "Central Park", "Times Square"]
+by_length = sorted(places, key=len, reverse=True)
+print(by_length)
+\end{example}
+
+\iosample{}{['fig', 'kiwi', 'banana', 'watermelon'] \\{} [95, 82, 71, 67] \\{} ['Central Park', 'Times Square', 'school', 'home'] \\}
+
+上面這三段各自示範一種用法：
+
+\begin{itemize}
+\item \texttt{words.sort(key=len)} 排序時真正拿來比較的不是字串本身的字母順序，是每個
+字串先被算出 \texttt{len()}（字元數）之後的結果，再依照字元數由少到多排。
+\item \texttt{scores.sort(reverse=True)} 單純把預設的由小到大反過來，變成由大到小。
+\item 第三段把 \texttt{key} 跟 \texttt{reverse} 合起來用，依照地點名稱的字數由多到少
+排序。
+\end{itemize}
+
+如果兩個地點名稱字數剛好一樣（「Central Park」跟「Times Square」都是
+十二個字元），Python 會維持它們原本在清單裡的相對順序，不會隨便調換。
+
+\keypoint{\texttt{key=len} 給的是 \texttt{len} 這個函式本身，不是 \texttt{len()} 呼叫完
+的結果，中間不能加括號。如果不小心寫成 \texttt{key=len()}，Python 會在呼叫 \texttt{sort}
+之前就先執行一次 \texttt{len()}，而 \texttt{len()} 缺引數會直接丟出 \texttt{TypeError}。}
+
+\begin{example}{python}{(sort-key-bug.py) 常見錯誤：key 後面多加了括號}
+words = ["banana", "kiwi", "fig"]
+words.sort(key=len())
+print(words)
+\end{example}
+
+執行後你會看到：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "sort-key-bug.py", line 2, in <module>
+    words.sort(key=len())
+                   ~~~^^
+TypeError: len() takes exactly one argument (0 given)
+\end{verbatim}
+
+\texttt{len()} 這個函式一定要給它一個東西才能算長度，\texttt{key=len()} 卻在還沒排序前
+就單獨呼叫了一次 \texttt{len()}，沒給任何引數，Python 當場抱怨「\texttt{len()} 剛好需要一
+個引數（但你給了 0 個）」。正確寫法是拿掉括號，只把函式名稱本身交給 \texttt{key}。
+
+\begin{drills}[label=drills:sort-key]
+\item 給定 \texttt{nums = [4, 1, 9, 3]}，\texttt{nums.sort(reverse=True)} 之後，
+\texttt{nums} 會變成什麼？
+\item 給定 \texttt{words = ["cat", "elephant", "dog"]}，
+\texttt{sorted(words, key=len)} 的結果會是什麼？
+\end{drills}
+
+\section{常用工具方法一瞥}
+\label{sec:list-tools}
+
+list 還有不少好用的小工具，這裡快速瀏覽過去就好，你不用把它們全部背下來，知道「有這些
+東西存在」，要用的時候查得到、看得懂輸出，就已經足夠。
+
+\begin{example}{python}{(steps-toolkit.py) list 常用工具方法}
+weekday_steps = [8000, 10500, 6200, 7300, 9100]
+weekend_steps = [12000, 4500]
+
+all_steps = weekday_steps + weekend_steps
+print(all_steps)
+
+repeated = [0] * 5
+print(repeated)
+
+print(min(weekday_steps))
+print(max(weekday_steps))
+print(sum(weekday_steps))
+
+print(weekday_steps.count(8000))
+print(weekday_steps.index(7300))
+\end{example}
+
+\iosample{}{[8000, 10500, 6200, 7300, 9100, 12000, 4500] \\{} [0, 0, 0, 0, 0] \\ 6200 \\ 10500 \\ 41100 \\ 1 \\ 3 \\}
+
+這幾個工具各自做的事情是：
+
+\begin{itemize}
+\item \texttt{+} 把兩份清單接成一份新的（跟字串接字串很像），\texttt{weekday\_steps} 跟
+\texttt{weekend\_steps} 自己都不會被改動。
+\index{+（清單相加）}
+\item \texttt{*} 把清單內容重複幾次，\texttt{[0] * 5}
+就是「造一份裝了 5 個 0 的清單」，常拿來一次生出一份佔位用的清單。
+\index{*（清單重複）}
+\item \texttt{min()}、\texttt{max()}、\texttt{sum()} 分別拿最小值、最大值、總和，清單裡
+要是數字才能這樣用。
+\index{min()}
+\index{max()}
+\index{sum()}
+\item \texttt{count(8000)} 數清單裡有幾個 8000。
+\index{count()}
+\item \texttt{index(7300)} 找出 7300 第一次出現在第幾個位置。
+\index{index()（清單方法）}
+\end{itemize}
+
+\texttt{+} 跟 \texttt{*} 都是「造一份新清單」，不會動到原本的清單，這裡順便確認一次。
+
+\begin{example}{python}{(list-add-mul.py) + 跟 * 不會改動原本的清單}
+a = [1, 2, 3]
+b = [4, 5]
+print(a + b)
+print(a)
+print(a * 3)
+print(a)
+\end{example}
+
+\iosample{}{[1, 2, 3, 4, 5] \\{} [1, 2, 3] \\{} [1, 2, 3, 1, 2, 3, 1, 2, 3] \\{} [1, 2, 3] \\}
+
+\texttt{a + b} 跟 \texttt{a * 3} 執行完之後，\texttt{a} 都還是原本的 \texttt{[1, 2, 3]}，
+沒有變。這跟第~\ref{sec:list-add}~節、第~\ref{sec:list-remove}~節那些直接修改清單本身的
+方法（\texttt{append}、\texttt{insert}、\texttt{remove} 等）不一樣，這裡的 \texttt{+}
+跟 \texttt{*} 是運算子，做的事情是「算出一個新的值」，不是「修改原本這個物件」，跟第
+~\ref{sec:sort-vs-sorted}~節 \texttt{sorted()} 那種「造新的、不動舊的」是同一類行為。
+
+如果 \texttt{index()} 要找的值根本不在清單裡呢？
+
+\begin{example}{python}{(index-not-found.py) index() 找不到值}
+fruits = ["apple", "banana", "orange"]
+print(fruits.index("guava"))
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "index-not-found.py", line 2, in <module>
+    print(fruits.index("guava"))
+          ~~~~~~~~~~~~^^^^^^^^^
+ValueError: 'guava' is not in list
+\end{verbatim}
+
+清單裡沒有「guava」，\texttt{index()} 找不到就丟出 \texttt{ValueError}，還記得第 \ref{ch:variables} 章的
+\texttt{ValueError} 嗎？意思都是「值本身沒問題，但內容不合理」，這裡就是「你要找的值根本
+不存在」。相較之下，\texttt{count()} 對「找不到」寬容得多：\texttt{fruits.count("guava")}
+不會報錯，只會老實印出 \texttt{0}，因為「數出現幾次」本來就允許答案是零次。
+
+\begin{drills}[label=drills:list-tools]
+\item 給定 \texttt{a = [1, 2]}、\texttt{b = [3]}，\texttt{a + b} 的結果是什麼？執行完
+之後 \texttt{a} 本身會不會被改變？
+\item \texttt{[1, 2] * 3} 的結果會是什麼？
+\item 給定 \texttt{nums = [4, 8, 15, 16, 23, 42]}，\texttt{sum(nums)} 跟
+\texttt{max(nums)} 分別是多少？
+\item 給定 \texttt{fruits = ["apple", "banana", "orange"]}，\texttt{fruits.index("guava")}
+會發生什麼事？\texttt{fruits.count("guava")} 呢？兩者的行為為什麼不一樣？
+\end{drills}
+
+\section{清單中的清單}
+\label{sec:nested-list}
+
+清單裡的元素除了數字、字串，也可以是另一份清單，變成清單裡面裝著清單。這種寫法很適合拿
+來表示「表格狀」的資料，例如一個班級的成績單：每個學生是一列，列裡面裝著姓名跟好幾科的
+分數。
+\index{清單中的清單}
+
+\begin{code}{python}{清單中的清單}
+outer_list = [inner_list1, inner_list2, inner_list3]
+outer_list[i][j]
+\end{code}
+
+要拿到最外層清單裡的某一項，用一個中括號就跟平常一樣；如果那一項本身又是一份清單，你可以
+再接一個中括號，取出那份清單裡的某個位置，也就是 \texttt{outer\_list[i][j]} 這種寫法。
+
+\begin{example}{python}{(nested-list.py) 用清單中的清單表示成績表}
+gradebook = [
+    ["Alice", 88, 92],
+    ["Bob", 76, 81],
+    ["Charlie", 95, 90],
+]
+
+print(gradebook[0])
+print(gradebook[0][0])
+print(gradebook[1][2])
+
+for student in gradebook:
+    name = student[0]
+    avg = (student[1] + student[2]) / 2
+    print(name, avg)
+\end{example}
+
+\iosample{}{['Alice', 88, 92] \\ Alice \\ 81 \\ Alice 90.0 \\ Bob 78.5 \\ Charlie 92.5 \\}
+
+\texttt{gradebook[0]} 取出最外層清單的第一項，也就是「Alice」那一整列，本身還是一份清單；
+\texttt{gradebook[0][0]} 再往裡面取一層，拿到那一列的第一個東西，也就是姓名；
+\texttt{gradebook[1][2]} 拿到第二個學生（Bob）那一列的第三個東西（索引 2，也就是第二科
+分數）。
+
+最後的 \texttt{for} 迴圈示範一個很常見的組合：外層迴圈的每一輪 \texttt{student}
+本身就是一整列（一份清單），你可以直接對它再用中括號取值，不用另外寫一層巢狀迴圈才能拿到
+姓名跟分數。
+
+走訪清單中的清單，除了像上面那樣先取出整列再各自取值，也可以用兩層 \texttt{for} 迴圈，
+一層負責走外層的每一列，另一層負責走該列裡的每一個數字，這種「迴圈裡面再包一層迴圈」的
+寫法叫巢狀迴圈，跟清單中的清單正好是天生一對。
+
+\begin{example}{python}{(nested-sum.py) 用巢狀迴圈加總所有數字}
+weekly_steps = [
+    [8000, 10500, 6200],
+    [7300, 9100, 12000],
+]
+
+total = 0
+for person_steps in weekly_steps:
+    for steps in person_steps:
+        total = total + steps
+
+print(total)
+\end{example}
+
+\iosample{}{53100 \\}
+
+外層迴圈每一輪 \texttt{person\_steps} 拿到的是一整列（一份清單），內層迴圈再對這一列裡的
+每一個數字各自跑一次、把它加進 \texttt{total}。兩層迴圈合起來，效果就是把整份清單中的
+清單、每一個最裡層的數字都走過一遍，跟第 \ref{ch:loops} 章單層迴圈的道理完全一樣，只是多包了一層。
+
+\begin{drills}[label=drills:nested-list]
+\item 給定 \texttt{matrix = [[1, 2], [3, 4], [5, 6]]}，\texttt{matrix[2]} 會是什麼？
+\item 承上題，\texttt{matrix[2][0]} 會是什麼？
+\item 給定 \texttt{board = [["X", "O"], ["O", "X"]]}，要拿到第二列第二欄的
+\texttt{"X"}，索引要怎麼寫？
+\item 給定 \texttt{matrix = [[1, 2], [3, 4]]}，用巢狀 \texttt{for} 迴圈把裡面所有數字
+加總，\texttt{total} 最後會是多少？
+\end{drills}
+
+\section{清單相乘的陷阱：巢狀清單的別名}
+\label{sec:nested-alias}
+
+第~\ref{sec:list-tools}~節看過 \texttt{[0] * 5} 可以快速造出一份裝滿 0 的清單，很多人
+會很自然地想拿同樣的招數，造出一個表格狀的「格子」，例如一個 3 列 3 欄、全部填 0 的
+方格。可惜這裡藏著一個經典的坑，正好是第~\ref{sec:aliasing}~節「名字牌」概念的延伸應用。
+
+\begin{example}{python}{(nested-alias-trap.py) 用 * 重複巢狀清單的陷阱}
+grid = [[0] * 3] * 3
+print(grid)
+
+grid[0][0] = 1
+print(grid)
+\end{example}
+
+\iosample{}{[[0, 0, 0], [0, 0, 0], [0, 0, 0]] \\{} [[1, 0, 0], [1, 0, 0], [1, 0, 0]] \\}
+
+一開始看起來沒問題，\texttt{grid} 確實印出三列、每列三個 0。但只改了 \texttt{grid[0][0]}
+一個位置，結果三列全部都變成 \texttt{[1, 0, 0]}，不是只有第一列。
+
+原因跟第~
+\ref{sec:aliasing}~節的別名行為一模一樣：\texttt{[0] * 3} 先造出「一份」內層清單，接著
+外層的 \texttt{* 3} 做的事情，其實是把同一份內層清單的名字牌重複貼了三次進外層清單，
+沒有「造三份各自獨立的內層清單」。三個位置指向的其實是同一個物件，改其中一個，另外兩個
+當然也跟著變。
+
+\keypoint{\texttt{[x] * n} 這種寫法只會造出「一份」\texttt{x}，然後把指向它的名字牌在外層
+清單裡放 \texttt{n} 次。如果 \texttt{x} 本身是不可變的（像數字、字串），你完全感覺不出
+差異；但如果 \texttt{x} 是像 list 這種可變物件，就會變成 \texttt{n} 個名字牌全部指著同一
+份東西，改一個、全部一起變。}
+
+正確的做法是每一列都要各自獨立造一次，這正好可以用本章最後一節要教的 list comprehension
+做到。
+
+\begin{example}{python}{(fixed-grid.py) 用 comprehension 造出各自獨立的每一列}
+fixed_grid = [[0] * 3 for _ in range(3)]
+fixed_grid[0][0] = 1
+print(fixed_grid)
+\end{example}
+
+\iosample{}{[[1, 0, 0], [0, 0, 0], [0, 0, 0]] \\}
+
+這次結果符合預期：只有第一列被改動。差別在於 \texttt{[0] * 3 for \_ in range(3)} 每繞一
+圈迴圈，都會重新執行一次 \texttt{[0] * 3}，造出一份全新、獨立的內層清單，而不是像
+\texttt{[[0] * 3] * 3} 那樣只造一次、重複貼三張名字牌。\texttt{\_} 這個變數名字是 Python
+的一個小慣例，代表「這一輪迴圈的值我不需要用到，只是要讓迴圈重複跑幾次而已」。
+
+\begin{drills}[label=drills:nested-alias]
+\item 給定 \texttt{rows = [[]] * 3}，執行 \texttt{rows[0].append("a")} 之後，
+\texttt{rows} 會變成什麼？為什麼？
+\item 如果想要三列各自獨立的空清單，\texttt{rows = [[]] * 3} 這一行該怎麼改寫？
+\end{drills}
+
+\section{list comprehension 初探}
+\label{sec:list-comprehension}
+
+前面你已經很熟悉「造一個空清單、跑迴圈、每次把結果 \texttt{append} 進去」這個組合了。
+Python 有一種更精簡的寫法，可以把這整個組合濃縮成一行，叫做 list comprehension。
+\index{list comprehension}
+
+\begin{code}{python}{list comprehension（最簡形式）}
+[expression for item in iterable]
+\end{code}
+
+\texttt{iterable} 就是你可以放進 \texttt{for} 迴圈裡一個一個處理的東西，像 list、字串、
+\texttt{range()} 都是；\texttt{expression} 是你想對每個 \texttt{item} 做的運算，運算
+完的結果會被收進一份新的清單裡。
+
+\begin{example}{python}{(squares-comprehension.py) 傳統寫法 vs comprehension 寫法}
+numbers = [1, 2, 3, 4, 5]
+
+# 傳統寫法：造一個空清單、跑迴圈、逐一 append
+squares = []
+for n in numbers:
+    squares.append(n ** 2)
+print(squares)
+
+# comprehension 寫法：效果一樣，濃縮成一行
+squares_v2 = [n ** 2 for n in numbers]
+print(squares_v2)
+\end{example}
+
+\iosample{}{[1, 4, 9, 16, 25] \\{} [1, 4, 9, 16, 25] \\}
+
+兩段程式做的事完全一樣，結果也完全一樣，差別只在後面那一行把「造空清單、跑迴圈、
+append」三個步驟濃縮成了一個表達式。這是很多人寫 Python 時的慣用寫法，你不用馬上自己
+流利地寫出來，但要看得懂它在做什麼，之後每一章只要用得上，我們會繼續自然地用到它，
+多看幾次就會熟。
+
+這裡只教這種最簡單的形式，不帶條件式、也不是雙層迴圈，那些之後有需要
+再說。
+
+comprehension 也可以直接拿來造上一節那種「每一列各自獨立」的巢狀清單，效果就跟
+\texttt{fixed-grid.py} 那個例子一樣：外層再包一層 comprehension，每繞一圈都重新造一份
+全新的內層清單。
+
+\begin{example}{python}{(comprehension-grid.py) 用巢狀 comprehension 造格子}
+grid = [[0 for _ in range(3)] for _ in range(3)]
+print(grid)
+grid[1][1] = 9
+print(grid)
+\end{example}
+
+\iosample{}{[[0, 0, 0], [0, 0, 0], [0, 0, 0]] \\{} [[0, 0, 0], [0, 9, 0], [0, 0, 0]] \\}
+
+外層的 \texttt{for \_ in range(3)} 跑三輪，每一輪都各自重新執行一次
+\texttt{[0 for \_ in range(3)]}，也就是各自重新造一份新的內層清單，所以只改動
+\texttt{grid[1][1]} 這一個位置時，其他列完全不受影響，不會再發生上一節那種「改一個、
+全部一起變」的陷阱。
+
+\stylepoint{看到「造空清單 + for 迴圈 + append」這個組合時，如果邏輯夠單純（就是對每一項
+做一次運算、收進新清單），改寫成一行 list comprehension 會更接近 Python 慣用的寫法；
+但如果邏輯複雜到要拆好幾行才看得懂，寫回傳統的 \texttt{for} 迴圈反而更清楚，不用為了
+「看起來很 Python」硬塞進一行。}
+
+List 可以隨時被改動，但 Python 裡也有一種內容一旦定了就不能再改的「親戚」，叫做 tuple，
+後面章節會看到它，以及為什麼有時候你會想要一份「定死了」的清單。
+
+\begin{drills}[label=drills:list-comprehension]
+\item 改寫題：把下面這段迴圈改寫成一行 list comprehension。
+\begin{verbatim}
+words = ["cat", "dog", "bird"]
+lengths = []
+for w in words:
+    lengths.append(len(w))
+\end{verbatim}
+\item 填空：下面這行 comprehension 要填什麼，才能讓 \texttt{doubled} 變成
+\texttt{[2, 4, 6]}？
+\begin{verbatim}
+doubled = [______ for n in [1, 2, 3]]
+\end{verbatim}
+\end{drills}
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:list-basics}~節}
+\begin{enumerate}
+\item \texttt{fruits[1]} 是索引 1（第二項），會印出 \texttt{banana}。
+\item \texttt{fruits[-2]} 是倒數第二項，會印出 \texttt{orange}。
+\item 寫 \texttt{fruits[-1]}，負索引 \texttt{-1} 永遠代表「最後一項」，不用先知道清單
+長度。
+\item \texttt{info[2]} 是 \texttt{False}，型別是 \texttt{<class 'bool'>}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:list-slicing}~節}
+\begin{enumerate}
+\item \texttt{names[1:3]} 取索引 1 到 2（不含 3），會印出
+\texttt{['Bob', 'Charlie']}。
+\item \texttt{names[:2]} 取開頭到索引 1（不含 2），會印出
+\texttt{['Alice', 'Bob']}。
+\item \texttt{names[2:100]} 會從索引 2 切到清單結尾，印出
+\texttt{['Charlie', 'Taylor', 'David']}，不會報錯，因為切片對超出範圍的邊界很寬容。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:list-loop}~節}
+\begin{enumerate}
+\item 依序印出：red color、green color、blue color（各自一行）。
+\item \texttt{total} 會是 \texttt{3 + 1 + 4 + 1 + 5 = 14}。
+\item 寫法是：
+\begin{verbatim}
+big_nums = []
+for n in nums:
+    if n > 10:
+        big_nums.append(n)
+\end{verbatim}
+\texttt{big\_nums} 最後會是 \texttt{[15, 20]}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:list-add}~節}
+\begin{enumerate}
+\item \texttt{cart} 會變成 \texttt{['apple', 'banana', 'orange']}。
+\item 承上，\texttt{insert(1, "watermelon")} 把「watermelon」插進索引 1 的位置，變成
+\texttt{['apple', 'watermelon', 'banana', 'orange']}。
+\item 承上，\texttt{cart[0] = "guava"} 把第一項換掉，最後變成
+\texttt{['guava', 'watermelon', 'banana', 'orange']}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:list-extend}~節}
+\begin{enumerate}
+\item \texttt{a.append(b)} 把整份 \texttt{b} 當成一個東西塞進去，\texttt{a} 會變成
+\texttt{[1, 2, [3, 4]]}。
+\item \texttt{a.extend(b)} 把 \texttt{b} 的每一項逐一攤開加入，\texttt{a} 會變成
+\texttt{[1, 2, 3, 4]}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:list-remove}~節}
+\begin{enumerate}
+\item \texttt{del items[0]} 之後，\texttt{items} 變成 \texttt{['B', 'C', 'D']}。
+\item \texttt{x = items.pop(1)} 把索引 1 的 \texttt{'C'} 拿掉並存進 \texttt{x}，所以
+\texttt{x} 是 \texttt{'C'}，\texttt{items} 變成 \texttt{['B', 'D']}。
+\item \texttt{plates.pop()} 沒給位置，預設拿掉最後一項，\texttt{last} 是
+\texttt{'Plate C'}，\texttt{plates} 變成 \texttt{['Plate A', 'Plate B']}。
+\item 問題出在 \texttt{data = data.remove(2)}，\texttt{remove()} 回傳的是
+\texttt{None}，把它重新指定回 \texttt{data} 之後，原本刪完的清單就不見了，\texttt{data}
+最後會是 \texttt{None}。正確寫法是不要重新指定，直接寫 \texttt{data.remove(2)} 就好。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:aliasing}~節}
+\begin{enumerate}
+\item \texttt{b = a} 之後兩個名字指著同一份清單，\texttt{b.append(4)} 之後
+\texttt{print(a)} 會印出 \texttt{[1, 2, 3, 4]}。
+\item 同樣的道理，\texttt{y[0] = "yellow"} 改的是 \texttt{x} 跟 \texttt{y} 共用的那份清單，
+\texttt{print(x)} 會印出 \texttt{['yellow', 'green']}。
+\item 把 \texttt{new\_list = original} 改成 \texttt{new\_list = original.copy()}
+（或 \texttt{list(original)}、\texttt{original[:]}，三種寫法效果一樣），才會另外造出
+一份獨立的清單。
+\item \texttt{q = p} 是別名，兩者是同一份清單，\texttt{p is q} 是 \texttt{True}；
+\texttt{r = p.copy()} 是另外造出來的獨立清單，\texttt{p is r} 是 \texttt{False}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:sort-vs-sorted}~節}
+\begin{enumerate}
+\item \texttt{nums.sort()} 直接改動 \texttt{nums} 本身，\texttt{print(nums)} 會印出
+\texttt{[1, 3, 5, 8]}。
+\item \texttt{sorted(nums)} 不會動到 \texttt{nums}，所以 \texttt{nums} 還是
+\texttt{[5, 3, 8, 1]}，\texttt{result} 才是排好序的 \texttt{[1, 3, 5, 8]}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:sort-key}~節}
+\begin{enumerate}
+\item \texttt{nums.sort(reverse=True)} 由大到小排序，\texttt{nums} 會變成
+\texttt{[9, 4, 3, 1]}。
+\item \texttt{sorted(words, key=len)} 依字元數由少到多排，結果是
+\texttt{['cat', 'dog', 'elephant']}（\texttt{cat} 跟 \texttt{dog} 字數一樣，維持原本
+的相對順序）。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:list-tools}~節}
+\begin{enumerate}
+\item \texttt{a + b} 的結果是 \texttt{[1, 2, 3]}；\texttt{+} 造出的是一份新清單，
+\texttt{a} 本身不會被改變，還是 \texttt{[1, 2]}。
+\item \texttt{[1, 2] * 3} 的結果是 \texttt{[1, 2, 1, 2, 1, 2]}。
+\item \texttt{sum(nums)} 是 \texttt{108}，\texttt{max(nums)} 是 \texttt{42}。
+\item \texttt{fruits.index("guava")} 因為清單裡沒有「guava」會丟出 \texttt{ValueError}；
+\texttt{fruits.count("guava")} 不會報錯，會印出 \texttt{0}。兩者行為不同是因為「找位置」
+在找不到時沒有合理的答案可以回傳，但「數出現幾次」允許答案是零次。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:nested-list}~節}
+\begin{enumerate}
+\item \texttt{matrix[2]} 是最外層第三項，會是 \texttt{[5, 6]}。
+\item \texttt{matrix[2][0]} 再往裡取第一個，會是 \texttt{5}。
+\item 寫 \texttt{board[1][1]}：先用 \texttt{[1]} 拿到第二列 \texttt{["O", "X"]}，再用
+\texttt{[1]} 拿到那一列的第二欄 \texttt{"X"}。
+\item \texttt{total} 會是 \texttt{1 + 2 + 3 + 4 = 10}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:nested-alias}~節}
+\begin{enumerate}
+\item \texttt{rows} 會變成 \texttt{[['a'], ['a'], ['a']]}。因為 \texttt{[[]] * 3}
+只造了一份空清單，三個位置的名字牌都指著同一份，對其中一個 \texttt{append}，另外兩個
+看到的也是同一份、當然一起變。
+\item 改寫成 \texttt{rows = [[] for \_ in range(3)]}，每一輪迴圈都重新造一份全新、獨立
+的空清單，三列才會真正各自獨立。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:list-comprehension}~節}
+\begin{enumerate}
+\item \texttt{lengths = [len(w) for w in words]}。
+\item 填 \texttt{n * 2}：\texttt{doubled = [n * 2 for n in [1, 2, 3]]}。
+\end{enumerate}

@@ -1,0 +1,1257 @@
+\chapter{Pythonic 慣用寫法與風格}
+\label{ch:pythonic}
+
+你大概讀過那種句子：每個字都認得，文法也挑不出毛病，但讀起來就是怪，一看就知道是從別的
+語言硬翻過來的。反過來也一樣——聽一個學中文沒多久的朋友講話，每個字都用對了，組起來就是
+不像我們平常講話的樣子。他沒有講錯，只是帶著口音。
+
+程式碼也有口音。從第 \ref{ch:variables} 章到第 \ref{ch:recursion} 章，語法該教的都教完
+了：你會寫變數、條件、迴圈、函式、檔案、例外、comprehension、generator、遞迴。同一件事，
+用 Python 寫得出來的方法常常不只一種，而且它們\textbf{全都能動}——這一章要談的不是哪一種寫法
+對、哪一種錯，是\textbf{讀的人要不要多花力氣}。
+
+上一章的結尾，還有第 \ref{ch:iterators-generators} 章的結尾，都留了同一句話：「第
+\ref{ch:pythonic} 章會把『寫得像 Python』這件事整個收起來。」就是現在。
+
+先把一件事講在前面，免得整章讀起來像在推銷：這一章的最後一節會反過來談「什麼時候不要太
+Pythonic」。腔調本身不是目的，把話講清楚才是。
+
+這一章分三段推進：
+
+\begin{itemize}
+\item 第一段是低風險的日常慣例：程式碼該長什麼樣子、條件怎麼寫成一句話、值怎麼搬運。
+這三節的共同論證只有一條——程式碼被讀的次數，遠比被寫的次數多
+（第 \ref{sec:pep8}～\ref{sec:value-idioms} 節）。
+\item 第二段是這一章存在的理由。名字牌與 EAFP 這兩個從第 \ref{ch:variables} 章跟第
+\ref{ch:files-exceptions} 章一路跟著你走到這裡的想法，會在這裡走完一圈：從「解釋為什麼
+會發生怪事的圖像」，變成「你打字的當下會用到的判準」。中間補上 \texttt{with} 這塊一直
+缺著的拼圖（第 \ref{sec:is-vs-equal}～\ref{sec:eafp-closure} 節）。
+\item 第三段是煞車。學會一個寫法之後，還要學會什麼時候不用它
+（第 \ref{sec:not-too-pythonic} 節）。
+\end{itemize}
+
+\section{大家講好的樣子：PEP 8 與命名慣例}
+\label{sec:pep8}
+
+先看一段程式。它能跑，答案也對。
+
+\begin{example}{python}{(tidy-todo-before.py) 能動，但看得很累}
+maxitems=5
+l=["Milk","Eggs","Toast"]
+def addItem(item,items):
+    if len(items)<maxitems:
+        items.append(item)
+    return items
+print(addItem("Apple",l))
+\end{example}
+
+\iosample{}{['Milk', 'Eggs', 'Toast', 'Apple'] \\}
+
+沒有一行寫錯。但你讀它的時候，眼睛要多做好幾件事：\texttt{maxitems=5} 這一串黏在一起，
+你得自己在心裡把等號兩邊切開；\texttt{l} 是什麼？是 list 嗎？還是 1？\texttt{addItem}
+跟 \texttt{maxitems} 一個用大寫駝峰、一個全小寫，看不出規律；\texttt{def} 前面沒有空行，
+整段擠成一坨。
+
+同樣的程式，換一種排法：
+
+\begin{example}{python}{(tidy-todo-after.py) 一樣的程式，照慣例排過}
+MAX_ITEMS = 5
+shopping_list = ["Milk", "Eggs", "Toast"]
+
+
+def add_item(item, items):
+    if len(items) < MAX_ITEMS:
+        items.append(item)
+    return items
+
+
+print(add_item("Apple", shopping_list))
+\end{example}
+
+\iosample{}{['Milk', 'Eggs', 'Toast', 'Apple'] \\}
+
+輸出一模一樣。Python 完全不在乎你選哪一種——但下一個讀它的人在乎，而下一個讀它的人，
+第一個是三天後的你自己。第 \ref{ch:variables} 章第 \ref{sec:naming-practices} 節就提醒過
+一次：幾天後回頭看，你會完全忘記某個短名字到底是什麼。這一節要把那句話擴大到整份檔案的
+外觀上。
+
+\subsection*{PEP 8 是什麼}
+
+Python 社群對「程式碼該長什麼樣子」有一份講好的文件，叫做 \textbf{PEP 8}。
+\index{PEP 8}
+PEP 是 Python Enhancement Proposal 的縮寫，直譯是「Python 改進提案」——任何人想對 Python
+提一件事，都可以寫成一份 PEP 給整個社群看，通過的就變成大家的共識。PEP 8 是最老的幾份
+之一，它談的不是語言功能，而是排版與命名。
+
+有一件事要立刻講清楚，因為這一章最後一節整節都建立在它上面：
+
+\keypoint{\textbf{PEP 8 不是語法規則。} Python 不會因為你不照它做就報錯，也不會跑得比較
+慢。它是一群人為了讓彼此的程式碼看起來像同一個世界的東西，自願講好的約定。約定跟規則
+不一樣的地方在於：規則由編譯器執行，約定只能靠人守。}
+
+\subsection*{排版：四條真的有差的}
+
+PEP 8 很長，但對現在的你真正有差的只有四條，而且每一條都有理由，不是「規定就是這樣」。
+
+\begin{itemize}
+\item \textbf{縮排用 4 個空白，而且不要跟 tab 混用。} 4 個空白是視覺上剛好看得出層次、
+又還留得下空間給多層縮排的寬度。至於 tab 跟空白混用會發生什麼事，第 \ref{ch:introduction}
+章第 \ref{sec:editor-pitfalls} 節示範過那個錯誤訊息了——那次的教訓在這裡變成一條慣例。
+\item \textbf{一行不要太長。} PEP 8 給的數字是 79 個字元。這個數字有歷史原因，但今天更
+實際的理由是：真正在工作的人常常同時開好幾個檔案並排在同一個螢幕上，一行太長，並排就
+放不下了。
+\item \textbf{用空行做視覺分組，但不要過量。} 兩個函式之間空兩行、函式裡面的邏輯段落之間
+空一行，讀的人一眼就知道哪幾行是一組。全部黏在一起看不出結構，每兩行就空一行也一樣看不
+出結構。
+\item \textbf{運算子前後各留一個空白。} \texttt{x = 5} 讀起來比 \texttt{x=5} 舒服；
+式子一長，差別更明顯：\texttt{len(items) < MAX\_ITEMS} 一眼看得出是在比大小，
+擠成 \texttt{len(items)<MAX\_ITEMS} 就得自己找斷點在哪。理由跟中文標點一樣，
+空白是在幫讀的人斷句。
+\end{itemize}
+
+\subsection*{命名：四條}
+
+\begin{itemize}
+\item \textbf{變數與函式用 \texttt{snake\_case}}：全部小寫，單字之間用底線連接。
+\texttt{shopping\_list}、\texttt{add\_item} 都是這種寫法。第 \ref{ch:functions} 章教
+函式命名時已經提過這個詞，這裡只是把它一起放進慣例清單。
+\item \textbf{常數用全大寫加底線}，例如 \texttt{MAX\_ITEMS}、\texttt{CONFIG\_PATH}。
+\index{全大寫命名慣例}
+這裡要特別說清楚一件事：\textbf{Python 沒有「常數」這種東西。} 你寫成
+\texttt{MAX\_ITEMS = 5}，之後照樣可以寫 \texttt{MAX\_ITEMS = 99}，Python 不會攔你。
+全大寫只是一個講好的暗號，意思是「這個值是設定，不打算在程式跑的過程中被改動」。它防
+不了任何事，它只是在跟讀的人講話。
+\item \textbf{class 用大寫開頭的駝峰式}，例如 \texttt{ShoppingCart}。class 是第
+\ref{ch:objects} 章的主題，這裡先知道有這條慣例就好。
+\item \textbf{布林值用 \texttt{is\_}／\texttt{has\_} 開頭}，例如
+\texttt{is\_passing}、\texttt{has\_ticket}。這一條第 \ref{ch:variables} 章第
+\ref{sec:naming-practices} 節已經完整講過，不重講。
+\end{itemize}
+
+\stylepoint{這些命名慣例本身沒有一條是神聖的——真正有價值的是\textbf{整份專案裡保持
+一致}。一份檔案裡一半 \texttt{snake\_case}、一半駝峰式，比全部用駝峰式還難讀，因為讀的人
+會一直懷疑這個差別是不是有意義的。}
+
+\subsection*{有工具會替你檢查這件事}
+
+風格慣例不需要用背的。有人寫了程式來幫你抓這類問題：\texttt{flake8} 會把不合慣例的地方
+一條一條列給你看，\texttt{black} 更直接，它會直接把你的檔案照慣例重排一遍。這種工具的來源
+跟第 \ref{ch:data-tools} 章裝過的那些套件一樣，用 \texttt{pip} 安裝。這裡點名它們，只是
+要你知道「不必用背的」，實際怎麼裝、怎麼設定，等你真的需要的時候再查就好。
+
+\subsection*{但是}
+
+給完規則之後，馬上要補一句「但是」——這件事很重要，重要到 PEP 8 自己就有一節在講。那一節
+的標題叫「A Foolish Consistency Is the Hobgoblin of Little Minds」（愚蠢的一致性是小心眼
+的妖怪），裡面寫著：
+
+\begin{quote}
+與風格指南保持一致很重要。但最重要的是：知道什麼時候該不一致——有時候風格指南就是不適用。
+有疑慮的時候，用你自己最好的判斷。
+\end{quote}
+
+也就是說，這份講好程式碼該長什麼樣子的文件，自己就留了一道門，讓你在有理由的時候走出去。
+什麼樣的理由算數，第 \ref{sec:not-too-pythonic} 節會整節談。
+
+最後補一句你現在用不到、但很快會用到的事：一群人一起改同一個專案的時候，會有一道叫
+code review 的關卡——你的程式碼要先被別人讀過才進得去。風格一致在那裡不是美學問題，是
+直接變成別人讀你程式碼要花多少力氣。那套流程長什麼樣子，第 \ref{ch:industry} 章會講。
+
+\begin{drills}[label=drills:pep8]
+\item 把下面這段程式照這一節的慣例改寫（命名與排版都要改）：
+\begin{verbatim}
+TotalItems=0
+def CountThem(TheList):
+    global TotalItems
+    for x in TheList:
+        TotalItems=TotalItems+1
+    return TotalItems
+\end{verbatim}
+\item 你寫了 \texttt{MAX\_RETRY = 3}，後來在程式的另一個地方寫了
+\texttt{MAX\_RETRY = 10}。Python 會阻止你嗎？如果不會，那全大寫這個慣例到底在幫誰？
+\item PEP 8 說一行不要超過 79 個字元，但你的團隊決定改用 99 個字元當上限，而且整個專案
+都照這個數字。這樣算不算「錯」？
+\end{drills}
+
+\section{把條件寫成一句話：\texttt{not}、\texttt{in}、連續比較}
+\label{sec:condition-idioms}
+
+上一節談的是程式碼的外觀，這一節往裡面走一層：同一個判斷，怎麼寫會讓下一個人一眼看懂。
+這一節有三個小技巧，其中兩個你手上已經有材料了，只有最後一個是全新的語法。
+
+\subsection*{\texttt{if not items:}}
+
+第 \ref{ch:conditionals} 章第 \ref{sec:truthy-falsy} 節教過 Python 的一個脾氣：空的東西
+在 \texttt{if} 裡會被當成 \texttt{False}。那時候教的是\textbf{正面}的形式——
+\texttt{if name:} 就是「name 有內容的話」。第 \ref{ch:files-exceptions} 章第
+\ref{sec:eafp-recap} 節也用容器示範過一次。
+
+現在把否定的形式補上，順便第一次把完整的清單集中列出來。下面這些值放進 \texttt{if} 裡，
+一律被當成 \texttt{False}：
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+值 & 是什麼 \\
+\midrule
+\texttt{0}、\texttt{0.0} & 數字的零 \\
+\texttt{""} & 空字串 \\
+\texttt{[]} & 空 list \\
+\texttt{()} & 空 tuple \\
+\texttt{\{\}} & 空 dict \\
+\texttt{set()} & 空 set \\
+\texttt{None} & 「沒有值」這個值 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+除了這些，其他一律當成 \texttt{True}。有了這張表，「這個清單是不是空的」就有三種寫法，
+而且三種都能動：
+
+\begin{example}{python}{(empty-check-three-ways.py) 三種問法，同一個答案}
+items = []
+
+if len(items) == 0:
+    print("A: nothing to do")
+
+if items == []:
+    print("B: nothing to do")
+
+if not items:
+    print("C: nothing to do")
+\end{example}
+
+\iosample{}{A: nothing to do \\ B: nothing to do \\ C: nothing to do \\}
+
+三行都印出來了，所以問題不是對錯，是哪一種讀起來比較直接。
+
+A 版繞了一圈：先算長度、再拿長度跟 0 比。你要問的其實不是「長度是幾」，是「有沒有東西」。
+B 版更繞，它造了一個空 list 出來，只為了拿去跟另一個 list 比。而且 B 版換一種容器就得
+重寫——換成字串要改成 \texttt{== ""}，換成 dict 要改成 \texttt{== \{\}}。
+
+C 版直接問「這裡面沒東西吧？」，而且它對上面那張表裡的每一種值都通用：空 list、空字串、
+空 dict、空 set，寫法完全一樣。
+
+\stylepoint{要問一個容器是不是空的，寫 \texttt{if not items:}，不要寫
+\texttt{if len(items) == 0:} 或 \texttt{if items == []:}。三種都能動，但第一種不用繞道
+算長度、也不用造一個空容器出來比對，而且換成任何一種容器都不必改寫。正面的形式同理：
+\texttt{if items:} 就是「裡面有東西的話」。}
+
+\subsection*{一個誠實的例外}
+
+\texttt{if not items:} 有一個它問不出來的問題：它分不出「空的」跟「根本沒有」。
+
+\begin{example}{python}{(empty-or-missing.py) 兩種完全不同的情況，同一個答案}
+def report(items):
+    if not items:
+        print("nothing to do")
+    else:
+        print(len(items), "items")
+
+
+report([])
+report(None)
+\end{example}
+
+\iosample{}{nothing to do \\ nothing to do \\}
+
+兩次都印一樣的話。但這兩件事在現實裡差很多：\texttt{[]} 是「我確實去查了，結果是一份空
+清單」，\texttt{None} 是「根本沒有這份清單」——可能是檔案沒讀到，可能是函式忘了回傳東西。
+一個是「今天沒有待辦事項」，一個是「待辦清單不見了」。
+
+要分辨這兩件事，得換一個問法，而那個問法就是下一節整節在講的東西。這裡先記住這個缺口。
+
+\subsection*{\texttt{in} 取代一長串 \texttt{or}}
+
+第二個技巧更小。你想問「今天是不是週末」：
+
+\begin{example}{python}{(weekend-check.py) 兩種問法}
+day = "Sun"
+
+if day == "Sat" or day == "Sun":
+    print("Weekend (or version)")
+
+if day in ("Sat", "Sun"):
+    print("Weekend (in version)")
+\end{example}
+
+\iosample{}{Weekend (or version) \\ Weekend (in version) \\}
+
+上面那一行，\texttt{day} 這個名字出現了兩次，等號出現了兩次；選項如果有五個，就會出現
+五次。下面那一行，\texttt{day} 只出現一次，而且「這幾個選項」被放在一起、看起來就像一份
+清單。
+
+\texttt{in} 你早就會了——第 \ref{ch:loops} 章第 \ref{sec:break-search} 節說過「\texttt{in}
+其實就是幫你把搜尋迴圈包好了」。這裡只是把同一個工具用在另一個地方。順帶一提，如果選項
+很多、而且程式要反覆檢查很多次，第 \ref{ch:dict-set} 章第 \ref{sec:set-membership} 節
+講過改用 set 會快很多，寫法一樣是 \texttt{in}。
+
+\subsection*{連續比較}
+
+這是這一章唯一一個全新的語法。你想確認一個分數在 0 到 100 之間：
+
+\begin{example}{python}{(score-in-range.py) 夾在中間的寫法}
+score = 87
+
+if score >= 0 and score <= 100:
+    print("valid (and version)")
+
+if 0 <= score <= 100:
+    print("valid (chained version)")
+\end{example}
+
+\iosample{}{valid (and version) \\ valid (chained version) \\}
+
+Python 允許把比較運算子串起來寫，這叫\textbf{連續比較}。
+\index{連續比較}
+\texttt{0 <= score <= 100} 的意思就是「score 大於等於 0，而且 score 小於等於 100」，
+跟上面那一行完全等價——差別是它讀起來就是數學課上寫的那個樣子，而且 \texttt{score} 這個
+名字只出現一次。名字只出現一次是有實際好處的：如果你要把 \texttt{score} 改成
+\texttt{final\_score}，\texttt{and} 版本有兩個地方要改，改漏一個就是一個安靜的錯。
+
+這個寫法有一條界線要守：\textbf{只有在「同一個東西被夾在中間」的時候才用它}。
+
+\begin{code}{python}{連續比較該用與不該用的形狀}
+0 <= score <= 100          # 好：score 被夾在 0 跟 100 中間
+lower <= value < upper     # 好：同一個 value 被夾住
+
+a < b == c                 # 不要：三個不同的東西串在一起，讀的人得停下來想
+\end{code}
+
+最後一行是合法的 Python，但沒有人這樣寫。連續比較的價值來自它剛好對應到「夾在中間」這個
+大家都懂的形狀，一旦串的是三個不相干的比較，那個形狀就沒了，讀的人反而要多想一次。
+
+這一節的三個技巧看起來各做各的，其實它們在做同一件事：\textbf{把一句判斷，還原成一句
+人話}。「這裡沒東西」「今天是週末之一」「分數在 0 到 100 之間」——這三句話你講給人聽的
+時候本來就是這樣講的，程式碼只是照著寫下來。第 \ref{ch:conditionals} 章第
+\ref{sec:readable-conditions} 節那條線（把複雜的條件拆成有名字的布林變數）講的也是同一
+件事，只是切入的角度不同。
+
+\begin{drills}[label=drills:condition-idioms]
+\item 把下面這段改寫成用 \texttt{in}：
+\begin{verbatim}
+if ext == ".jpg" or ext == ".png" or ext == ".gif":
+    print("image")
+\end{verbatim}
+\item 把下面這段改寫成連續比較：
+\begin{verbatim}
+if temperature >= 18 and temperature <= 26:
+    print("comfortable")
+\end{verbatim}
+\item 下面四行分別會印出 \texttt{True} 還是 \texttt{False}？
+\begin{verbatim}
+items = []
+print(not items)
+print(items is None)
+items = None
+print(not items)
+print(items is None)
+\end{verbatim}
+\item 什麼情況下 \texttt{if not items:} 不夠用？舉一個具體的例子。
+\end{drills}
+
+\section{值的搬運：unpacking 與 f-string}
+\label{sec:value-idioms}
+
+這一節不教任何新語法。一行都不教。
+
+第 \ref{ch:tuples} 章第 \ref{sec:tuple-unpacking} 節已經把 unpacking 完整教完了——基本
+寫法、\texttt{*rest}、用底線忽略不要的值、\texttt{a, b = b, a} 交換兩個變數，連風格要點
+都給過了。第 \ref{ch:strings} 章三節也把 f-string 教完了。你手上什麼都有。
+
+那這一節在做什麼？書上教過\textbf{怎麼寫}，沒教過\textbf{什麼時候該想起它}。這是兩件不同
+的事：學會一個工具跟看到情況會反射性拿出那個工具，中間差了一段路。這一節就是那段路——
+一張「看到左邊，想到右邊」的對照表。
+
+\begin{center}
+\begin{tabular}{@{}p{5.4cm}p{5.4cm}p{3.8cm}@{}}
+\toprule
+看到自己寫成這樣 & 該想到 & 教在哪 \\
+\midrule
+\texttt{temp = a} 之後 \texttt{a = b}、\texttt{b = temp} &
+\texttt{a, b = b, a} &
+第 \ref{ch:tuples} 章第 \ref{sec:tuple-unpacking} 節 \\
+\addlinespace
+\texttt{for i in range(len(items)):} 再用 \texttt{items[i]} &
+\texttt{for index, item in enumerate(items):} &
+第 \ref{ch:loops} 章第 \ref{sec:enumerate} 節 \\
+\addlinespace
+\texttt{first = row[0]} 加上 \texttt{rest = row[1:]} &
+\texttt{first, *rest = row} &
+第 \ref{ch:tuples} 章 \\
+\addlinespace
+迴圈裡拿了 key，再回頭用 \texttt{d[key]} 取值 &
+\texttt{for key, value in d.items():} &
+第 \ref{ch:tuples} 章 \\
+\addlinespace
+用不到的那個值，也認真替它取了名字 &
+用底線 \texttt{\_} 接住它 &
+第 \ref{ch:tuples} 章 \\
+\addlinespace
+\texttt{"Hello, " + name + "! You are " + str(age)} &
+f-string &
+第 \ref{ch:strings} 章第 \ref{sec:f-string-basics} 節 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+左邊那一欄，每一條都能動，而且每一條都是從別的地方帶來的口音——尤其是
+\texttt{for i in range(len(items))}。很多語言的迴圈就是這樣寫的：先要一個編號，再拿編號
+去取東西。Python 也允許你這樣寫，但它是全書最典型的一種腔調，因為你真正想要的是「東西
+本身」，編號只是取到東西的手段。
+
+把左右兩邊並排看一次：
+
+\begin{code}{python}{帶著口音的版本}
+temp = a
+a = b
+b = temp
+
+for i in range(len(items)):
+    print(i, items[i])
+
+first = row[0]
+rest = row[1:]
+
+for key in scores:
+    print(key, scores[key])
+\end{code}
+
+\begin{code}{python}{同樣的四件事，本地話}
+a, b = b, a
+
+for index, item in enumerate(items):
+    print(index, item)
+
+first, *rest = row
+
+for key, value in scores.items():
+    print(key, value)
+\end{code}
+
+實際跑一次那個迴圈的例子，確認兩種寫法真的一模一樣：
+
+\begin{example}{python}{(list-with-index.py) 同一份清單，兩種走法}
+items = ["Milk", "Eggs", "Toast"]
+
+for i in range(len(items)):
+    print(i, items[i])
+
+print("---")
+
+for index, item in enumerate(items):
+    print(index, item)
+\end{example}
+
+\iosample{}{0 Milk \\ 1 Eggs \\ 2 Toast \\ --- \\ 0 Milk \\ 1 Eggs \\ 2 Toast \\}
+
+\subsection*{f-string 那一條，值得單獨講}
+
+第 \ref{ch:strings} 章介紹 f-string 的時候只說了一句「變數一多就難維護」，沒有真的把
+另一種寫法擺出來給你看。現在擺出來。
+
+用 \texttt{+} 把一句話串起來，會踩到兩個實際的痛。第一個痛會直接讓程式當掉：
+
+\begin{example}{python}{(greeting-plus.py) 用加號串一句話，忘了轉型}
+name = "Alice"
+age = 30
+
+print("Hello, " + name + "! You are " + age + " years old.")
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "greeting-plus.py", line 4, in <module>
+    print("Hello, " + name + "! You are " + age + " years old.")
+          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~
+TypeError: can only concatenate str (not "int") to str
+\end{verbatim}
+
+\texttt{TypeError: can only concatenate str (not "int") to str}，意思是「字串只能跟字串
+相加，不能跟 int 相加」。\texttt{age} 是數字，得先用 \texttt{str()} 包起來才行。這個錯不
+難修，但它會反覆發生——每次你在句子裡多塞一個數字，就得記得包一次。
+
+第二個痛不會報錯，所以更煩：標點跟空白全部要自己數。\texttt{"Hello, "} 後面那個空白、
+\texttt{"! You are "} 前後那兩個空白，少一個就是輸出擠在一起，多一個就是中間多一格，而且
+它們散落在一堆引號跟加號之間，很難一眼看出來。
+
+\begin{example}{python}{(greeting-fstring.py) 兩種寫法，同一句話}
+name = "Alice"
+age = 30
+
+print("Hello, " + name + "! You are " + str(age) + " years old.")
+print(f"Hello, {name}! You are {age} years old.")
+\end{example}
+
+\iosample{}{Hello, Alice! You are 30 years old. \\ Hello, Alice! You are 30 years old. \\}
+
+下面那一行裡，那句話本來的樣子是完整的——空白跟標點就長在它們該在的位置上，你不用在腦中
+把五個片段拼起來，而且數字不必轉型。
+
+\stylepoint{這張對照表裡的寫法，沒有一個是必要的——左邊那些全部能動。它們的共同好處只有
+一個：\textbf{讓「你在做什麼」直接寫在程式碼的表面上}，不用讀的人自己拼。
+\texttt{a, b = b, a} 表面上就寫著「交換」，\texttt{enumerate} 表面上就寫著「我要編號跟
+東西」，f-string 表面上就是那句話本來的樣子。}
+
+\begin{drills}[label=drills:value-idioms]
+\item 把下面這段改寫成用 \texttt{enumerate}：
+\begin{verbatim}
+names = ["Alice", "Bob", "Cathy"]
+for i in range(len(names)):
+    print(str(i + 1) + ". " + names[i])
+\end{verbatim}
+\item 把下面這段改寫成 f-string：
+\begin{verbatim}
+city = "Taipei"
+temp = 26
+print("Today in " + city + " it is " + str(temp) + " degrees.")
+\end{verbatim}
+\item 下面這段會出什麼錯？錯誤訊息是什麼？怎麼修？
+\begin{verbatim}
+count = 3
+print("You have " + count + " new messages.")
+\end{verbatim}
+\end{drills}
+
+\section{\texttt{is} 還是 \texttt{==}：名字牌模型的收束}
+\label{sec:is-vs-equal}
+
+上一節結尾留了一個問題：要分辨「空的」跟「根本沒有」，該怎麼寫？答案很短，但要拿到它
+之前，得先把一件跟了你十七章的東西處理掉。
+
+\subsection*{一張走過的路}
+
+名字牌這個比喻——變數不是裝東西的盒子，是貼在物件上的名字牌——在這本書裡出場過五次：
+
+\begin{center}
+\begin{tabular}{@{}p{5.2cm}p{9.2cm}@{}}
+\toprule
+在哪裡 & 那一次它解釋的是什麼 \\
+\midrule
+第 \ref{ch:variables} 章第 \ref{sec:name-tags} 節 &
+為什麼 \texttt{x = 5} 之後 \texttt{x = "hi"} 完全合法 \\
+\addlinespace
+第 \ref{ch:lists} 章第 \ref{sec:aliasing} 節 &
+為什麼改了 \texttt{b}，\texttt{a} 也跟著變了 \\
+\addlinespace
+第 \ref{ch:functions} 章第 \ref{sec:function-nametag}、\ref{sec:mutable-default} 節 &
+為什麼函式裡的 \texttt{append} 會影響外面，以及 \texttt{cart=[]} 那個坑 \\
+\addlinespace
+第 \ref{ch:tuples} 章第 \ref{sec:tuple-vs-list} 節 &
+為什麼「不能改」的 tuple 裡面的 list 還是改得動 \\
+\addlinespace
+第 \ref{ch:advanced-functions} 章第 \ref{sec:closure} 節 &
+為什麼函式回傳之後，裡面那個計數器還記得上次的數字 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+這張表不是要你回去重讀那五節。它是要你注意一件你大概沒發現的事：\textbf{這五次，名字牌都是被
+拿來解釋「一件看起來很怪的事，為什麼會發生」}。它一直是一張事後的圖，用來收拾直覺跟
+事實對不上的場面。
+
+這一節要做的，是換掉它的身分。
+
+\subsection*{兩個問法}
+
+\texttt{==} 跟 \texttt{is} 問的是兩個不同的問題：
+
+\begin{itemize}
+\item \texttt{a == b} 問的是：\textbf{這兩張名字牌指的物件，裝的東西一不一樣？}
+\item \texttt{a is b} 問的是：\textbf{這兩張名字牌，是不是貼在同一個物件上？}
+\end{itemize}
+
+第 \ref{ch:lists} 章第 \ref{sec:aliasing} 節那個範例最後印出 True、True、True、False，
+就是這兩個問題各問兩次的結果。這裡不重貼那段程式，只用一個更短的版本確認一次：
+
+\begin{example}{python}{(compare-carts.py) 兩台內容一樣的購物車}
+my_cart = ["Milk", "Eggs"]
+your_cart = ["Milk", "Eggs"]
+
+print(my_cart == your_cart)
+print(my_cart is your_cart)
+\end{example}
+
+\iosample{}{True \\ False \\}
+
+裝的東西一樣（\texttt{==} 是 True），但它們是兩個各自造出來的 list，不是同一個
+（\texttt{is} 是 False）。
+
+\subsection*{那我日常到底什麼時候該用 \texttt{is}？}
+
+這個問題從第 \ref{ch:lists} 章就欠著了。那裡說 \texttt{is} 用在「比較少見的情境」，卻
+沒告訴你少見到什麼程度。現在給答案，而且答案短得有點意外：
+
+\keypoint{日常寫程式，你要的幾乎永遠是 \texttt{==}。\texttt{is} 只有一個常見用途：
+\textbf{跟 \texttt{None} 比}。不確定的時候，用 \texttt{==}——它通常就是你要的，而且對
+\texttt{None} 也管用。}
+
+為什麼 \texttt{None} 特別？因為 \texttt{None} 全世界只有一個。這句話第 \ref{ch:functions}
+章第 \ref{sec:mutable-default} 節講過了：那一節教的安全寫法 \texttt{if cart is None:}
+正是這條規則最好的既有例子。整個程式裡不管哪裡出現 \texttt{None}，都是同一個物件，所以
+問「是不是同一個」跟問「值一不一樣」會得到一樣的答案，而前者更直接。
+
+\subsection*{兩個反例}
+
+第一個反例是 \texttt{if x == None:}。它能動，答案也對，但沒有人這樣寫。既然全世界只有
+一個 \texttt{None}，「是不是同一個」才是你真正想問的問題；繞去問「值一不一樣」，是拿一
+把更大的工具做一件更小的事。
+
+\stylepoint{跟 \texttt{None} 比，寫 \texttt{if x is None:}／\texttt{if x is not None:}，
+不要寫 \texttt{if x == None:}／\texttt{if x != None:}。兩種都能動，但前者是所有 Python
+程式碼裡的統一寫法，讀的人掃過去不用停。}
+
+第二個反例是真的會害人的。看到上面那條「跟 \texttt{None} 比用 \texttt{is}」之後，很容易
+順手把 \texttt{is} 用到別的地方去：
+
+\begin{example}{python}{(is-zero.py) 拿 is 去比一個數字}
+count = 0
+
+if count is 0:
+    print("empty")
+\end{example}
+
+\begin{verbatim}
+is-zero.py:3: SyntaxWarning: "is" with 'int' literal. Did you mean "=="?
+  if count is 0:
+empty
+\end{verbatim}
+
+注意兩件事。第一，Python 發出的是 \texttt{SyntaxWarning}（警告），不是錯誤——
+\index{SyntaxWarning}
+程式沒有停下來，它照樣印出了 \texttt{empty}。第二，訊息裡 Python 直接問你「你是不是想
+寫 \texttt{==}？」，它已經看出你大概搞錯了。
+
+這一類的錯屬於第 \ref{ch:strings} 章第 \ref{sec:f-string-basics} 節說過的「安靜的錯」：
+程式跑完了、有輸出、看起來一切正常，但它成立的理由不是你以為的那個。\texttt{count is 0}
+這次剛好是 \texttt{True}，是因為 Python 內部對很小的整數做了一些最佳化，讓它們共用同一
+個物件——換一個大一點的數字、或換一個字串，同樣的寫法就可能變成 \texttt{False}，而且一樣
+不會報錯。
+
+這就是為什麼那條規則要寫得那麼死：\textbf{跟 \texttt{None} 比用 \texttt{is}，其他一律
+\texttt{==}}。不是因為別的用法一定會錯，是因為它什麼時候會錯、什麼時候不會錯，取決於你
+不需要知道、也不該依賴的細節。
+
+\subsection*{回到上一節那個問題}
+
+現在可以回答「空的」跟「根本沒有」怎麼分了：
+
+\begin{example}{python}{(missing-vs-empty.py) 三種情況，三種回答}
+def report(items):
+    if items is None:
+        print("no list at all")
+    elif not items:
+        print("list is empty")
+    else:
+        print(len(items), "items")
+
+
+report(None)
+report([])
+report(["Milk", "Eggs"])
+\end{example}
+
+\iosample{}{no list at all \\ list is empty \\ 2 items \\}
+
+順序很重要：先問 \texttt{is None}，再問 \texttt{not items}。反過來的話，
+\texttt{not items} 會把 \texttt{None} 一起吞掉，因為 \texttt{None} 本身也是 falsy。
+
+\subsection*{名字牌，從這裡開始換一個身分}
+
+名字牌從第 \ref{ch:variables} 章走到這裡，一直在替你解釋「為什麼會發生怪事」。每一次它
+出現，都是因為某件事跟你的直覺對不上，需要一張圖來收拾。
+
+現在它變成一件更小、也更常用的東西：\textbf{一條你打字的時候會用到的規則。}
+
+跟 \texttt{None} 比用 \texttt{is}，其他一律 \texttt{==}。就這樣。你不需要每次打字都想起
+那張圖，也不需要在心裡重演一次名字牌貼上去的過程——這條規則已經把那張圖要講的事收在裡面
+了。而如果哪一天你忘了它為什麼是這樣，那張圖還在第 \ref{ch:variables} 章那裡等你回去看。
+
+\begin{drills}[label=drills:is-vs-equal]
+\item 下面這段會印出什麼？
+\begin{verbatim}
+a = [1, 2, 3]
+b = [1, 2, 3]
+c = a
+print(a == b)
+print(a is b)
+print(a is c)
+\end{verbatim}
+\item 把 \texttt{if result == None:} 改成慣用寫法。如果要問的是「result 不是 None」呢？
+\item \texttt{if status is "done":} 為什麼危險？它一定會出錯嗎？
+\item 你要判斷兩台購物車裝的東西一不一樣（不在乎它們是不是同一台車）。該用
+\texttt{==} 還是 \texttt{is}？
+\end{drills}
+
+\section{\texttt{with} 到底在解決什麼問題}
+\label{sec:with-explained}
+
+第 \ref{ch:files-exceptions} 章第 \ref{sec:reading-files} 節第一次教開檔案的時候，除了
+把 \texttt{with} 的作用講成一句話（「這段縮排區塊做完之後，自動幫我把檔案關掉」）跟一個
+比喻（用完自動幫你把號碼牌繳回去、置物櫃自動關好），還留了一句話：
+
+\begin{quote}
+你之後在很多情境都會看到 \texttt{with} 這個寫法，不只用在檔案上。
+\end{quote}
+
+這一節來把那句話講完。
+
+順帶把當時講不完的另外半句也補上：那一章第 \ref{sec:finally} 節說過「\texttt{with} 背後
+的機制，精神上跟 \texttt{finally} 很像」。當時只能講到「精神上」，因為 \texttt{finally}
+是那一節才剛教的。現在你兩個都有了，可以把那句話從比喻換成一段真的程式碼。
+
+\subsection*{不用 \texttt{with} 的話，要做哪些事？}
+
+這個問題你答得出來：開檔、讀、關檔。
+
+\begin{example}{python}{(open-close-by-hand.py) 自己開、自己關}
+file_object = open("shopping_list.txt")
+content = file_object.read()
+file_object.close()
+
+print(content)
+\end{example}
+
+\iosample{}{Milk \\ Eggs \\ Toast \\ Apple \\}
+
+三行，看起來也還好。問題是這三行有三種壞掉的方式。
+
+\textbf{第一種：忘了寫 \texttt{close()}。} 每個開著的檔案都會佔掉一點資源，而且大部分
+作業系統對「同時能開幾個檔案」有上限。開一兩個沒事，一支程式在迴圈裡開了幾千個而且都沒關，
+就會出事。更常見的後果是寫檔：沒有正確關閉的檔案，最後那一段內容可能根本還沒真的寫進去。
+
+\textbf{第二種：\texttt{close()} 放太早。} 關掉之後才發現還要再讀一次，於是對著一個已經
+關掉的檔案動手。這種錯的訊息等一下就會看到。
+
+\textbf{第三種，也是最要命的：中間那一行炸了。} 如果 \texttt{read()} 那一行丟出例外，
+程式會直接跳走，\texttt{close()} 那一行根本輪不到執行。前兩種是你會忘記，第三種是你就算
+沒忘記也躲不掉——因為那一行寫在那裡，只是永遠沒被跑到。
+
+\subsection*{把 \texttt{with} 拆回 \texttt{try/finally}}
+
+第三種問題，你其實已經有工具可以解決了。第 \ref{ch:files-exceptions} 章第
+\ref{sec:finally} 節教過 \texttt{finally}：不管 \texttt{try} 裡發生什麼事，
+\texttt{finally} 裡的事一定會做。所以自己開檔而想寫得安全，要寫成這樣：
+
+\begin{example}{python}{(open-with-finally.py) 不用 with，但要寫得安全}
+file_object = open("shopping_list.txt")
+try:
+    content = file_object.read()
+finally:
+    file_object.close()
+
+print(content)
+\end{example}
+
+\iosample{}{Milk \\ Eggs \\ Toast \\ Apple \\}
+
+現在把 \texttt{with} 版本擺在旁邊：
+
+\begin{code}{python}{同一件事的兩種寫法}
+# 手寫版
+file_object = open(filename)
+try:
+    content = file_object.read()
+finally:
+    file_object.close()
+
+# with 版
+with open(filename) as file_object:
+    content = file_object.read()
+\end{code}
+
+\keypoint{\texttt{with} 就是上面那五行的簡寫。它替你保證的事只有一件，但那件事很重要：
+\textbf{不管縮排區塊裡發生什麼——正常跑完、中途 \texttt{return}、還是丟出例外——收尾那
+一步一定會執行。} 這正是第 \ref{sec:finally} 節那個 \texttt{finally} 在做的事，只是
+\texttt{with} 把它縮成一行，而且連 \texttt{close()} 都不用你自己寫。}
+
+到這裡，「\texttt{with} 是什麼」就有一個具體的答案了：它不是魔法，它是一段 \texttt{try/
+finally} 的固定寫法，被包成一個關鍵字。
+
+\subsection*{離開 \texttt{with} 之後，那個名字還在}
+
+有一件事值得親眼看一次，因為它常被誤會：
+
+\begin{example}{python}{(file-after-with.py) 離開之後再去碰那個檔案}
+with open("shopping_list.txt") as file_object:
+    content = file_object.read()
+
+print(file_object)
+print(file_object.closed)
+print(file_object.read())
+\end{example}
+
+\begin{verbatim}
+<_io.TextIOWrapper name='shopping_list.txt' mode='r' encoding='UTF-8'>
+True
+Traceback (most recent call last):
+  File "file-after-with.py", line 6, in <module>
+    print(file_object.read())
+          ~~~~~~~~~~~~~~~~^^
+ValueError: I/O operation on closed file.
+\end{verbatim}
+
+三行輸出各講一件事。第一行：離開 \texttt{with} 之後，\texttt{file\_object} 這個名字還在，
+\texttt{print} 印得出東西——\texttt{with} 不像函式那樣會建立一個獨立的空間，區塊裡的名字
+出來之後照樣用得到。第二行：那個檔案物件的 \texttt{closed} 屬性是 \texttt{True}，它確實
+被關掉了。第三行：真的想再讀一次，就會拿到
+\texttt{ValueError: I/O operation on closed file.}（對一個已經關掉的檔案做輸入輸出）。
+
+用上一節剛收好的那條規則的原話來說：名字牌沒有被撕掉，被改變的是它指著的那個物件的狀態。
+
+\subsection*{「不只用在檔案上」是什麼意思}
+
+回到那張欠條。\texttt{with} 建立的是一段\textbf{有開頭、有結尾的區間}：進去的時候做一件
+事，出來的時候一定做另一件事——不管你是正常走出來，還是中途被例外叫走。
+
+開檔跟關檔只是這種「一對」裡最常見的一組。其他常見的組合，你以後遇到的時候就會認得：
+
+\begin{itemize}
+\item 連上資料庫，用完斷開連線。
+\item 打開一個壓縮檔往裡面塞東西，塞完把它封好。第 \ref{ch:automating} 章做備份的時候
+就會再用到一次同樣的寫法，那時候你會發現它跟開檔案長得一模一樣。
+\end{itemize}
+
+至於「怎麼自己做一個 \texttt{with} 用得上的東西」，那需要先學會 class，超出這本書的範圍。
+好消息是你幾乎不需要——標準函式庫跟常見的套件早就替你做好了，你要做的是\textbf{看到
+\texttt{with} 的時候知道它在保證什麼}，以及看到一段「開了就一定要關」的程式碼時，想起有
+這個東西。
+
+寄物櫃那個比喻現在可以說得更準一點：不管你是正常辦完事走出來，還是中途被叫走，那個櫃子
+都會被關好，號碼牌都會被繳回去。
+
+\begin{drills}[label=drills:with-explained]
+\item 下面這段會印出什麼？（提示：不只一行）
+\begin{verbatim}
+with open("notes.txt") as f:
+    text = f.read()
+
+print(f.closed)
+print(f.read())
+\end{verbatim}
+\item 把下面這段改寫成用 \texttt{with}：
+\begin{verbatim}
+log_file = open("log.txt", "a")
+log_file.write("done\n")
+log_file.close()
+\end{verbatim}
+\item 如果 \texttt{with} 區塊裡的程式丟出例外，檔案還會被關上嗎？為什麼？
+\end{drills}
+
+\section{先做再說：EAFP 是一整套，不是一個語法}
+\label{sec:eafp-closure}
+
+第 \ref{ch:files-exceptions} 章第 \ref{sec:lbyl-vs-eafp} 節教過一個縮寫：EAFP，
+easier to ask forgiveness than permission——與其先申請許可，不如先做了再道歉。那一章還
+用第 \ref{sec:eafp-recap} 節整節回頭指出，這套邏輯遠比「檔案讀寫」這一件事大。
+
+這一節要再往上一層。往上一層具體是三件事。
+
+\subsection*{一、它不是一個語法，是一整個家族}
+
+第 \ref{ch:files-exceptions} 章講的是「面對可能失敗的事，Python 偏好先做」。但這個偏好
+影響的不只是你怎麼寫 \texttt{try}——它長在整個 Python 的設計裡。下面這張表裡的每一項，
+你都已經在用了，只是從來沒有人告訴你它們是同一家人：
+
+\begin{center}
+\begin{tabular}{@{}p{3.6cm}p{3.6cm}p{7.2cm}@{}}
+\toprule
+你已經在用的東西 & 教在哪 & 它是這個家族的哪一種形狀 \\
+\midrule
+\texttt{try} / \texttt{except} &
+第 \ref{ch:files-exceptions} 章第 \ref{sec:lbyl-vs-eafp} 節 &
+本體：直接做，錯了接住 \\
+\addlinespace
+\texttt{dict.get(key, default)} &
+第 \ref{ch:dict-set} 章第 \ref{sec:dict-get} 節 &
+Python 替你把「查不到就用預設值」整包做好了 \\
+\addlinespace
+\texttt{set.discard()} &
+第 \ref{ch:dict-set} 章第 \ref{sec:set-membership} 節 &
+同上：不在裡面就當沒事，不必先問 \\
+\addlinespace
+\texttt{if items:} / \texttt{if not items:} &
+第 \ref{ch:conditionals} 章、第 \ref{sec:condition-idioms} 節 &
+語言自己把「有沒有內容」換成答案，不必你先量長度 \\
+\addlinespace
+\texttt{with} &
+第 \ref{sec:with-explained} 節 &
+\texttt{try/finally} 的簡寫——負責收尾的那一半 \\
+\addlinespace
+讀得懂的錯誤訊息 &
+第 \ref{ch:debugging} 章 &
+既然失敗是預期會發生的事，訊息當然要寫得能讀 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+前面三格用程式碼寫出來，你會發現它們短得幾乎不像在處理失敗：
+
+\begin{code}{python}{同一個家族的三種說法}
+value = scores.get(name, 0)    # 查不到？給 0，不必先問在不在
+tags.discard("draft")          # 不在裡面？當沒事，不必先問在不在
+if not items:                  # 空的？直接問，不必先量長度
+    print("nothing to do")
+\end{code}
+
+這張表裡最值得停一下的是 \texttt{with} 那一格。上一節剛把 \texttt{with} 拆回
+\texttt{try/finally}，所以現在你看得懂它為什麼在這張表裡：處理失敗有兩半，一半是「接住
+它」（\texttt{except}），一半是「不管有沒有失敗都要收尾」（\texttt{finally}），而
+\texttt{with} 就是後面那一半的固定寫法。第 \ref{ch:files-exceptions} 章沒辦法把這一格
+填進來，因為那時候 \texttt{with} 還只是一個「照著寫就對了」的關鍵字。
+
+\subsection*{二、這個偏好是從哪來的}
+
+不是因為 Python 比較潮，也不只是因為第 \ref{ch:files-exceptions} 章講過的那個理由（檢查
+完到真的動手之間，狀態可能已經變了）。往上一層的說法是這樣的：
+
+\keypoint{Python 把「失敗」當成一件\textbf{會正常發生的事}，而不是一件\textbf{該被預防的
+意外}。所以它給你的是接住失敗的工具，而不是要求你事先把所有可能出錯的情況都想過一遍。
+查不到、開不起來、轉不了型——這些事本來就會發生，程式的工作是處理它們，不是假裝它們不
+存在。}
+
+這句話解釋了很多你早就見過、卻沒想過為什麼的事。為什麼 \texttt{dict} 有一個
+\texttt{get()}？為什麼 \texttt{set} 除了 \texttt{remove()} 還要有一個 \texttt{discard()}？
+為什麼 Python 的錯誤訊息會長到用一整段話告訴你哪裡不對，還畫箭頭指出是哪個位置——如果
+失敗被當成不該發生的意外，訊息只要寫「失敗」兩個字就夠了。
+
+\subsection*{三、兩條線在這裡會合}
+
+這本書從頭到尾只有兩個心智模型：名字牌，還有 EAFP。它們一個在第 \ref{ch:variables} 章
+起頭，一個在第 \ref{ch:files-exceptions} 章起頭，一路上看起來完全沒有關係——
+一個在講變數怎麼運作，一個在講錯誤怎麼處理。
+
+把它們各自要修正的那個直覺並排看，關係就出來了：
+
+\begin{center}
+\begin{tabular}{@{}p{3.8cm}p{4.4cm}p{6.2cm}@{}}
+\toprule
+你原本的直覺 & Python 實際做的事 & 這個直覺假設了什麼 \\
+\midrule
+\texttt{b = a} 會複製一份 &
+只是多貼一張名字牌 &
+假設 Python 會替我多做一步（複製） \\
+\addlinespace
+動手之前要先檢查 &
+直接做，失敗了告訴你 &
+假設 Python 應該替我多做一步（防呆） \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+兩個直覺其實是同一個直覺：\textbf{以為 Python 會在你沒開口的時候，替你多做一步。}
+
+它不會。Python 的預設是「不多做」——不替你複製，也不替你預檢。這件事的代價是你得知道它
+預設不做什麼，這也是為什麼這兩件事要花十幾章反覆提醒。好處是另一面：\textbf{沒有任何一
+步是在你背後偷偷發生的。} 你想要複製，就自己寫 \texttt{.copy()}；你想要檢查，就自己寫
+\texttt{if}。你寫幾步，Python 就做幾步。
+
+這兩個模型從第 \ref{ch:variables} 章跟第 \ref{ch:files-exceptions} 章分頭走了十幾章，走
+到這裡才會合。
+
+\begin{drills}[label=drills:eafp-closure]
+\item 下面四段程式，哪幾段屬於這一節那張表裡的家族？
+\begin{verbatim}
+# (1)
+name = people.get(user_id, "unknown")
+
+# (2)
+if x % 2 == 0:
+    print("even")
+
+# (3)
+with open("data.txt") as f:
+    text = f.read()
+
+# (4)
+if os.path.exists(path):
+    f = open(path)
+\end{verbatim}
+\item \texttt{with} 為什麼算 EAFP 家族的一員？用一句話說明。
+\item 「這個數是不是偶數」這種判斷，該不該包成 \texttt{try/except}？為什麼？
+\end{drills}
+
+\section{什麼時候不要太 Pythonic}
+\label{sec:not-too-pythonic}
+
+從第 \ref{ch:advanced-functions} 章到現在，你連續學了五章新寫法：\texttt{lambda}、
+\texttt{sorted(key=)}、decorator、comprehension、generator、遞迴，再加上這一章的六節
+慣用寫法。這一節是煞車。
+
+\subsection*{同一件事，三個版本}
+
+給你一份成績資料（假設是從檔案讀進來的），要做三件事：篩掉不及格的、換算成等第、按分數
+由高到低排序。
+
+A 版，全部擠成一行：
+
+\begin{example}{python}{(grades-one-liner.py) A 版：一行寫完}
+rows = [
+    {"name": "Alice", "score": 88},
+    {"name": "Bob", "score": 54},
+    {"name": "Cathy", "score": 92},
+    {"name": "David", "score": 71},
+]
+
+result = [(r["name"], "A" if r["score"] >= 90 else "B" if r["score"] >= 80 else "C") for r in sorted([r for r in rows if r["score"] >= 60], key=lambda r: r["score"], reverse=True)]
+
+print(result)
+\end{example}
+
+\iosample{}{[('Cathy', 'A'), ('Alice', 'B'), ('David', 'C')] \\}
+
+B 版，拆成幾個有名字的步驟：
+
+\begin{example}{python}{(grades-steps.py) B 版：一步一個名字}
+rows = [
+    {"name": "Alice", "score": 88},
+    {"name": "Bob", "score": 54},
+    {"name": "Cathy", "score": 92},
+    {"name": "David", "score": 71},
+]
+
+
+def grade_of(score):
+    if score >= 90:
+        return "A"
+    if score >= 80:
+        return "B"
+    return "C"
+
+
+passed = [row for row in rows if row["score"] >= 60]
+ranked = sorted(passed, key=lambda row: row["score"], reverse=True)
+result = [(row["name"], grade_of(row["score"])) for row in ranked]
+
+print(result)
+\end{example}
+
+\iosample{}{[('Cathy', 'A'), ('Alice', 'B'), ('David', 'C')] \\}
+
+C 版，完全不用這五章教過的任何東西，全部手寫迴圈：
+
+\begin{example}{python}{(grades-plain-loop.py) C 版：全部手寫}
+rows = [
+    {"name": "Alice", "score": 88},
+    {"name": "Bob", "score": 54},
+    {"name": "Cathy", "score": 92},
+    {"name": "David", "score": 71},
+]
+
+passed = []
+for row in rows:
+    if row["score"] >= 60:
+        passed.append((row["score"], row["name"]))
+
+passed.sort(reverse=True)
+
+result = []
+for score, name in passed:
+    if score >= 90:
+        grade = "A"
+    elif score >= 80:
+        grade = "B"
+    else:
+        grade = "C"
+    result.append((name, grade))
+
+print(result)
+\end{example}
+
+\iosample{}{[('Cathy', 'A'), ('Alice', 'B'), ('David', 'C')] \\}
+
+三個版本輸出一模一樣。哪一個比較好？
+
+先不要急著回答。
+
+\subsection*{三條判準，而且判準的對象是人}
+
+\begin{itemize}
+\item \textbf{讀的人是誰？} 只有你自己看、跑一次就丟的小腳本，A 版沒問題——它確實比較快
+寫完。要交給別人維護，或者三個月後你自己還要回來改，那就是 B 版。這個問題沒有一般答案，
+因為它問的不是程式碼，是情況。
+\item \textbf{一行讀不完，就沒有優點了。} 慣用寫法的價值來自「一眼看懂」，一旦要折行、
+要往右捲、要從中間往兩邊讀，那個價值就不見了，剩下的只有難度。這條就是第
+\ref{ch:comprehensions} 章第 \ref{sec:comp-limits} 節那條「超過兩層或兩行就拆開」的
+一般化——那裡講的是 comprehension，這裡對這五章教過的每一種工具都成立。
+\item \textbf{寫的時候用光了聰明，除錯的時候就沒有聰明可以用了。} 這句話改寫自
+Kernighan 的一句老話：「每個人都知道，除錯比一開始寫程式難兩倍。所以，
+如果你寫的時候就用盡了自己所有的聰明，你要拿什麼去除錯它？」第 \ref{ch:debugging} 章教的每一種除錯手法——讀 traceback、插
+\texttt{print}、一步一步縮小範圍——全部都有一個前提：你得看得懂那段程式碼在做什麼。
+\end{itemize}
+
+\stylepoint{要不要用一個比較精簡的寫法，問三句話就夠了：\textbf{誰會讀它？一行讀不讀得
+完？出錯的時候我還追得動嗎？} 三句話問的都不是程式碼本身，是人——寫程式碼的你、讀程式碼
+的人、還有半年後回來修它的那個人。}
+
+\subsection*{回答那個問題}
+
+B 版。
+
+理由不是「B 比較 Pythonic」——這種說法沒有意義，因為 A 版用到的 Python 特性其實比 B 版
+還多。理由是很具體的一件事：A 版把篩選、排序、換算三件事壓在同一行裡，所以當結果不對的
+時候，你分不出是哪一件出的錯。你沒辦法在中間插一個 \texttt{print} 看看篩完剩下幾筆，因為
+「篩完」這個中間狀態根本沒有名字。B 版有 \texttt{passed}、有 \texttt{ranked}，每一步都
+停得下來、看得到。
+
+順帶一提，A 版還有一個實務上的麻煩：它有 152 個字元，在一般的螢幕寬度下讀不完。
+
+\subsection*{反過來的錯誤，也是錯的}
+
+讀到這裡有一個很自然的反應：那我乾脆全部寫 C 版好了，反正也能動，而且絕對不會太花俏。
+
+這也是錯的，而且錯得沒有比較少。有兩件事要講清楚。
+
+\textbf{第一，讀跟寫的標準不一樣。} 別人的程式碼裡一定會出現 comprehension、
+\texttt{with}、\texttt{if not items:}、\texttt{a, b = b, a}——這些東西用得非常多，多到
+你不可能繞開。\textbf{看得懂它們是不能談判的}；輪到自己寫的時候，你才有選擇權。第
+\ref{ch:advanced-functions} 章第 \ref{sec:map-filter} 節對 \texttt{map} 跟 \texttt{filter}
+說過「看得懂就好」，那句話的一般化就是這條：能讀是底線，怎麼寫是選擇。
+
+\textbf{第二，回到這一章開頭那個比喻。} 怕講得有腔調，就乾脆不講話——那不叫沒有口音，
+那叫沒有在講話。C 版不是「比較保守的選擇」，它是把一件三句話講得完的事講成十五句。
+
+所以這一節不是在勸你少用工具，是在勸你為每一次使用給得出理由。「因為看起來比較厲害」
+不是理由，「因為這樣一眼看得出我在篩什麼」是。
+
+\subsection*{最後一句}
+
+這一章從頭到尾沒有教你任何新東西——嚴格說起來只有一個連續比較，而那也只是把
+\texttt{and} 少寫一次。它做的只有一件事：把「這樣寫可以」變成「這樣寫，下一個人讀起來
+會比較輕鬆」。
+
+誰是下一個人，只有你知道。
+
+\begin{drills}[label=drills:not-too-pythonic]
+\item 下面這一行出現在一支你要交給同事接手的程式裡。該不該拆開？
+\begin{verbatim}
+out = "\n".join(f"{k}: {sum(v)/len(v):.1f}" for k, v in data.items())
+\end{verbatim}
+\item 同事的程式碼裡有一段你看不懂的 comprehension。你該叫他改掉嗎？
+\item 你寫了一支只有自己會用、跑一次就刪掉的小腳本。需要照 PEP 8 排版嗎？
+\end{drills}
+
+下一章換一個方向。到目前為止，你的資料一直是散的：一份 list 裝分數、另一份 dict 裝名字，
+要用的時候自己記得它們是一組。第 \ref{ch:objects} 章要教一種把資料跟操作它的動作綁在
+一起的做法，叫做 class。
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:pep8}~節}
+\begin{enumerate}
+\item 一種寫法：
+\begin{verbatim}
+total_items = 0
+
+
+def count_them(the_list):
+    global total_items
+    for item in the_list:
+        total_items = total_items + 1
+    return total_items
+\end{verbatim}
+改了四件事：變數與函式名改成 \texttt{snake\_case}；\texttt{x} 換成看得出意思的
+\texttt{item}；等號前後補空白；\texttt{def} 前面空兩行。（\texttt{TotalItems} 不是常數，
+它會被改動，所以不該用全大寫。）
+\item 不會阻止你，第二次指派會直接生效。全大寫幫的是\textbf{讀的人}——它在說「這個值是
+設定，不打算被改」。Python 沒有常數這種東西，這個慣例防不了任何事，它只是一個講好的暗號。
+\item 不算錯。PEP 8 自己就寫著「知道什麼時候該不一致」，而且行長那條特別常被團隊改。真正
+會出問題的是團隊裡一半的人用 79、一半的人用 99——不一致的成本比數字本身高得多。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:condition-idioms}~節}
+\begin{enumerate}
+\item \texttt{if ext in (".jpg", ".png", ".gif"):}
+\item \texttt{if 18 <= temperature <= 26:}
+\item 依序是 \texttt{True}、\texttt{False}、\texttt{True}、\texttt{True}。前兩行：空 list
+是 falsy，所以 \texttt{not items} 是 \texttt{True}，但它不是 \texttt{None}。後兩行：
+\texttt{None} 也是 falsy，所以 \texttt{not items} 一樣是 \texttt{True}，而這次
+\texttt{is None} 也是 \texttt{True}。關鍵是第一行跟第三行答案一樣——這正是
+\texttt{if not items:} 分不出「空的」跟「根本沒有」的地方。
+\item 當你需要分辨「空的」跟「根本沒有」的時候。例如一個函式回傳「搜尋結果」，
+\texttt{[]} 代表「找過了，沒有符合的」，\texttt{None} 代表「根本沒搜尋成功」——這兩件事
+要給使用者的訊息完全不同，用 \texttt{if not items:} 會把它們混成一種。這種時候要先問
+\texttt{if items is None:}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:value-idioms}~節}
+\begin{enumerate}
+\item
+\begin{verbatim}
+names = ["Alice", "Bob", "Cathy"]
+for index, name in enumerate(names, start=1):
+    print(f"{index}. {name}")
+\end{verbatim}
+（不用 \texttt{start=1} 也可以，改寫成 \texttt{f"\{index + 1\}. \{name\}"}。順帶把
+\texttt{+} 串接也一起換掉了。）
+\item \texttt{print(f"Today in \{city\} it is \{temp\} degrees.")}
+\item 錯誤是
+\begin{verbatim}
+TypeError: can only concatenate str (not "int") to str
+\end{verbatim}
+因為 \texttt{count} 是整數，不能直接用 \texttt{+} 接在字串後面。修法有兩種：包成
+\texttt{str(count)}，或直接改寫成
+\texttt{print(f"You have \{count\} new messages.")}——後者不必轉型，也少數幾個空白。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:is-vs-equal}~節}
+\begin{enumerate}
+\item 依序是 \texttt{True}、\texttt{False}、\texttt{True}。\texttt{a} 跟 \texttt{b}
+內容一樣但是兩個各自造出來的 list，所以 \texttt{==} 是 \texttt{True}、\texttt{is} 是
+\texttt{False}；\texttt{c = a} 只是多貼一張名字牌，所以 \texttt{a is c} 是 \texttt{True}。
+\item 改成 \texttt{if result is None:}。要問「不是 \texttt{None}」的話，
+慣用寫法是 \texttt{if result is not None:}，不是
+\texttt{if not result is None:}——後者雖然也能動，但讀起來要多繞一次。
+\item 因為它問的是「這兩個是不是同一個物件」，而你想問的其實是「內容一不一樣」。
+它不一定會出錯——如果 \texttt{status} 是程式裡直接寫死的 \texttt{"done"}，Python 可能
+讓兩邊共用同一個字串物件，結果剛好是 \texttt{True}；但如果 \texttt{status} 是拼出來的
+（例如從檔案讀進來、或用 \texttt{join()} 組出來的），同樣的比較就會變成 \texttt{False}，
+而且不會報錯。「有時候對、有時候錯，還不告訴你」比「一定錯」更難抓。正確寫法是
+\texttt{if status == "done":}。
+\item \texttt{==}。你要問的是內容，不是身分。用 \texttt{is} 的話，兩台裝著一樣東西的
+購物車會得到 \texttt{False}——除非它們本來就是同一台。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:with-explained}~節}
+\begin{enumerate}
+\item 先印出 \texttt{True}（檔案已經被 \texttt{with} 關掉了），然後第二個 \texttt{print}
+會丟出 \texttt{ValueError: I/O operation on closed file.}，程式停在那裡。重點是
+\texttt{f} 這個名字本身還在、還用得到，被關掉的是它指著的那個檔案物件。
+\item
+\begin{verbatim}
+with open("log.txt", "a") as log_file:
+    log_file.write("done\n")
+\end{verbatim}
+\item 會。這正是 \texttt{with} 存在的理由。把它拆回 \texttt{try/finally} 就看得很清楚：
+關檔那一步寫在 \texttt{finally} 裡，而 \texttt{finally} 不管 \texttt{try} 裡發生什麼事
+都會執行。如果自己寫 \texttt{open()} 加 \texttt{close()} 而中間丟了例外，\texttt{close()}
+那一行根本輪不到跑。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:eafp-closure}~節}
+\begin{enumerate}
+\item (1)、(3) 是。(1) 是 \texttt{dict.get()}，把「查不到就用預設值」包好了；(3) 是
+\texttt{with}，負責收尾的那一半。(2) 不是——它是一個完全可預期、跟外部無關的條件判斷，
+本來就該用 \texttt{if}，跟「可能失敗」無關。(4) 剛好是相反的那一種：它先檢查再動手，
+是典型的 LBYL，而且檢查完到真的 \texttt{open()} 之間，檔案還可能被刪掉。
+\item 因為它是 \texttt{try/finally} 的簡寫，保證「不管中間成不成功，收尾一定會做」——
+而「假設事情可能失敗，並且先把善後安排好」正是這個家族的共同精神。
+\item 不該。這是一個完全可預期、只跟手上這個數字有關的判斷，不是「可能因為外部因素失敗」
+的操作，用 \texttt{if x \% 2 == 0:} 就好。EAFP 不是「所有地方都改成 \texttt{try}」，
+它針對的是檔案、網路、使用者輸入、字典查詢這一類本來就可能落空的事。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:not-too-pythonic}~節}
+\begin{enumerate}
+\item 該拆。它同時做了三件事：走過每一組資料、算平均並格式化到小數點後一位、把結果
+組成多行字串，而且一行讀不完。至少拆成兩步（先算好一份 \texttt{averages}，再組字串），
+出錯的時候才有地方插 \texttt{print} 看中間結果。如果這是你自己跑一次就丟的腳本，
+留著也無妨——但題目說了要交給同事接手。
+\item 不該叫他改掉，先去讀懂它。這是「讀跟寫的標準不一樣」那條界線：看得懂別人的慣用寫法
+是不能談判的，那是你的功課不是他的。讀懂之後如果發現它真的違反了上面那三條判準（一行讀
+不完、三件事壓在一起），那時候再提，而且要講的是具體理由，不是「我看不懂」。
+\item 不需要，但排一下對你自己有好處。PEP 8 自己就說了「知道什麼時候該不一致」，一支馬上
+要刪掉的腳本沒有下一個讀者。不過有兩件事值得留：變數名取得看得懂，還有等號前後留空白——
+因為「跑一次就刪掉」的腳本，往往不會真的被刪掉。
+\end{enumerate}

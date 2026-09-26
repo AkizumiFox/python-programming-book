@@ -1,0 +1,912 @@
+\chapter{字串}
+\label{ch:strings}
+
+上一章你已經知道怎麼幫一個值貼上名字牌，這一章要正式認識目前為止你貼過最有趣的一種
+值，字串。你可以把一串字想像成電影院裡一整排緊靠在一起、依序編號的座位，每個座位坐著
+一個字元，你可以直接說「我要第幾號座位」跳過去看，也可以說「我要看第幾號到第幾號之間
+的座位」一次看一整段，這就是這一章前半段要學的\textbf{索引}跟\textbf{切片}。跟你平常
+「從 1 開始數」的習慣不一樣，Python 的座位編號是從 0 開始算的，這是幾乎每個人第一次接觸
+字串都會愣一下的地方，我們會花點篇幅把這個「為什麼」講清楚，讓你理解背後的邏輯，這樣才
+記得住，死背數字很快就會忘記。
+
+接著，光是能「看」一段字還不夠，你常常需要把一長串文字拆開、把好幾段文字接起來、
+把多餘的空白清掉、把某個詞換成另一個詞，這是這一章中段的重點：\textbf{字串方法}，也是你
+第一次看到「在一個值後面加一個點、呼叫它自己內建的動作」這種新語法。認識完最基本的幾個
+方法之後，我們還會多花一點篇幅，補齊幾個你之後在真實情境裡幾乎一定會用到的方法：判斷
+大小寫、判斷一段文字的開頭或結尾、在一長串文字裡找出某段內容出現在哪裡、出現了幾次。
+
+最後，光會拆解、清理文字還不夠，你常常需要反過來，把幾個變數的值組回一句話說給別人聽，
+像「你好，小明，你今年 15 歲」這種句子，這就是這一章最後要學的 \textbf{f-string}，把
+變數的值直接嵌進一段文字裡，還會多學一點數字的格式化寫法，讓輸出的金額、人數看起來更像
+正式報表。
+
+這一章的順序背後有一個簡單的邏輯：先學會「看」一段既有的字串，再學會「拆解、
+清理」它，最後學會「組回」一段新的字串，從最具體的操作一路推進到最貼近你實際會用到的
+目的。中間會有一個小地方值得停下來想一想：字串跟上一章教的名字牌模型有一點微妙的互動，
+我們會在講到「字串不能被原地修改」的時候簡短回頭呼應一次。
+
+\section{索引：抓出字串裡的某一個字元}
+\label{sec:string-indexing}
+
+還記得第 \ref{ch:variables} 章的 \texttt{str} 型別嗎？字串就是這種型別的值。從現在開始，我們要正式認識
+這種資料能做的事。字串本質上是一串排好順序的字元，就像前面說的電影院座位：每個字元都坐在一個固定的位置
+上，你可以用中括號指名要看第幾號座位上的字元，這個動作叫做「索引」（indexing）。
+\index{索引}
+
+跟你
+平常數東西「從 1 開始」的習慣不一樣，Python 的座位編號是從 0 開始算的：第一個字元是位置
+0，第二個字元是位置 1，以此類推。這聽起來有點反直覺，但你很快就會習慣，之後你會發現，
+Python 裡幾乎所有「數東西」的地方都是從 0 開始算，這裡先建立起這個習慣，後面會輕鬆很多。
+
+除了從前面數，你也可以從後面數：用負數索引，\texttt{-1} 永遠代表「最後一個字元」，
+\texttt{-2} 是倒數第二個，不用先算出字串總共有幾個字元才能拿到最後一個。
+
+\begin{code}{python}{用中括號取出單一字元}
+s[i]
+\end{code}
+
+\begin{example}{python}{(index-letters.py) 取出水果名字的某個字元}
+fruit = "banana"
+print(fruit[0])   # 第一個字元
+print(fruit[1])   # 第二個字元
+print(fruit[-1])  # 最後一個字元，從尾端數
+print(fruit[-2])  # 倒數第二個字元
+\end{example}
+
+\iosample{}{b \\ a \\ a \\ n \\}
+
+\keypoint{Python 的索引從 0 開始，跟你數學課、日常生活「第一個就是 1 號」的習慣不
+一樣，是新手最容易在這裡卡住的地方。記住一個簡單的換算方式：字串的第 $n$ 個字元，索引
+是 $n - 1$。}
+
+那如果指定了一個字串裡根本不存在的位置呢？\texttt{fruit = "banana"} 總共有 6 個字元，
+有效的索引是 0 到 5，很多人會直覺覺得「總共 6 個字元，那 \texttt{fruit[6]} 應該是最後
+一個」，但其實 \texttt{fruit[5]} 才是最後一個字元，\texttt{fruit[6]} 已經超出範圍了。
+
+\begin{example}{python}{(index-error.py) 索引超出範圍}
+fruit = "banana"
+print(len(fruit))   # 6，這個字串總共有 6 個字元
+print(fruit[6])      # 錯誤示範：把字元總數當成索引來用，超出範圍
+\end{example}
+
+存檔執行後，畫面上會出現：
+
+\begin{verbatim}
+6
+Traceback (most recent call last):
+  File "index-error.py", line 3, in <module>
+    print(fruit[6])
+          ~~~~~^^^
+IndexError: string index out of range
+\end{verbatim}
+
+\texttt{IndexError: string index out of range} 是說「你指定的索引超出了這個字串的
+範圍」。\index{IndexError}這是一個經典的「差一」錯誤（off-by-one）：\index{差一錯誤}
+\texttt{len(fruit)} 算出來的是字元
+\textit{總數}，但最後一個字元的\textit{索引}永遠比總數少 1，因為索引是從 0 開始算的。
+之後你會在很多地方一再碰到這個陷阱，記住這個換算關係就能避開它。
+
+負索引一樣有邊界，只是方向反過來數：\texttt{fruit = "banana"} 只有 6 個字元，最前面
+對應到的負索引是 \texttt{-6}，如果寫 \texttt{fruit[-7]}，一樣會得到
+\texttt{IndexError}，道理跟正索引超出範圍完全一樣。
+
+\begin{drills}[label=drills:string-indexing]
+\item 給定 \texttt{word = "orange"}，\texttt{word[2]} 的值是什麼？
+\item 給定 \texttt{word = "orange"}，\texttt{word[-3]} 的值是什麼？
+\item \texttt{word = "orange"} 總共有 6 個字元。如果寫 \texttt{word[6]}，執行時會發生
+什麼事？為什麼？
+\end{drills}
+
+\section{切片：一次抓出一段字元}
+\label{sec:string-slicing}
+
+只能一次抓一個字元有點不夠用，很多時候你想要的是一整段，例如「前三個字」或「從某個
+位置到結尾」。這時候一樣用中括號，只是裡面多放一個冒號，變成「從哪裡開始、到哪裡結束」，
+這個動作叫做「切片」（slicing）。
+\index{切片}
+
+切片有一個和索引一樣容易讓人卡住的地方：\texttt{start}
+指定的位置\textbf{會}被包含進來，但 \texttt{end} 指定的位置\textbf{不會}，也就是常說的
+「含頭不含尾」。你可以把它想成：冒號前後的數字指的是座位跟座位之間的「縫隙」，不是座位
+本身，\texttt{s[0:3]} 意思是「從縫隙 0 切到縫隙 3」，剛好切出 3 個字元。
+
+\begin{code}{python}{用中括號取出一段字元}
+s[start:end]
+\end{code}
+
+\begin{example}{python}{(slice-fruit.py) 切出水果名字的一段}
+fruit = "banana"
+print(fruit[0:3])   # 從位置 0 到位置 3（不含），也就是前 3 個字元
+print(fruit[3:6])   # 從位置 3 到位置 6（不含）
+print(fruit[:3])     # 省略 start，代表「從頭開始」
+print(fruit[3:])     # 省略 end，代表「到最後為止」
+print(fruit[:])       # start 跟 end 都省略，等於整個字串
+\end{example}
+
+\iosample{}{ban \\ ana \\ ban \\ ana \\ banana \\}
+
+\stylepoint{省略 \texttt{start} 或 \texttt{end}，是很常見、也很值得養成的寫法。
+\texttt{s[:n]} 讀起來就是「前 $n$ 個」、\texttt{s[n:]} 讀起來就是「從第 $n$ 個開始的
+剩下部分」，比每次都手動算出完整的起訖位置更不容易出錯，也更好讀。}
+
+切片還有一個和索引很不一樣的地方：如果你指定的位置超出字串範圍，索引會直接報錯，但切片
+不會，它會很寬容地幫你「夾」到最接近的有效範圍，例如 \texttt{fruit[3:100]} 不會出錯，
+只會切到字串結尾為止。除了「從哪裡切到哪裡」，切片其實還可以指定「每隔幾個字元取一次」，
+甚至反過來從尾巴讀到頭，這是下一節要正式介紹的進階用法。
+
+\begin{drills}[label=drills:string-slicing]
+\item 給定 \texttt{text = "computer"}，\texttt{text[2:5]} 的值是什麼？
+\item 給定 \texttt{text = "computer"}，\texttt{text[:4]} 的值是什麼？
+\item 給定 \texttt{text = "computer"}，\texttt{text[-3:]} 的值是什麼？
+\end{drills}
+
+\section{切片進階：用 step 指定間隔，反轉整個字串}
+\label{sec:string-slicing-step}
+
+上一節的切片只寫了「從哪裡到哪裡」兩個數字，其實中括號裡還可以放第三個數字，用另一個
+冒號隔開，變成 \texttt{s[start:end:step]}。第三個數字叫做 step，意思是「每隔幾個位置
+取一次」，預設值是 1，也就是「每個都取」，這也是為什麼前面兩節你完全沒感覺到它的存在。
+把 step 改成 2，就會變成「每兩個取一個」，也就是只留下位置 0、2、4 等等上的字元。
+
+\begin{code}{python}{用第三個數字指定間隔}
+s[start:end:step]
+\end{code}
+
+\begin{example}{python}{(every-other-letter.py) 每隔一個字元取一次}
+fruit = "banana"
+print(fruit[::2])     # 從頭到尾，每隔一個字元取一次
+print(fruit[1:5:2])   # 從位置 1 到位置 5（不含），每隔一個字元取一次
+\end{example}
+
+\iosample{}{bnn \\ aa \\}
+
+start 跟 end 一樣可以照上一節學過的規則省略，\texttt{fruit[::2]} 省略了 start 跟
+end，只指定 step，意思是「整個字串，每隔一個取一次」。
+
+step 還可以是負數，負數的 step 代表「反過來走」，從後面往前一個一個（或每隔幾個）取。
+把 start、end 都省略，只留下 step 是 \texttt{-1}，就會把整個字串反過來走一遍，剛好
+組成一個反轉後的新字串，這是一個很常見、也很值得記住的寫法。
+
+\begin{example}{python}{(reverse-string.py) 用 step 為 -1 反轉字串}
+fruit = "banana"
+print(fruit[::-1])       # 整個字串反轉過來
+print(fruit[5:1:-1])     # 從位置 5 往回走到位置 2（不含位置 1）
+\end{example}
+
+\iosample{}{ananab \\ anan \\}
+
+用負數 step 時，start 跟 end 的「含頭不含尾」規則還在，只是方向反過來：
+\texttt{fruit[5:1:-1]} 是「從位置 5 開始，往回走到位置 1 之前為止（不含位置 1）」，
+所以拿到的是位置 5、4、3、2 上的字元，也就是 \texttt{anan}。
+
+\keypoint{\texttt{s[::-1]} 是 Python 裡反轉字串最常見的寫法。很多人會先入為主地覺得
+應該有一個專門叫 \texttt{reverse()} 的字串方法，但字串其實沒有這個方法，因為字串是
+不可變的，沒有「原地反轉」這回事。想要反轉字串，切片配合負數 step 就是最直接的做法。}
+
+\begin{drills}[label=drills:string-slicing-step]
+\item 給定 \texttt{text = "computer"}，\texttt{text[::2]} 的值是什麼？
+\item 給定 \texttt{text = "computer"}，\texttt{text[::-1]} 的值是什麼？
+\item 給定 \texttt{text = "computer"}，\texttt{text[1:7:2]} 的值是什麼？
+\end{drills}
+
+\section{字串不可變：為什麼不能直接改掉一個字元}
+\label{sec:string-immutable}
+
+目前為止你都是在「讀」字串裡的內容，沒有真的去「改」它。如果你想把一個字串裡的某個字元
+換掉，你可能會想，既然可以用中括號取出某個位置的字元，那應該也能用中括號把某個位置換成
+別的字元吧？可惜這個直覺在字串上行不通。
+
+\begin{example}{python}{(broken-name.py) 想直接修改字串的其中一個字元}
+name = "Jenny"
+name[0] = "P"
+\end{example}
+
+存檔執行後，畫面上會出現：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "broken-name.py", line 2, in <module>
+    name[0] = "P"
+    ~~~~^^^
+TypeError: 'str' object does not support item assignment
+\end{verbatim}
+
+這個錯誤訊息在告訴你：字串這種物件，本來就不支援「指定某一項的值」這個動作，跟你程式
+碼有沒有打錯字完全無關。這是 Python 字串一個很基本的特性：\textbf{字串一旦造出來，內容
+就不能被原地修改}，這個特性叫做「不可變」（immutable）。
+\index{不可變}想「修改」一個字串，正確的做法
+是用切片組出一個全新的字串，再把它整個指定給原本的變數：
+
+\begin{example}{python}{(fixed-name.py) 用切片重組出一個新字串}
+name = "Jenny"
+name = "P" + name[1:]   # 把第一個字元換成 P，保留剩下的部分，組成一個新字串
+print(name)
+\end{example}
+
+\iosample{}{Penny \\}
+
+為什麼 Python 要把字串設計成不可變的？因為程式裡常常有好幾個名字牌一起指到同一個
+字串物件。如果字串可以被原地修改，某個名字牌偷偷把內容改掉，其他指著同一個物件的名字牌
+會在完全不知情的狀況下被連帶影響，程式的行為會變得很難預測。不可變性保證了「只要沒有
+重新賦值，這個名字牌指到的內容就一定不會變」，讀程式碼時可以放心很多。
+
+\keypoint{還記得上一章的名字牌模型嗎？\texttt{x = "hi"; y = x} 之後改 \texttt{x} 不會
+影響 \texttt{y}，看起來很像「複製了一份」，但事實上兩張名字牌一樣貼在同一個字串物件上，
+只是因為字串不可變，沒有任何辦法能「原地」改掉那個物件的內容，所以你永遠看不出兩張名字
+牌共用同一個物件的差異。字串這裡表面上像是複製，其實是不可變性造成的巧合。}
+
+\section{方法呼叫語法與 \texttt{strip()}：清除頭尾多餘的空白}
+\label{sec:strip-method}
+
+前面你用中括號「讀」字串的內容，這一節開始，你要學會主動「處理」字串，第一次看到一種新
+語法：在一個值後面加一個點，呼叫它自己內建的動作，叫做「方法」（method）。
+\index{方法}
+
+這跟你之前看
+過的函式呼叫不一樣：函式呼叫是 \texttt{f(x)}，把值放進括號裡交給函式；方法呼叫是
+\texttt{x.f()}，值本身站到前面，後面接一個點、再接方法名稱，意思是「叫這個值自己去做
+這件事」。
+
+字串身上內建了很多這種方法，這一節先從最直覺的一個開始：\texttt{strip()}，
+清除字串頭尾多餘的空白（包含空格、換行）。
+\index{strip()}它特別實用的場景是處理使用者的輸入，你請人
+輸入名字，對方常常會不小心在前後多打一個空格，或者按 Enter 時多留了一個換行，
+\texttt{strip()} 就是拿來收拾這些小雜訊的。
+
+\begin{code}{python}{呼叫字串自己的方法}
+s.strip()
+\end{code}
+
+\texttt{input()} 是 Python 內建的一個動作，會在螢幕上顯示你給的提示文字、暫停程式、等你
+打字並按下 Enter，然後把你打的內容變成一個字串交給程式。
+\index{input()}
+
+\begin{example}{python}{(clean-input.py) 清除使用者輸入頭尾的空白}
+raw = input("Enter your name: ")
+name = raw.strip()               # 清除頭尾多餘的空白
+print("Hello, " + name + "!")
+\end{example}
+
+下面用 \texttt{␣} 代表一個空白字元，方便你看清楚使用者實際打了什麼：
+
+\iosample{␣␣Alice␣␣ \\}{Enter your name: Hello, Alice! \\}
+
+\texttt{strip()} 呼叫完之後，回傳的是一個\textbf{新的}字串，原本的 \texttt{raw} 完全
+沒有被改動，這跟上一節「字串不可變」是同一件事的另一種說法：字串方法從來不會原地修改
+呼叫它的那個字串，只會算出一個新字串回傳給你。這代表如果你忘了把回傳值重新指定回變數，
+原本的字串會維持原樣，不會被「就地清乾淨」：
+
+\begin{example}{python}{(strip-mistake.py) 忘記把結果重新指定回變數}
+raw = "   Alice   "
+raw.strip()                  # 算出一個新字串，但沒有存到任何地方
+print("[" + raw + "]")       # raw 本身完全沒有被改動，空白還在
+\end{example}
+
+\iosample{}{[␣␣␣Alice␣␣␣] \\}
+
+\keypoint{呼叫一個字串方法，永遠不會改變原本的字串本身，只會回傳一個新字串。如果你想
+保留處理過的結果，一定要把回傳值重新指定回一個變數，例如
+\texttt{raw = raw.strip()}，只呼叫 \texttt{raw.strip()} 卻不接回傳值，這行程式碼幾乎
+等於什麼都沒做。}
+
+\texttt{strip()} 預設清除的是空白字元，但其實它也能接受一個引數，指定要清除哪些字元。
+傳進去的字串裡列出的每一個字元，只要出現在頭尾，都會一路被剝掉，直到剝到一個不在清單裡
+的字元為止。
+
+\begin{example}{python}{(strip-symbols.py) 清除頭尾指定的符號}
+notice = "###IMPORTANT NOTICE###"
+print(notice.strip("#"))
+\end{example}
+
+\iosample{}{IMPORTANT NOTICE \\}
+
+\texttt{strip("\#")} 只會處理\textit{頭尾}的 \texttt{"\#"}，字串中間的內容完全不會被
+動到，這一點跟後面要學的 \texttt{replace()}（會處理字串裡任何位置符合的內容）不一樣，
+先在這裡留一個印象，之後比較會更清楚。
+
+如果你只想清掉一邊，還有兩個近親：\texttt{lstrip()} 只清左邊（開頭），
+\texttt{rstrip()} 只清右邊（結尾），用法跟 \texttt{strip()} 一模一樣，也同樣可以帶一個
+參數指定要清哪些字元。
+\index{lstrip()／rstrip()}
+
+\begin{example}{python}{(strip-one-side.py) 只清掉一邊的空白}
+raw = "   ID-2024   "
+
+print("[" + raw.strip() + "]")
+print("[" + raw.lstrip() + "]")
+print("[" + raw.rstrip() + "]")
+\end{example}
+
+\iosample{}{[ID-2024] \\{} [ID-2024   ] \\{} [   ID-2024] \\}
+
+三行都用中括號把結果框起來，才看得出空白到底被清掉了沒有。 實務上
+\texttt{strip()} 用得最多，但遇到「行首的縮排要保留、行尾的換行要清掉」這類情況，
+\texttt{rstrip()} 就派得上用場了。
+
+\begin{drills}[label=drills:strip-method]
+\item 預測輸出：
+\begin{verbatim}
+msg = "  hi  ".strip()
+print("[" + msg + "]")
+\end{verbatim}
+\item 承接上一題的錯誤示範：如果把第一行改成 \texttt{msg = "  hi  "}、第二行改成
+\texttt{msg.strip()}（沒有重新指定回 \texttt{msg}），第三行還是
+\texttt{print("[" + msg + "]")}，這次輸出的中括號裡面，頭尾還會有空白嗎？為什麼？
+\item 預測輸出：\texttt{"xxpythonxx".strip("x")} 的結果是什麼？
+\item 預測輸出：\texttt{"xxpythonxx".lstrip("x")} 的結果是什麼？跟上一題差在哪裡？
+\end{drills}
+
+\section{\texttt{lower()} 與 \texttt{upper()}：轉換大小寫}
+\label{sec:case-methods}
+
+英文字母有大小寫之分，但很多時候你並不在乎使用者輸入的到底是大寫還是小寫，例如比對
+使用者輸入的指令、比對信箱帳號，通常都希望「Alice」跟「alice」被當成一樣的東西。
+\texttt{lower()} 把字串裡所有的英文字母轉成小寫，\index{lower()}
+\texttt{upper()} 反過來全部轉成大寫，
+\index{upper()}
+非英文字母（數字、標點、中文字）不受影響，會原封不動保留。
+
+\begin{code}{python}{轉換大小寫}
+s.lower()
+s.upper()
+\end{code}
+
+\begin{example}{python}{(case-convert.py) 轉換一段英文的大小寫}
+word = "Python"
+print(word.lower())
+print(word.upper())
+\end{example}
+
+\iosample{}{python \\ PYTHON \\}
+
+跟前面學過的所有字串方法一樣，\texttt{lower()}、\texttt{upper()} 都會回傳一個新字串，
+原本的字串不會被改動，這是字串不可變的老規矩，之後每個字串方法都適用，不會再重複提醒。
+
+大小寫轉換最常見的用途，是在比較兩段文字「內容是不是一樣」的時候，先統一成同一種大小寫，
+避免只因為大小寫不同就被判斷成不相等。
+
+\begin{example}{python}{(case-insensitive-check.py) 忽略大小寫比對兩個字串}
+name1 = "Alice"
+name2 = "alice"
+print(name1 == name2)                  # 直接比較，大小寫不同就算不相等
+print(name1.lower() == name2.lower())  # 兩邊都轉成小寫後再比較
+\end{example}
+
+\iosample{}{False \\ True \\}
+
+\keypoint{\texttt{==} 是逐字元比對的，\texttt{"Alice"} 跟 \texttt{"alice"} 因為第一個
+字母大小寫不同，直接用 \texttt{==} 比較會是 \texttt{False}。如果你想要的是「內容一樣就
+算相同，不管大小寫」，養成習慣先各自呼叫 \texttt{.lower()}（或都呼叫 \texttt{.upper()}）
+再比較，這是判斷使用者輸入時很常用的技巧。}
+
+\begin{drills}[label=drills:case-methods]
+\item 預測輸出：\texttt{"Hello World".lower()} 的結果是什麼？
+\item 預測輸出：\texttt{"Hello World".upper()} 的結果是什麼？
+\item 預測輸出：\texttt{"PYTHON".lower() == "python"} 的結果是什麼？
+\end{drills}
+
+\section{\texttt{startswith()} 與 \texttt{endswith()}：判斷開頭與結尾}
+\label{sec:startswith-endswith}
+
+除了判斷兩段文字是不是完全一樣，你常常只想知道「這段文字是不是以某個特定的內容開頭
+（或結尾）」，例如判斷一個檔名是不是圖片檔、判斷一個網址是不是用安全的 \texttt{https}
+開頭。\texttt{startswith()} 檢查字串是不是以指定的內容開頭，\index{startswith()}
+\texttt{endswith()} 檢查
+是不是以指定的內容結尾，兩者都回傳 \texttt{bool}。
+\index{endswith()}
+
+\begin{code}{python}{判斷開頭與結尾}
+s.startswith(text)
+s.endswith(text)
+\end{code}
+
+\begin{example}{python}{(check-filename.py) 判斷檔名的副檔名}
+filename = "report.pdf"
+print(filename.endswith(".pdf"))
+print(filename.endswith(".docx"))
+\end{example}
+
+\iosample{}{True \\ False \\}
+
+\begin{example}{python}{(check-url.py) 判斷網址開頭}
+url = "https://example.com"
+print(url.startswith("https"))
+print(url.startswith("http://"))
+\end{example}
+
+\iosample{}{True \\ False \\}
+
+第二個例子容易讓人誤會：\texttt{url} 明明是用 \texttt{https} 開頭的，為什麼
+\texttt{url.startswith("http://")} 是 \texttt{False}？因為 \texttt{startswith()} 是
+逐字元比對，\texttt{"http://"} 這串文字裡的第五個字元是 \texttt{:}，但 \texttt{url}
+對應位置上的字元是 \texttt{s}（來自 \texttt{https}），兩者對不上，所以整體判斷不成立。
+\texttt{startswith()} 不會幫你猜測你的意圖，你給它什麼內容，它就照字面一個字元一個字元
+去對。
+
+\stylepoint{判斷「這個字串是不是某個開頭或結尾」，優先用 \texttt{startswith()} 或
+\texttt{endswith()}，不要土法煉鋼用切片自己算，例如寫成
+\texttt{filename[-4:] == ".pdf"}。這種寫法要自己數副檔名有幾個字元，容易數錯，也比較
+難讀；\texttt{endswith(".pdf")} 一眼就看得懂在做什麼，而且不用擔心字數算錯。}
+
+\begin{drills}[label=drills:startswith-endswith]
+\item 給定 \texttt{fname = "photo.png"}，\texttt{fname.endswith(".jpg")} 的值是什麼？
+\item 給定 \texttt{fname = "photo.png"}，\texttt{fname.endswith(".png")} 的值是什麼？
+\item 給定 \texttt{fname = "photo.png"}，\texttt{fname.startswith("photo")} 的值是
+什麼？
+\end{drills}
+
+\section{\texttt{split()}：把一段文字拆成好幾段}
+\label{sec:split-method}
+
+有了「呼叫方法」這個新語法，接下來幾節要認識幾個你之後會反覆用到的字串方法。第一個是
+\texttt{split()}：把一個字串依照指定的分隔符號拆開，變成好幾段。想像你手上有一整行用
+逗號隔開的清單文字，想把每一項分開處理，\texttt{split()} 就是做這件事的工具。
+\index{split()}
+
+\begin{code}{python}{依分隔符拆開字串}
+s.split(separator)
+\end{code}
+
+\begin{example}{python}{(split-list.py) 把逗號分隔的清單文字拆開}
+line = "apple,banana,cherry"
+fruits = line.split(",")
+print(fruits)
+\end{example}
+
+\iosample{}{['apple', 'banana', 'cherry'] \\}
+
+你可能注意到輸出前後多了一對中括號，每一項也各自被單引號包住，這是下一個大主題 list
+的外觀，第 \ref{ch:lists} 章會正式介紹它。這裡你只要知道：\texttt{split()} 會把字串拆成好幾段，
+裝進這種容器裡，之後可以用第 \ref{ch:lists} 章教的方式一個一個拿出來用即可。
+
+\texttt{split()} 也可以完全不帶任何引數呼叫，這時候它會依「空白」拆開，而且不管中間有
+幾個連續的空白，都只會當成一個分隔點，不會因為中間多空了幾格就多切出空字串。
+
+\begin{example}{python}{(split-sentence.py) 不帶引數，依空白拆開句子}
+sentence = "the quick   brown fox"
+words = sentence.split()
+print(words)
+\end{example}
+
+\iosample{}{['the', 'quick', 'brown', 'fox'] \\}
+
+\keypoint{\texttt{split()} 不帶引數時，會把連續好幾個空白都當成同一個分隔點，不會產生
+空字串；但如果你自己明確指定分隔符（像 \texttt{split(" ")}），Python 就會照字面上的
+規則機械式處理，字串裡連續兩個空格中間會多切出一個空字串。不確定資料裡的空白會不會連續
+出現時，不帶引數呼叫 \texttt{split()} 通常比較安全。}
+
+\section{\texttt{join()}：把好幾段文字接回一句話}
+\label{sec:join-method}
+
+\texttt{split()} 把一個字串拆成好幾段，\texttt{join()} 做的是完全相反的事：把好幾段
+文字，用一個指定的分隔符號接回成一個字串。
+\index{join()}這兩個方法方向相反，但語法的「接法」也剛好
+相反，非常容易搞混：\texttt{split} 是接在\textbf{要拆的字串}上呼叫；\texttt{join} 反過來，
+是接在\textbf{分隔符字串}上呼叫，把裝了好幾段文字的容器當成參數傳進去。
+
+\begin{code}{python}{用分隔符把好幾段文字接回去}
+separator.join(strings)
+\end{code}
+
+\begin{example}{python}{(rejoin-fruits.py) 把拆開的水果清單重新接回去}
+fruits = "apple,banana,cherry".split(",")
+print(fruits)                    # 先拆開，跟上一節一樣
+
+sentence = ", ".join(fruits)      # 用逗號接回成一句話
+print(sentence)
+
+lines = ["Line 1", "Line 2", "Line 3"]
+print("\n".join(lines))           # \n 代表換行，接成三行
+\end{example}
+
+\iosample{}{['apple', 'banana', 'cherry'] \\ apple, banana, cherry \\ Line 1 \\ Line 2 \\ Line 3 \\}
+
+\keypoint{\texttt{split} 接在\textbf{要拆的字串}上（\texttt{s.split(分隔符)}）；
+\texttt{join} 接在\textbf{分隔符}上（\texttt{分隔符.join(一堆字串)}），方向剛好相反，
+新手非常容易把兩者搞反，寫成 \texttt{fruits.join(", ")} 這種錯誤寫法。記憶方式：誰站在
+點的前面，誰就是「主詞」；\texttt{split} 的主詞是被拆的字串，\texttt{join} 的主詞是
+分隔符。}
+
+\texttt{join()} 還有一個常見誤解：它要求容器裡裝的每一項都得是字串，如果不小心裝的是
+數字，Python 不會貼心地幫你自動轉型，只會直接出錯。
+
+\begin{example}{python}{(join-numbers-oops.py) 試著用 join 接數字組成的清單}
+numbers = [1, 2, 3]
+print(",".join(numbers))
+\end{example}
+
+存檔執行後，畫面上會出現：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "join-numbers-oops.py", line 2, in <module>
+    print(",".join(numbers))
+          ~~~~~~~~^^^^^^^^^
+TypeError: sequence item 0: expected str instance, int found
+\end{verbatim}
+
+\texttt{join()} 只接受「裝著字串的容器」，清單裡只要有一項不是字串（這裡是 \texttt{int}
+型別的數字），就會出現 \texttt{TypeError}，訊息說「本來期待字串，卻拿到了 int」。想接
+一份裝著數字的清單，得先把每個數字自己轉成字串，這裡可以用第 \ref{ch:variables} 章學過的 \texttt{str()}
+型別轉換：
+
+\begin{example}{python}{(join-numbers-fixed.py) 先用 str() 把每個數字轉成字串}
+a = 1
+b = 2
+c = 3
+strings = [str(a), str(b), str(c)]
+print(",".join(strings))
+\end{example}
+
+\iosample{}{1,2,3 \\}
+
+\begin{drills}[label=drills:split-join]
+\item 預測輸出：\texttt{"a-b-c".split("-")} 的結果是什麼？
+\item 預測輸出：\texttt{"-".join(["a", "b", "c"])} 的結果是什麼？
+\item 給定
+\begin{verbatim}
+parts = "2024/09/01".split("/")
+result = "-".join(parts)
+\end{verbatim}
+\texttt{result} 的值會是什麼？（注意 split 跟 join 用的分隔符號不一樣）
+\item 給定 \texttt{"a  b   c".split()}（沒有指定分隔符），結果會是什麼？
+\item 如果直接寫 \texttt{",".join([1, 2, 3])}（清單裡是數字，不是字串），會發生什麼事？
+為什麼？
+\end{drills}
+
+\section{\texttt{replace()}：搜尋並替換文字}
+\label{sec:replace-method}
+
+最後一個要認識的方法是 \texttt{replace()}：在字串裡找出所有符合的子字串，全部換成另一段
+文字。
+\index{replace()}它的用法很直覺，告訴它要找什麼、換成什麼，兩個都是字串。
+
+\begin{code}{python}{搜尋並替換文字}
+s.replace(old, new)
+\end{code}
+
+\begin{example}{python}{(fix-typo.py) 訂正重複打錯的字}
+sentence = "I am studing Python, and I really enjoy studing it."
+fixed = sentence.replace("studing", "studying")
+print(fixed)
+\end{example}
+
+\iosample{}{I am studying Python, and I really enjoy studying it. \\}
+
+要特別小心的是：\texttt{replace()} 不會判斷「這個位置是不是一個完整的詞」，它只是機械式
+地找出每一個符合的子字串、逐一換掉。如果你要換掉的字串太短，剛好也是其他詞的一部分，就
+可能誤傷到不相關的地方：
+
+\begin{example}{python}{(replace-oops.py) 替換太短的子字串，誤傷其他地方}
+text = "cat catalog"
+result = text.replace("cat", "dog")
+print(result)
+\end{example}
+
+\iosample{}{dog dogalog \\}
+
+原本只想把單獨的 \texttt{"cat"} 換成 \texttt{"dog"}，結果連 \texttt{"catalog"} 裡開頭
+的那個 \texttt{"cat"} 也一起被換掉，變成了怪怪的 \texttt{"dogalog"}。使用
+\texttt{replace()} 時，養成習慣想一下：要換掉的這段文字，會不會也出現在其他不想被動到
+的地方。
+
+\texttt{replace()} 其實還可以傳第三個引數，限制最多替換幾次，超過這個次數的部分會維持
+原樣，不會被繼續替換下去。想只改掉「前幾個」符合的地方、又不想全部一次換光，這個引數
+就派得上用場。
+
+\begin{example}{python}{(replace-limit.py) 限制替換次數}
+text = "cat cat cat"
+print(text.replace("cat", "dog", 1))   # 只替換第一個
+print(text.replace("cat", "dog", 2))   # 替換前兩個
+\end{example}
+
+\iosample{}{dog cat cat \\ dog dog cat \\}
+
+\begin{drills}[label=drills:replace-method]
+\item 預測輸出：\texttt{"banana".replace("an", "AN")} 的結果是什麼？
+\item 預測輸出，並判斷有沒有誤傷其他地方：\texttt{"cats and cathedrals".replace("cat",
+"dog")} 的結果是什麼？
+\item 預測輸出：\texttt{"cat cat cat".replace("cat", "dog", 2)} 的結果是什麼？
+\end{drills}
+
+\section{\texttt{find()} 與 \texttt{count()}：搜尋子字串的位置與次數}
+\label{sec:find-count}
+
+\texttt{replace()} 會直接動手把符合的內容換掉，但有時候你只是想「知道」某段文字有沒有
+出現、出現在哪裡、出現了幾次，還不想真的改動任何東西。這時候可以用 \texttt{find()} 跟
+\texttt{count()}：\texttt{find()} 回傳子字串第一次出現的位置（索引），如果根本沒出現，
+回傳 \texttt{-1}；\index{find()}
+\texttt{count()} 回傳子字串總共出現了幾次。
+\index{count()}
+
+\begin{code}{python}{搜尋子字串的位置與次數}
+s.find(substring)
+s.count(substring)
+\end{code}
+
+\begin{example}{python}{(find-substring.py) 找出子字串第一次出現的位置}
+text = "banana"
+print(text.find("na"))    # 找到了，回傳第一次出現的位置
+print(text.find("z"))     # 沒找到，回傳 -1
+\end{example}
+
+\iosample{}{2 \\ -1 \\}
+
+\begin{example}{python}{(count-substring.py) 數子字串出現的次數}
+text = "banana"
+print(text.count("a"))    # 單一字元出現了幾次
+print(text.count("na"))   # 兩個字元的子字串出現了幾次
+\end{example}
+
+\iosample{}{3 \\ 2 \\}
+
+\keypoint{\texttt{find()} 找不到東西的時候，回傳的是 \texttt{-1}，不是報錯，也不是
+\texttt{None}。這是新手很容易忽略的地方：如果你直接把 \texttt{find()} 的回傳值當成一個
+有效的位置去用（例如拿去切片），\texttt{-1} 剛好是合法的負數索引，代表「倒數第一個」，
+程式不會報錯，但結果會完全不對，是一種不容易被發現的邏輯錯誤。想判斷「到底有沒有找到」，
+要先檢查回傳值是不是 \texttt{-1}，不能只看程式有沒有報錯。}
+
+\texttt{count()} 有一個和 \texttt{replace()} 類似的地方：它一樣是機械式地逐一比對，
+不會判斷「這是不是一個完整的詞」。\texttt{"mississippi".count("is")} 之所以是 2，是因為
+\texttt{"is"} 這段文字在整串裡剛好出現了兩次，跟它是不是獨立的一個詞完全無關。
+
+\begin{drills}[label=drills:find-count]
+\item 給定 \texttt{text = "mississippi"}，\texttt{text.count("s")} 的值是什麼？
+\item 給定 \texttt{text = "mississippi"}，\texttt{text.find("ss")} 的值是什麼？
+\item 給定 \texttt{text = "mississippi"}，\texttt{text.find("z")} 的值是什麼？
+\end{drills}
+
+\section{f-string：把變數的值嵌進一句話裡}
+\label{sec:f-string-basics}
+
+前面幾節都是在拆解、清理既有的文字，這一節要反過來：把幾個變數的值，組回一句人看得懂的
+話。你之前想印出一句包含變數的話，大概是用 \texttt{+} 把好幾段字串跟變數接起來，這樣寫
+其實不算太難讀，但變數一多、標點符號一多，很快就會變得很難維護。Python 提供了更直接的
+寫法，叫做 f-string：在字串的引號前面加一個 \texttt{f}，字串裡面用大括號包住的部分，會
+被直接換成變數的值。
+\index{f-string}
+
+\begin{code}{python}{把變數的值嵌進字串裡}
+f"text{variable}text"
+\end{code}
+
+\begin{example}{python}{(introduce-myself.py) 組一句自我介紹}
+name = "Taylor"
+age = 15
+print(f"Hello, I'm {name} and I'm {age} years old.")
+\end{example}
+
+\iosample{}{Hello, I'm Taylor and I'm 15 years old. \\}
+
+f-string 有一個特別容易漏掉、卻不會讓程式報錯的地方：字串引號前面的那個 \texttt{f}。少
+打這一個字母，Python 不會把它當成錯誤，只會把整個字串當成普通文字，大括號跟裡面的
+變數名稱會被原封不動地印出來：
+
+\begin{example}{python}{(missing-f.py) 忘記加 f 前綴}
+name = "Taylor"
+age = 15
+print("Hello, I'm {name} and I'm {age} years old.")
+\end{example}
+
+\iosample{}{Hello, I'm \{name\} and I'm \{age\} years old. \\}
+
+\keypoint{忘記加 \texttt{f} 前綴，是一個「安靜的錯」，程式不會報任何錯誤訊息，只是
+輸出的內容不對，大括號跟變數名稱原封不動地被印了出來。這種錯誤特別容易讓人卡關，因為
+螢幕上沒有紅字可以看，你得靠自己發現「怎麼變數的值沒有被換進去」。看到輸出裡出現不該
+出現的大括號，第一個該檢查的就是：引號前面是不是漏了 \texttt{f}。}
+
+\section{f-string 進階：在大括號裡放運算式}
+\label{sec:f-string-advanced}
+
+大括號裡不是只能放一個變數名稱，其實可以放任何一段能算出結果的運算式，Python 會先把
+它算出來，再把結果嵌進字串裡。一個字串裡也可以放好幾組大括號，一次組合好幾個值。
+
+\begin{code}{python}{在大括號裡放運算式}
+f"{expression}"
+\end{code}
+
+\begin{example}{python}{(shopping-total.py) 計算購物金額並印出}
+price = 35
+quantity = 3
+print(f"Unit price ${price}, quantity {quantity}, total ${price * quantity}.")
+\end{example}
+
+\iosample{}{Unit price \$35, quantity 3, total \$105. \\}
+
+\stylepoint{與其先算出一個新變數（例如 \texttt{total = price * quantity}）再放進
+f-string，直接把運算式寫在大括號裡（\texttt{\{price * quantity\}}）通常更常見、也更
+省事，前提是這段運算式夠簡短、一眼就看得懂在算什麼；如果運算式變得又長又複雜，先拆成
+一個有名字的變數，可讀性反而更好。}
+
+如果你想更講究一點，例如金額要固定顯示小數點後兩位、文字要靠右對齊，f-string 大括號裡
+其實還可以加上額外的格式化語法，用來控制小數位數、千分位、對齊方式，這是下一節要正式
+介紹的內容。
+
+\begin{drills}[label=drills:f-string]
+\item 有人把 \texttt{f} 忘記加了，寫成下面這樣：
+\begin{verbatim}
+x = 5
+print("Value is {x}")
+\end{verbatim}
+這段程式的輸出會是什麼？跟正確加上 \texttt{f} 的版本比起來，差在哪裡？
+\item 預測輸出：
+\begin{verbatim}
+a = 4
+b = 6
+print(f"{a}+{b}={a + b}")
+\end{verbatim}
+\item 預測輸出：
+\begin{verbatim}
+name = "Bob"
+score = 88
+print(f"{name} scored {score} points")
+\end{verbatim}
+\end{drills}
+
+\section{f-string 進階：控制數字要怎麼顯示}
+\label{sec:f-string-format}
+
+大括號裡除了放變數或運算式，還可以在後面加一個冒號，接著寫「格式規格」，控制這個值最後
+要怎麼被排版顯示，例如小數只留幾位、千位要不要加逗號分隔、文字要靠左還是靠右對齊。
+\index{f-string 格式化選項}語法是
+在大括號裡，運算式後面接一個冒號，冒號後面接格式規格。
+
+\begin{code}{python}{在大括號裡加上格式規格}
+f"{expression:format_spec}"
+\end{code}
+
+最常用的格式規格是控制小數位數：\texttt{.2f} 代表「當成有小數點的數字處理，固定顯示到
+小數點後兩位」。這裡的 \texttt{f} 跟字串前面的 f-string 的 \texttt{f} 是兩件不相干的事，
+只是剛好長得一樣，這裡的 \texttt{f} 指的是 float（浮點數）。
+
+\begin{example}{python}{(format-decimal.py) 固定顯示小數點後兩位}
+price = 35.5
+quantity = 3
+total = price * quantity
+print(f"Unit price ${price}, quantity {quantity}, total ${total:.2f}.")
+\end{example}
+
+\iosample{}{Unit price \$35.5, quantity 3, total \$106.50. \\}
+
+沒有格式規格的時候，\texttt{price * quantity} 算出來是 \texttt{106.5}，只有一位小數；
+加上 \texttt{:.2f}，Python 會幫你補滿到兩位小數，變成 \texttt{106.50}，這在處理金額的
+時候特別有用，畢竟現實中的金額習慣上都會顯示到小數點後兩位，就算剛好是整數也一樣。
+
+\keypoint{\texttt{:.2f} 只是改變「顯示」出來的樣子，不會真的把變數本身的值四捨五入存
+回去。\texttt{total} 這個變數本身還是原本的 \texttt{106.5}，之後如果你直接用
+\texttt{total} 去做別的運算，用的還是完整精度的原始值，不是螢幕上看到的那個四捨五入
+後的版本。}
+
+除了小數位數，數字太大不好一眼看出位數的時候，可以加上千分位逗號分隔，格式規格寫一個
+逗號 \texttt{,} 就可以。
+
+\begin{example}{python}{(format-thousands.py) 幫大數字加上千分位逗號}
+population = 23894394
+print(f"Population is about {population:,} people.")
+\end{example}
+
+\iosample{}{Population is about 23,894,394 people. \\}
+
+格式規格也可以控制文字（不只是數字）要用多寬的欄位顯示、要靠左、靠右還是置中對齊，這在
+排整齊的表格輸出時很好用：欄位寬度寫在冒號後面的數字，前面加 \texttt{>} 代表靠右對齊、
+\texttt{<} 代表靠左對齊、\texttt{\textasciicircum} 代表置中，如果不指定對齊符號，數字
+預設靠右、文字預設靠左。
+
+\begin{example}{python}{(format-align.py) 控制欄位寬度與對齊方式}
+name = "Bob"
+print(f"[{name:>10}]")
+print(f"[{name:<10}]")
+print(f"[{name:^10}]")
+\end{example}
+
+下面用 \texttt{␣} 代表一個空白字元，方便你數清楚每個欄位實際留了多少空白：
+
+\iosample{}{[␣␣␣␣␣␣␣Bob] \\{} [Bob␣␣␣␣␣␣␣] \\{} [␣␣␣Bob␣␣␣␣] \\}
+
+三個輸出都被塞進總共 10 個字元寬的欄位裡，缺的部分用空白補上，只是補在不同邊：
+\texttt{>} 把空白補在左邊（讓內容貼右），\texttt{<} 把空白補在右邊（讓內容貼左），
+\texttt{\textasciicircum} 儘量把空白平均補在兩邊，補不平均的時候，多出來的一格會補
+在右邊。
+
+\begin{drills}[label=drills:f-string-format]
+\item 給定 \texttt{pi = 3.14159265}，\texttt{f"{pi:.3f}"} 的值是什麼？
+\item 給定 \texttt{big = 1234567}，\texttt{f"{big:,}"} 的值是什麼？
+\item 給定 \texttt{name = "Bo"}，\texttt{f"[{name:>6}]"} 的值是什麼？（用 \texttt{␣}
+代表空白）
+\end{drills}
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:string-indexing}~節}
+\begin{enumerate}
+\item \texttt{'a'}，因為 \texttt{word[2]} 是第三個字元。
+\item \texttt{'n'}，從尾端數回來第三個字元。
+\item 會出現 \texttt{IndexError: string index out of range}。因為
+\texttt{word} 總共有 6 個字元，有效索引是 0 到 5，\texttt{word[6]} 已經超出範圍，
+字元總數跟最後一個字元的索引永遠差 1。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:string-slicing}~節}
+\begin{enumerate}
+\item \texttt{'mpu'}，從位置 2 切到位置 5（不含）。
+\item \texttt{'comp'}，省略 start，從頭切到位置 4（不含）。
+\item \texttt{'ter'}，從倒數第 3 個字元切到結尾。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:string-slicing-step}~節}
+\begin{enumerate}
+\item \texttt{'cmue'}，從頭到尾每隔一個字元取一次。
+\item \texttt{'retupmoc'}，step 為 \texttt{-1}，整個字串反過來。
+\item \texttt{'opt'}，從位置 1 開始、每隔一個取一次，取到位置 7（不含）之前。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:strip-method}~節}
+\begin{enumerate}
+\item \texttt{[hi]}，\texttt{strip()} 清掉了頭尾的空白，中括號會緊貼著 \texttt{hi}。
+\item 還會有，因為呼叫 \texttt{msg.strip()} 只是算出一個新字串，沒有把它重新指定回
+\texttt{msg}，原本的 \texttt{msg} 完全沒有被改動。
+\item \texttt{'python'}，頭尾的 \texttt{x} 一路被剝掉，直到剝到不是 \texttt{x} 的字元
+為止。
+\item \texttt{'pythonxx'}。\texttt{lstrip()} 只清左邊，所以開頭的兩個 \texttt{x} 被
+剝掉了，結尾的兩個原封不動留著。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:case-methods}~節}
+\begin{enumerate}
+\item \texttt{'hello world'}。
+\item \texttt{'HELLO WORLD'}。
+\item \texttt{True}，兩邊都先轉成小寫後內容一樣。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:startswith-endswith}~節}
+\begin{enumerate}
+\item \texttt{False}，\texttt{fname} 是以 \texttt{.png} 結尾，不是 \texttt{.jpg}。
+\item \texttt{True}。
+\item \texttt{True}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:join-method}~節}
+\begin{enumerate}
+\item \texttt{['a', 'b', 'c']}。
+\item \texttt{'a-b-c'}。
+\item \texttt{'2024-09-01'}，先用 \texttt{/} 拆開，再用 \texttt{-} 接回去，兩次用的
+分隔符可以不一樣。
+\item \texttt{['a', 'b', 'c']}，不帶引數的 \texttt{split()} 會把連續的空白都當成一個
+分隔點。
+\item 會出現 \texttt{TypeError}，因為 \texttt{join()} 要求容器裡每一項都得是字串，
+清單裡是 \texttt{int} 型別的數字，得先用 \texttt{str()} 把每個數字轉成字串才能接起來。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:replace-method}~節}
+\begin{enumerate}
+\item \texttt{'bANANa'}，字串裡兩處符合 \texttt{"an"} 的地方都被換成了 \texttt{"AN"}。
+\item \texttt{'dogs and doghedrals'}，不只獨立的 \texttt{"cat"} 被換掉，
+\texttt{"cathedrals"} 開頭的 \texttt{"cat"} 也一起被誤傷，變成了不存在的字
+\texttt{"doghedrals"}。
+\item \texttt{'dog dog cat'}，第三個引數限制最多替換兩次，第三個 \texttt{"cat"} 維持
+原樣沒被換掉。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:find-count}~節}
+\begin{enumerate}
+\item \texttt{4}，\texttt{"mississippi"} 裡總共有 4 個 \texttt{s}。
+\item \texttt{2}，\texttt{"ss"} 第一次出現的位置是索引 2。
+\item \texttt{-1}，\texttt{"mississippi"} 裡完全沒有 \texttt{z}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:f-string-advanced}~節}
+\begin{enumerate}
+\item 輸出會是 \texttt{Value is \{x\}}，因為少了 \texttt{f} 前綴，Python 把整個字串當成
+普通文字，大括號跟裡面的 \texttt{x} 原封不動被印出來，不會被換成變數的值 5。
+\item \texttt{4+6=10}。
+\item \texttt{Bob scored 88 points}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:f-string-format}~節}
+\begin{enumerate}
+\item \texttt{'3.142'}，固定顯示到小數點後三位。
+\item \texttt{'1,234,567'}，每三位數字加一個逗號分隔。
+\item \texttt{'[␣␣␣␣Bo]'}，\texttt{"Bo"} 只有 2 個字元，靠右對齊塞進寬度 6 的欄位，
+前面補 4 個空白。
+\end{enumerate}

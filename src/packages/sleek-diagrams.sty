@@ -1,0 +1,99 @@
+\ProvidesPackage{sleek-diagrams}[2026/08/27 v1.0 Sleek Array/Grid Diagrams]
+
+%%%%%%%%%%%%%%%%
+% Requirements %
+%%%%%%%%%%%%%%%%
+
+\RequirePackage{tikz}
+\RequirePackage{xcolor}
+\usetikzlibrary{arrows.meta, positioning, calc, decorations.pathreplacing, shapes.geometric, fit, backgrounds}
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+% 色彩定義（Material-like 主題）%
+%%%%%%%%%%%%%%%%%%%%%%%%
+% 全書所有圖表共用同一套語意化配色，取代舊版純灰階：
+%   green (data)    - 資料、輸入輸出、起訖
+%   blue  (core)    - 運算、處理步驟、一般流程節點
+%   orange(mem)     - 記憶體、儲存、目前索引／指標
+%   pink  (opt)     - 第二焦點、交換對象、特殊強調
+%   yellow(proc)    - 判斷、條件分支
+
+\definecolor{greenFill}{HTML}{E8F5E9}
+\definecolor{greenStroke}{HTML}{43A047}
+\definecolor{memFill}{HTML}{FFF3E0}
+\definecolor{memStroke}{HTML}{FB8C00}
+\definecolor{coreFill}{HTML}{E1F5FE}
+\definecolor{coreStroke}{HTML}{0277BD}
+\definecolor{optFill}{HTML}{FCE4EC}
+\definecolor{optStroke}{HTML}{D81B60}
+\definecolor{procFill}{HTML}{FFF9C4}
+\definecolor{procStroke}{HTML}{F9A825}
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+% 共用樣式（陣列與網格圖用）%
+%%%%%%%%%%%%%%%%%%%%%%%%
+% 所有陣列／網格示意圖共用同一套視覺語言：
+%   cell    - 一般格子
+%   hlcell  - 強調格子（橘色，代表目前索引／正在處理的元素）
+%   hlcell2 - 第二種強調色（粉色，代表第二焦點或交換對象）
+%   idxlbl  - 索引標籤（格子下方的小灰字）
+%   diagarrow - 箭頭（用來畫資料流向、交換、鄰居關係等）
+
+\tikzset{
+    cell/.style={draw=black!55, minimum width=0.9cm, minimum height=0.9cm, font=\ttfamily},
+    hlcell/.style={draw=memStroke, thick, fill=memFill, minimum width=0.9cm, minimum height=0.9cm, font=\ttfamily},
+    hlcell2/.style={draw=optStroke, thick, fill=optStroke, text=white, minimum width=0.9cm, minimum height=0.9cm, font=\ttfamily},
+    idxlbl/.style={font=\scriptsize, text=black!55},
+    diagarrow/.style={-{Stealth[length=2mm]}, thick, draw=black!70},
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+% 共用樣式（流程圖用）%
+%%%%%%%%%%%%%%%%%%%%%%%%
+% 所有流程圖共用同一套節點語言，取代各章節各自定義的 ad hoc
+% rectangle/diamond 節點：
+%   startend - 起訖節點（圓角矩形，黑白）
+%   process  - 一般處理步驟（矩形，黑白）
+%   decision - 條件判斷（菱形，黑白）
+%   ioNode   - 輸入輸出（平行四邊形，黑白）
+%   group    - 虛線分組容器（用 fit 庫框住多個節點）
+
+\tikzset{
+    startend/.style={
+        rectangle, rounded corners=6pt, draw=black, thick, fill=white,
+        minimum width=2.2cm, minimum height=0.9cm, align=center, font=\sffamily\small
+    },
+    process/.style={
+        rectangle, rounded corners=3pt, draw=black, thick, fill=white,
+        minimum width=2.4cm, minimum height=0.9cm, align=center, font=\sffamily\small
+    },
+    decision/.style={
+        diamond, draw=black, thick, fill=white, aspect=2,
+        minimum width=2.4cm, minimum height=1.1cm, align=center, font=\sffamily\small, inner sep=2pt
+    },
+    ioNode/.style={
+        trapezium, trapezium left angle=70, trapezium right angle=110,
+        draw=black, thick, fill=white,
+        minimum width=2.2cm, minimum height=0.9cm, align=center, font=\sffamily\small
+    },
+    group/.style={
+        draw=black!30, dashed, rounded corners=8pt, inner sep=10pt, fill=black!3
+    },
+    flowarrow/.style={-{Stealth[length=2mm]}, thick, draw=black},
+}
+
+%%%%%%%%%%%%%%%%%%%%
+% 圖的編號與說明文字 %
+%%%%%%%%%%%%%%%%%%%%
+% 沿用原書「圖 <章>.<編號>」的慣例，跟片語/範例、學習要點/風格要點各自
+% 獨立編號。 用法：把 tikzpicture 包在 center 裡，結束後呼叫
+% \diagcaption{說明文字}。
+
+\newcounter{diagram}[chapter]
+\renewcommand{\thediagram}{\thechapter.\arabic{diagram}}
+\newcommand{\diagcaption}[1]{%
+    \refstepcounter{diagram}%
+    \par{\footnotesize 圖~\thediagram：#1\par}%
+}
+
+\endinput

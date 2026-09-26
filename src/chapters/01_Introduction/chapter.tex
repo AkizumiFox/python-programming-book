@@ -1,0 +1,704 @@
+\chapter{為什麼學 Python、怎麼開始}
+\label{ch:introduction}
+
+這一章的目標，是在闔上這一章之前，讓電腦真的照你的話做一件事，哪怕只是印出一行字，至於
+把 Python 讀熟，是後面每一章慢慢累積的事。市面上不少入門書一開場會先講一大段「為什麼要
+學程式」「為什麼是 Python」，聽起來很有道理，但對一個還沒摸過鍵盤敲出程式碼的人來說，
+這些道理其實有點空洞：你連自己在等待什麼都還沒有具體的畫面，講太多動機，反而容易讓人在
+真正動手之前就先打退堂鼓。
+
+所以這一章刻意把順序反過來排：先把工具準備好，寫出你人生第一
+支程式，建立一個「我真的做到了」的具體經驗當靠山；接著回頭拆解剛剛發生的事，包括你剛才
+到底是用哪一種方式在跟 Python 講話、如果打錯字會發生什麼事、那些看起來很嚇人的紅字錯誤
+訊息其實在說什麼；最後，帶著這些具體經驗，才回頭談比較大的問題：為什麼值得花時間學程式、
+為什麼是 Python、這本書接下來想帶你去的兩個地方。這個順序背後的想法很簡單：例子要先於
+定義，成就感要先於道理。
+
+不管你現在是還在準備考試的學生，還是已經在職場上開會時常聽不懂
+工程師在講什麼的社會人士，讀完這一章，你都會有一支自己跑得動的程式，也會知道接下來的路
+要往哪裡走。
+
+在往下讀之前，先講清楚一件事：程式，就是你寫給電腦的一整串指令，電腦會照著這些指令，
+一步一步、原封不動地做。\index{程式}接下來這一整章，你會不斷看到「程式」「程式碼」「指令」這幾個
+字，指的都是這件事。
+
+\section{準備工具：安裝 Python 與挑一個編輯器}
+\label{sec:setup}
+\index{直譯器}
+\index{編輯器}
+
+要讓電腦執行 Python 程式，你其實需要兩樣分開的東西：一個是真正看得懂、執行得了 Python
+程式碼的軟體，叫做「直譯器」；另一個是你打字、整理程式碼的地方，也就是編輯器。這兩個是
+不同的軟體、做不同的事，很多初學者會搞混，以為裝一個就等於裝了另一個。這一節結束時，你
+的電腦上會同時有這兩樣東西，接下來整本書、每一次動手寫程式，都會重複用到它們。
+
+如果你覺得這個區分有點抽象，可以想像成準備一份食譜跟找一個真的會做菜的廚師：食譜（你打
+的程式碼）只是寫在紙上的文字，紙本身不會自己把菜端出來；真正把食譜上的步驟一一做出來
+的，是廚師（直譯器）。編輯器負責讓你把「食譜」寫得整齊、方便修改；直譯器負責照著食譜真
+的動手做。
+
+裝了很棒的編輯器，等於有一疊漂亮的空白食譜紙，但沒有廚師，菜還是端不出來；
+反過來，只有直譯器沒有編輯器，你也不是完全不能寫程式（甚至可以用最陽春的記事本打字），
+只是會很不方便。這本書接下來會請你兩個都裝好。
+
+\textbf{第一步：安裝 Python 直譯器。} 到官方網站 \texttt{python.org/downloads}，網站通常
+會自動判斷你的作業系統，直接按下載鈕即可。
+
+\begin{itemize}
+\item \textbf{Windows}：下載完成後執行安裝程式，在跳出來的第一個畫面\textbf{務必勾選
+「Add python.exe to PATH」}這個選項，再按「Install Now」。這裡的 PATH 是電腦「去哪裡找
+程式」的清單，先不用深究，記得勾就好。這一步決定了之後你在終端機（Windows 上這個視窗叫
+「命令提示字元」，下面會再說明）打 \texttt{python}，電腦找不找得到它；勾了它，後面的路
+會順很多，沒勾的話之後每次打指令都會出現「找不到指令」的錯誤，下一段會示範這個錯誤實際
+長什麼樣子。
+\item \textbf{macOS}：下載副檔名（檔名最後面 . 後面那幾個字母，用來標記檔案種類）是
+\texttt{.pkg} 的安裝檔，直接雙擊執行，照著安裝精靈的預設值一路按下去即可，不需要額外
+勾選任何 PATH 選項。
+\end{itemize}
+
+\index{終端機}
+裝完之後，打開終端機（Windows 叫「命令提示字元」或 PowerShell，macOS 叫「終端機」），
+輸入以下指令確認安裝成功：Windows 打 \texttt{python --version}，macOS 打
+\texttt{python3 --version}。你應該會看到類似 \texttt{Python 3.13.2} 這樣的一行字（版本
+號不用跟這裡完全一樣，只要有印出版本號，就代表裝成功了）。
+
+\textbf{如果打完指令，畫面卻說「找不到這個指令」}：這是 Windows 使用者最容易踩到的一個
+小陷阱。如果剛剛安裝時不小心漏勾了「Add python.exe to PATH」，打開終端機輸入
+\texttt{python --version} 之後，你會看到類似這樣的訊息：
+
+\begin{verbatim}
+'python' is not recognized as an internal or external command,
+operable program or batch file.
+\end{verbatim}
+
+這句話的意思是：終端機在它認得的那份「清單」（也就是剛才提到的 PATH）裡，找不到一個叫
+\texttt{python} 的程式，所以它老實告訴你「不認識這個指令」，不代表你的電腦壞了，也不代表
+安裝失敗，只是那份清單裡少了一條路徑。
+
+修法很直接：把剛剛下載的安裝程式重新執行一次，這次
+選「Uninstall」移除，再重新安裝一次，記得在第一個畫面把「Add python.exe to PATH」勾起
+來。macOS 使用者不會遇到這個問題，因為 macOS 版的安裝過程本來就不需要這一步。
+
+\textbf{第二步：安裝 VS Code，挑一個地方打字。} 到 \texttt{code.visualstudio.com} 下載
+安裝，跟安裝任何軟體一樣，一路「下一步」到底即可。裝好之後：
+
+\begin{itemize}
+\item 用選單「File $\rightarrow$ Open Folder」開一個資料夾。建議先新建一個空的資料夾，
+例如取名 \texttt{python-practice}，之後這本書每一個範例都可以存在這裡。
+\item 用選單「View $\rightarrow$ Terminal」（或按下 \texttt{Ctrl+`}）打開一個內建終端機。它其實就是
+你電腦本來就有的那個終端機，只是被塞進了 VS Code 的視窗裡，你不用另外切換視窗。
+\item 新增一個檔案，存成 \texttt{hello.py}。副檔名 \texttt{.py} 是在告訴電腦、也告訴你
+自己，這是一個 Python 程式檔案，下一節就會用到它。
+\end{itemize}
+
+先說清楚：這裡刻意只用 VS Code 最陽春的功能，也就是開資料夾、打字、存檔、用終端機執行。
+你\textbf{不需要}安裝任何 Python 相關的擴充套件（讓編輯器多長出額外功能的外掛），也不需要
+碰任何進階的除錯設定，這些等真的用得上的時候，書裡會再告訴你。
+
+接下來每一章都會重複同一個小動作：在編輯器裡打程式碼、
+存檔、切到終端機打指令執行、看結果。現在你已經有了完成這個循環需要的兩樣東西，工具都到
+位了，翻到下一節，把你人生的第一支程式真的敲出來。
+
+\begin{drills}[label=drills:setup]
+\item 如果你在 Windows 上打開終端機、輸入 \texttt{python --version}，畫面顯示
+\texttt{'python' is not recognized as an internal or external command}，你會回頭懷疑
+剛才安裝時哪一步沒做？
+\item 直譯器跟編輯器，哪一個負責「真正執行」你寫的程式碼？哪一個只負責讓你打字、整理
+程式碼？
+\end{drills}
+
+\section{寫下你的第一支程式}
+\label{sec:hello-world}
+\index{print}
+
+電腦本身很安靜，你沒叫它做什麼，它就什麼都不會做。要讓螢幕上出現一行文字，你得用一個
+明確的動作告訴 Python：「把這段文字顯示出來」。這個動作在 Python 裡叫做 \texttt{print}，
+你可以先把它想成一個「印出來」的指令，把你想顯示的內容放進括號裡，Python 就會把它顯示
+在螢幕上。
+
+\begin{code}{python}{印出文字}
+print("your text here")
+\end{code}
+
+\texttt{print} 後面一定要接一對圓括號，你想印出的內容放在括號裡；如果內容是文字（不是
+數字），前後要用引號包起來：雙引號 \texttt{"..."} 或單引號 \texttt{'...'} 都可以，
+Python 不在乎你選哪一種，但開頭跟結尾要用同一種，不能一邊雙引號一邊單引號。
+
+\begin{example}{python}{(hello.py) 跟世界打招呼}
+print("Hello, world!")
+\end{example}
+
+\iosample{}{Hello, world! \\}
+
+把這兩行存成 \texttt{hello.py}（沿用上一節新增的檔案即可），在終端機切到那個資料夾，打
+\texttt{python3 hello.py}（macOS）或 \texttt{python hello.py}（Windows），按下 Enter，
+螢幕上就會出現上面那行字。
+
+\texttt{print} 能顯示的東西，不只是用引號包起來的文字。數字可以直接放進括號裡，不需要
+加任何引號：
+
+\begin{example}{python}{(number-print.py) 印出數字}
+print(2024)
+\end{example}
+
+\iosample{}{2024 \\}
+
+這裡刻意不加引號：數字本身就是數字，加了引號反而會讓 Python 把它當成一段文字來處理，
+效果跟數字不一樣（這件事後面章節會講得更清楚）。目前你只需要記得一個簡單的判斷原則：你
+想印出的東西如果是一段文字，前後要包引號；如果是一個數字，直接寫就好，不用包任何東西。
+
+還記得前面提過，程式就是你寫給電腦的一整串指令，電腦會一步一步、原封不動地照做嗎？
+\texttt{print} 是最適合拿來體會這件事的動作：寫幾行 \texttt{print}，Python 就會依照你
+寫的順序，一行一行執行過去。
+
+\begin{example}{python}{(two-lines.py) 連續印出兩行}
+print("Hello")
+print("Nice to meet you")
+\end{example}
+
+\iosample{}{Hello \\ Nice to meet you \\}
+
+兩個 \texttt{print} 各自獨立，Python 執行完第一行、把「Hello」顯示出來之後，才會接著往
+下執行第二行；順序完全按照你寫在檔案裡的先後，不會自己調換，也不會兩行擠在同一行顯示
+（除非你自己刻意這樣安排，這件事之後章節會再細講）。
+
+\keypoint{人類讀者常常能自動腦補打錯的字、猜出你想講什麼，但 Python 不會，它只會照著
+你打的字元一個不漏地檢查，只要有一個地方不符合它認得的規則，就會停下來告訴你出錯了，不
+會幫你腦補。這種「龜毛」不是故意要為難你，說穿了是這門語言（其實幾乎所有程式語言都一樣）
+運作的方式而已。}
+
+既然 Python 這麼龜毛，那如果你不小心漏打了一個引號會怎樣？
+
+\begin{example}{python}{(hello-broken.py) 漏了一個引號}
+print("Hello, world!)
+\end{example}
+
+存檔執行後，螢幕上不會印出任何文字，只會看到這樣的訊息：
+
+\begin{verbatim}
+  File "hello-broken.py", line 1
+    print("Hello, world!)
+          ^
+SyntaxError: unterminated string literal (detected at line 1)
+\end{verbatim}
+
+這段話在說什麼？拆開來看：
+\index{SyntaxError}
+
+\begin{itemize}
+\item \texttt{SyntaxError} 代表 Python 在還沒開始執行之前，光是「讀」你寫的
+程式碼這一步就卡住了，這種「讀的規則」，我們就叫它語法。
+\item \texttt{unterminated string
+literal} 是說「你開了一個字串（用引號開頭），但沒看到結尾的引號」。
+\item 那個 \texttt{\^{}}
+符號指的是 Python 覺得問題大概出在哪個位置附近。
+\end{itemize}
+
+修法很直接：把漏掉的引號補回去就好。你
+在打字時漏東漏西，是每個人（包括寫了十年程式的人）都會發生的事，說到底只是 Python 很
+老實地把它看不懂的地方告訴你而已，不代表你特別笨手笨腳。
+
+漏掉引號是最常見的手誤，但還有一種更容易讓人一頭霧水的變形：頭尾兩個引號的\textbf{種類}
+不一樣。
+
+\begin{example}{python}{(quote-mismatch.py) 頭尾引號種類不一致}
+print("Hello, world!')
+\end{example}
+
+存檔執行後，你會看到跟前面一模一樣的錯誤：
+
+\begin{verbatim}
+  File "quote-mismatch.py", line 1
+    print("Hello, world!')
+          ^
+SyntaxError: unterminated string literal (detected at line 1)
+\end{verbatim}
+
+乍看之下這行程式明明頭尾都有引號，怎麼還是「沒有結尾」？原因在於 Python 認的是「同一種
+引號再出現一次」才算結尾：這一行用雙引號開頭，Python 就會一路往後找，直到看到下一個雙
+引號才算數；中間那個單引號，在雙引號眼裡只是一個普通字元，不算數。
+
+所以對 Python 來說，
+這一行從頭到尾都沒有真正「關起來」，錯誤訊息才會跟漏打引號時一模一樣。修法一樣直接：
+確認頭尾用的是同一種引號。
+
+\begin{drills}[label=drills:hello-world]
+\item 不要真的執行，用眼睛看：這段程式執行後，螢幕上會印出什麼？
+\begin{verbatim}
+print("My favorite programming language is Python")
+\end{verbatim}
+\item 把 \texttt{hello.py} 改成印出你自己的名字，例如「哈囉，我是〇〇」，存檔後在終端機
+重新執行一次，確認畫面真的印出你改過的內容。
+\item 如果有人把 \texttt{print("Hello")} 打成 \texttt{print "Hello"}（漏了括號），你覺得
+Python 會怎麼抱怨？這是實際的錯誤訊息，讀讀看在說什麼：
+\begin{verbatim}
+  File "oops.py", line 1
+    print "Hello"
+    ^^^^^^^^^^^^^
+SyntaxError: Missing parentheses in call to 'print'. Did you mean print(...)?
+\end{verbatim}
+\item 如果你打 \texttt{print('Hello, world!")}（開頭用單引號，結尾用雙引號），你覺得執行
+後會出現哪一種錯誤？錯誤訊息會跟本節哪一個例子長得很像？
+\end{drills}
+
+\section{編輯器裡的隱藏陷阱：直引號與彎引號}
+\label{sec:editor-pitfalls}
+
+你現在已經真的用 VS Code 寫出、也讀懂過一次錯誤訊息了，這裡回頭聊聊「編輯器」這件事，
+順便帶你認識一個很多人都踩過、卻常常想不通原因的陷阱。
+
+一個對寫程式來說「好用」的編輯器，通常具備幾個共同的特徵：
+
+\begin{itemize}
+\item 它是純文字軟體，存出來的檔案
+裡除了你打的字元，不會偷偷夾帶任何額外的排版資訊。
+\item 它用等寬字型顯示（每個字元佔的寬度都
+一樣），這樣一整排的縮排、對齊才看得整齊。
+\item 它不會自作主張「修飾」你打的內容。
+\end{itemize}
+
+VS Code 符
+合這幾個條件，但它不是唯一的選擇：Sublime Text、PyCharm，甚至終端機裡的 \texttt{nano}、
+\texttt{vim}，都是純文字編輯器，效果跟 VS Code 完全一樣，只是操作介面不同。
+
+這本書接下來
+的畫面跟指令會統一以 VS Code 示範，方便截圖跟教學一致，但你完全可以換成自己習慣的其他
+編輯器，不會有任何差別，因為編輯器只負責讓你打字，真正執行程式碼的一直都是直譯器，它不
+在乎那個 \texttt{.py} 檔案是用哪一套編輯器存出來的。
+
+但有一類軟體不適合拿來寫程式，而且很容易在不知不覺間讓你的程式碼壞掉：Word、Pages、
+Notion 這類「文書處理」或「筆記」軟體。它們的設計目標是排出漂亮的文件，其中一個常見的
+「貼心」功能，是自動把你打的直引號換成造型更好看、頭尾方向不同的彎引號。這在寫一篇報告
+時完全沒問題，甚至更好看。
+
+但如果你在這類軟體裡打了一段 Python 程式碼、再貼進
+\texttt{.py} 檔案，麻煩就來了：
+
+\begin{example}{python}{(curly-quote.py) 彎引號惹的禍}
+print(“Hello, world!”)
+\end{example}
+
+存檔執行後，你會看到一個前面沒見過的錯誤：
+
+\begin{verbatim}
+  File "curly-quote.py", line 1
+    print(“Hello, world!”)
+          ^
+SyntaxError: invalid character '“' (U+201C)
+\end{verbatim}
+
+這行程式碼看起來跟正常版本幾乎一模一樣，肉眼甚至很難一眼看出差別，但 Python 只認得直
+引號 \texttt{"} 跟 \texttt{'} 這兩個字元，彎引號對它來說是完全陌生的符號，連字串的開頭
+都算不上，所以錯誤訊息連「引號沒關好」都說不上，直接說「這是一個我不認得的字元」。
+
+修法
+是把彎引號換回直引號重新打過；更根本的做法，是一開始就不要用 Word、Pages 這類軟體打程式
+碼，寫程式全程都在編輯器裡進行，就不會有這個問題。
+
+\keypoint{編輯器決定你打字的地方好不好用，但完全不影響 Python 怎麼看待你的程式碼，那是
+直譯器的工作；反過來，如果編輯器（或任何軟體）偷偷「修飾」了你打的字元，像是把直引號換
+成彎引號，Python 看到的就不再是你以為自己打的那些字元了。}
+
+還有一個跟編輯器選擇有關、但這一章還用不到的提醒，先幫你打個底：前面說過，縮排在
+Python 裡是語法的一部分，不是排版好看而已。\index{縮排}按下 Tab 鍵，有些編輯器會真的插入一個
+「Tab 字元」，有些則會自動換算成幾個空白字元，兩種在螢幕上看起來可能一樣整齊，但對
+Python 來說是不同的字元。
+
+等到後面章節開始寫需要縮排的程式（例如條件判斷、迴圈）時，
+如果同一份檔案裡有的縮排是空白、有的是 Tab，就可能出現縮排相關的錯誤，即使肉眼完全看
+不出差異。VS Code 預設會把 Tab 鍵自動換算成空白字元，這正是這本書選它示範的原因之一，
+但只要記得「縮排方式全篇要一致」這個原則，用哪一套編輯器都不會有問題。
+
+\begin{drills}[label=drills:editor-pitfalls]
+\item 如果你不小心在 Word 裡打完一段 Python 程式碼、直接複製貼上到 \texttt{hello.py}，
+存檔執行後最可能先看到哪一種錯誤？
+\item VS Code 跟 \texttt{nano}、\texttt{vim} 之類的編輯器，對 Python 直譯器來說有沒有
+差別？為什麼？
+\end{drills}
+
+\section{兩種跟 Python 對話的方式}
+\label{sec:interpreter-vs-file}
+
+目前為止，你都是把程式碼寫進一個 \texttt{.py} 檔案，再叫 Python 執行整個檔案。但其實
+還有另一種方式，更即時、更適合你只是想確認「這樣寫對不對」的時候：直接跟 Python 講話，
+一行一行來，馬上看到結果，不用先存成檔案。
+
+在終端機打 \texttt{python3}（macOS）或 \texttt{python}（Windows），不加任何檔名，直接
+按 Enter，畫面上的提示字元會變成 \texttt{>>>}。這裡的「提示字元」指的是 \texttt{>>>}
+這個符號本身，跟前面說的「命令提示字元」（Windows 那個終端機軟體的名字）是兩回事。
+\index{提示字元}
+
+看到
+\texttt{>>>} 就代表 Python 現在在等你打指令，打完一行按 Enter，它馬上回你結果，不用存
+檔、也不用另外下執行指令。
+\index{互動模式}
+
+\begin{example}{python}{(互動模式) 兩數相加}
+>>> 3 + 5
+8
+>>> print("Python says hello")
+Python says hello
+\end{example}
+
+每打一行，Python 就馬上算給你看、或印出結果，你不用做任何額外動作。想離開這個模式，打
+\texttt{exit()} 按 Enter 即可。
+
+如果打的那一行本身有問題呢？互動模式不會因此關掉，也不會把你踢出去，它只會針對那一行
+抱怨，抱怨完之後照樣顯示 \texttt{>>>}，等你打下一行：
+
+\begin{example}{python}{(互動模式) 出錯後還能繼續}
+>>> print("Hello
+  File "<stdin>", line 1
+    print("Hello
+          ^
+SyntaxError: unterminated string literal (detected at line 1)
+>>> print("This line still works")
+This line still works
+\end{example}
+
+第一行漏打了結尾的引號，Python 老實地抱怨了一次；但這只影響那一行，緊接著打的下一行完
+全不受影響，照樣正常執行。這是互動模式一個很實用的特性：你可以放心地隨手試東西，就算
+某一行寫錯了，也不會弄壞什麼、更不用整個重開，改一改繼續打下去就好。
+
+但如果你要做的事情有好幾個步驟，還想留著以後重複執行，互動模式就不太合適了：你打的每
+一行，只要一離開這個視窗就全部消失，沒有留下任何檔案。這種時候，把程式碼寫進一個
+\texttt{.py} 檔案、一次執行整個檔案，才是你要的做法，這種方式，我們就稱它「檔案模式」，
+跟前面的互動模式相對。
+\index{檔案模式}
+
+\begin{example}{python}{(add.py) 兩數相加}
+first_number = 3
+second_number = 5
+print(first_number + second_number)
+\end{example}
+
+\iosample{}{8 \\}
+
+\texttt{first\_number = 3} 這一行，是把 3 這個值存進一個叫 \texttt{first\_number} 的
+名字裡，之後只要打這個名字，就能把值取回來用；\texttt{second\_number = 5} 也是同樣的
+道理，這個動作正式的名稱跟細節，後面章節會再講清楚，這裡你只要知道這行程式在做什麼就
+好。
+
+存檔後在終端機打 \texttt{python3 add.py}（macOS）或 \texttt{python add.py}
+（Windows）。跟互動模式不一樣的地方是：Python 會先把整個檔案讀完、確認沒有問題，才會
+一次從頭執行到尾，你只會在最後看到 \texttt{print} 印出來的結果，中間的計算過程不會顯示
+（除非你自己也用 \texttt{print} 把它印出來）。
+
+順帶一提，安裝 Python 直譯器時，其實還附贈了一個內建的互動模式視窗，叫做 IDLE，不需要
+另外打開終端機也能用。這本書統一用終端機示範互動模式，因為終端機這個工具在後面章節（檔
+案、資料夾操作）也會一直用到，先熟悉它比較划算；但如果你之後想試試 IDLE，兩者的行為基本
+上是一樣的，只是視窗長相不同。
+
+\stylepoint{互動模式很適合拿來「隨手驗算」：你不確定 \texttt{10 \% 3} 的結果是什麼、想
+確認某個寫法到底怎麼運作，打開互動模式試一行就知道，比翻書找答案快多了。但只要是你想留
+下來、之後還要重複執行、或超過幾行的程式，就該寫成 \texttt{.py} 檔案，這也是這本書接下
+來幾乎所有範例都用檔案模式呈現的原因。}
+
+\begin{drills}[label=drills:interpreter-vs-file]
+\item 你想確認「17 除以 5 的餘數」是多少，查完這件事就結束了，不會再用到。你會選互動
+模式，還是寫成 \texttt{.py} 檔案？
+\item 你要寫一支下星期報告要上台示範、可能還會修改好幾次的小工具，你會選互動模式，還是
+寫成 \texttt{.py} 檔案？
+\item 在互動模式打錯一行、看到紅字錯誤之後，這個互動模式視窗會不會直接關掉？你需不需要
+重新打開一次才能繼續？
+\end{drills}
+
+\section{讀懂你的第一個錯誤訊息}
+\label{sec:reading-errors}
+
+程式跑不動、螢幕跳出一片紅字，是每個學程式的人都會遇到的日常，不是天賦不夠的證據。這
+一節要老實示範一次真正的錯誤長什麼樣子，直接讓你的程式壞掉一次，一行一行帶你讀懂
+Python 到底想告訴你什麼，這比空講「以後你會看到錯誤訊息」有用得多。
+
+\begin{example}{python}{(greet.py) 跟指定的人打招呼}
+name = "Alice"
+pint("Hello, " + name + "!")
+\end{example}
+
+這支程式想做的事很單純：把 \texttt{"Hello, "}、\texttt{name} 這個名字目前存的內容、跟
+\texttt{"!"} 接在一起印出來。但仔細看第二行，\texttt{print} 被打成了 \texttt{pint}，
+少了一個 \texttt{r}。存檔後執行，螢幕上會出現：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "greet.py", line 2, in <module>
+    pint("Hello, " + name + "!")
+    ^^^^
+NameError: name 'pint' is not defined. Did you mean: 'print'?
+\end{verbatim}
+
+這段文字看起來很嚇人，但你不需要每個字都懂，只要抓住幾個重點，由下往上讀：
+\index{NameError}
+
+\begin{itemize}
+\item 最後一行通常才是真正的問題所在：這裡是 \texttt{NameError}，意思是「Python 找不到
+一個叫這個名字的東西」；後面的 \texttt{name 'pint' is not defined} 是說「\texttt{pint}
+這個名字沒有被定義過」，你沒有教過 Python \texttt{pint} 是什麼，它當然不知道。它甚至
+貼心地猜了一句「你是不是想打 \texttt{print}？」，這次剛好被它猜中了，不是每次都這麼
+幸運，但這是個很好的起點。
+\item 中間那行 \texttt{File "greet.py", line 2} 告訴你問題出在哪個檔案的第幾行，順著
+這個線索回去對照原始碼，通常就能找到打錯字的地方。
+\item \index{Traceback}第一行 \texttt{Traceback (most recent call last)} 只是在說「以下是程式執行到出錯
+為止，經過的路徑」，對只有兩行程式的小範例來說不會太有用，但等你的程式變長、函式互相
+呼叫之後，這行會幫上大忙。
+\end{itemize}
+
+\keypoint{讀錯誤訊息的訣竅是由下往上讀：最後一行的錯誤類型跟訊息，幾乎都是最直接、最
+該先看的線索；上面那些 \texttt{File}、\texttt{line} 之類的資訊，是等你確定「錯在哪一種
+問題」之後，拿來定位「錯在哪一行」用的。由上往下讀，反而容易先花時間看那些還不重要的
+細節。}
+
+把 \texttt{pint} 改回 \texttt{print}，存檔重跑一次，錯誤就會消失。這種「打錯字、看錯誤
+訊息、抓出問題、改掉」的過程，你接下來寫程式的每一天都會一直重複；熟悉了以後，看到紅字
+不會再心慌，反射動作會變成直接掃到最後一行找線索。
+
+順帶一提，等你多學一點以後會發現，
+Python 面對「事情可能會出錯」這件事，其實有一套特別的處理習慣，這本書後面會慢慢帶你
+認識。
+
+錯誤發生的時候，前面已經執行過的部分，會不會也跟著「消失」？答案是不會。Python 是真的
+一行一行往下執行，執行到出問題的那一行才會停下來，停下來之前已經做過的事，效果已經生效
+了，不會被撤銷：
+
+\begin{example}{python}{(partial-run.py) 錯誤發生前，前面的部分已經執行過了}
+print("Starting")
+pint("Hello")
+print("This line will not run")
+\end{example}
+
+存檔執行後，畫面上會是：
+
+\begin{verbatim}
+Starting
+Traceback (most recent call last):
+  File "partial-run.py", line 2, in <module>
+    pint("Hello")
+    ^^^^
+NameError: name 'pint' is not defined. Did you mean: 'print'?
+\end{verbatim}
+
+第一行 \texttt{print("Starting")} 順利執行、顯示出來了；第二行才踩到打錯字的
+\texttt{pint}，Python 執行到這裡才發現有問題，於是停下來、丟出錯誤；第三行則完全沒有
+機會被執行到，畫面上不會出現「This line will not run」這幾個字。
+
+這一點跟前面幾節看到的
+\texttt{SyntaxError} 不太一樣：\texttt{SyntaxError} 是 Python 在還沒開始執行任何一行
+之前，光是「讀」整個檔案的階段就先卡住了，所以那種情況下畫面上什麼都不會顯示；
+\texttt{NameError} 這種錯誤，是真的執行到那一行才會發生，前面已經跑過的程式碼，成果
+還在。
+
+\keypoint{有些錯誤（像 \texttt{SyntaxError}）會在 Python 連一行都還沒開始執行之前就被
+抓到，整份程式碼完全不會有任何輸出；有些錯誤（像 \texttt{NameError}）要等程式真的執行
+到那一行才會發生，前面已經執行過的程式碼，效果不會因為後面出錯而消失。}
+
+還有一種很容易讓人卡關的手誤：大小寫。對 Python 來說，\texttt{name} 跟 \texttt{Name}
+是兩個完全不同的名字，就算只差一個字母的大小寫，也不例外：
+
+\begin{example}{python}{(case-sensitive.py) 大小寫也算數}
+name = "Alice"
+print(Name)
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "case-sensitive.py", line 2, in <module>
+    print(Name)
+          ^^^^
+NameError: name 'Name' is not defined. Did you mean: 'name'?
+\end{verbatim}
+
+第一行明明已經用小寫的 \texttt{name} 存好了值，第二行卻打成大寫開頭的 \texttt{Name}，
+對 Python 來說這是兩個毫不相干的名字，第二行問的那個 \texttt{Name} 它從來沒聽過，於是
+一樣丟出 \texttt{NameError}。
+
+這是初學者很容易忽略的細節：中文閱讀習慣不太在意英文字母
+大小寫的差異，但 Python 每一個字元都算數，養成全部使用小寫字母、單字之間用底線連接的
+命名習慣，可以大幅降低這一類手誤發生的機會（後面章節會再正式介紹這個命名習慣）。
+
+\begin{drills}[label=drills:reading-errors]
+\item 承接上面 \texttt{greet.py} 的錯誤訊息：如果你把第二行的 \texttt{pint} 改回
+\texttt{print}，但不小心把第一行的變數名稱打成了 \texttt{nmae}（也就是
+\texttt{nmae = "Alice"}，但第二行仍然寫 \texttt{name}），你覺得錯誤訊息的類型還會是
+\texttt{NameError} 嗎？訊息裡找不到的名字會是哪一個？
+\item 如果一段錯誤訊息的最後一行寫著 \texttt{NameError: name 'total' is not defined}，
+在你動手改程式之前，你會先去程式碼裡找什麼？
+\item 承接上面 \texttt{partial-run.py} 的例子：如果你把第三行也加上一個會出錯的手誤
+（例如又打成 \texttt{pint}），你覺得畫面上除了第一行「Starting」以外，還會不會多印出
+任何東西？
+\item 如果一支程式先前定義了 \texttt{Total = 0}（大寫開頭），後面某一行卻寫
+\texttt{print(total)}（小寫開頭），你覺得會發生什麼事？
+\end{drills}
+
+\section{為什麼值得學程式}
+\label{sec:why-program}
+
+電腦這個東西，拆開來看其實很笨：它不會自己思考「使用者大概想要什麼」，只會照著別人給
+的指令，一步一步、原封不動地做。你其實已經做過這件事了：前面幾節你寫下
+\texttt{print("Hello, world!")}，電腦真的把這行字顯示出來，那一刻，你已經是在對機器下
+指令了，你剛才寫的那幾行，就是一支貨真價實的程式。
+
+換個角度看，「電腦很笨」這件事，反而是它最有用的地方。人與人之間溝通，常常靠上下文、
+語氣、常識來腦補對方沒講清楚的部分；電腦完全不會腦補，你講清楚幾分，它就照做幾分，一次
+講清楚了，之後同一件事可以一模一樣地重複做一千次、一萬次，不會累、不會分心、不會今天
+心情不好就漏做一步。
+
+生活、課業、工作裡有不少瑣事其實正是這種重複、規則明確、只是很花
+時間的事，例如：
+
+\begin{itemize}
+\item 把一份很長的名單依照某個條件挑出符合的項目。
+\item 幫一批檔案依照固定規則改名字。
+\item 把
+每星期都要重複做一次的整理工作變成一次執行就好。
+\end{itemize}
+
+這些事不見得複雜，難的地方通常是「一直
+重複做很煩」，剛好就是電腦最擅長的類型。
+
+\keypoint{寫程式的本質，其實是練習把一件事講得夠精確，精確到一個完全不會腦補的對象也能
+照做不誤。這跟你平常跟朋友、同事溝通的方式很不一樣：日常對話留一點模糊空間沒關係，對方
+會自己補上；跟電腦溝通，模糊的地方就是程式出錯或行為不如預期的地方。這個習慣一旦養成，
+其實對「把話講清楚」這件事本身也有幫助，不只是寫程式用得到。}
+
+這本書接下來的旅程，想帶你去兩個地方，兩個一樣重要，沒有誰為誰服務。
+
+\begin{itemize}
+\item 第一個地方，是讓
+你能自己動手寫小程式，處理這一類瑣碎重複的事，終點在於讓你以後遇到一件瑣事時，腦中會
+反射性冒出「這個我可以寫程式做」的念頭，而且真的做得出來，不必先把 Python 這個語言的
+每個角落都背熟才敢動手。
+\item 第二個地方，是讓你看懂「軟體」這個東西究竟是怎麼被造出來的：
+版本控制在幹嘛、一個專案的前端後端分別在講什麼、工程師團隊平常怎麼運作。這個目標特別是
+為了你，如果以後工作上要跟工程師對接，開會時聽到「這個 API 還在 review」「這個 sprint
+排不進去」會一頭霧水，這本書後段會有專門的章節，帶你把這些詞彙跟運作方式一次搞懂，讓你
+能聽懂、也問得出對的問題。
+\end{itemize}
+
+這兩個目標都不需要你變成職業工程師：它們的重點，說到底是想讓
+你多一種解決問題的能力，也多一種看懂周遭世界的方式。
+
+\begin{drills}[label=drills:why-program]
+\item 想一想你自己生活、課業或工作中，有沒有一件重複性很高、規則其實很明確的瑣事？先
+寫下來，等讀完這本書後回頭看看，你的想法會不會改變。
+\item 如果同事跟你說「這個功能還在 code review，這個 sprint 排不進去」，你現在聽得懂
+嗎？如果還聽不懂，記得這本書後段有專門處理這件事的章節。
+\end{drills}
+
+\section{為什麼是 Python？這本書要帶你去哪裡}
+\label{sec:why-python}
+
+世界上能拿來寫程式的語言有很多種，C、Java、JavaScript 都是，各有各的個性跟用途。如果
+把它們想成一群個性各異的人，Python 大概是那個說話最直白、從不拐彎抹角的傢伙。
+
+它的名字來源常常讓人誤會：很多人以為是取自那種會咬人的蟒蛇，其實作者 Guido van Rossum
+當年是照著他很喜歡的英國喜劇團體 Monty Python 取的名字，所以你偶爾會在 Python 的官方
+文件或範例裡看到跟這個喜劇團體有關的冷笑話，這是個歷史彩蛋，不是巧合。
+
+Python 的個性有幾個特別鮮明的地方：
+
+\begin{itemize}
+\item 它好讀，
+語法設計得很接近你會寫的英文句子，連縮排本身都是語法的一部分，這代表你的程式碼被強迫
+維持一致的排版。
+\item 它內建的東西很多，標準函式庫豐富，很多常見任務不用自己從零開始寫，直接
+拿現成的來用。
+\item 它應用範圍廣，網站後端、資料分析、自動化瑣事、甚至一些遊戲，都看得到
+Python 的身影。
+\end{itemize}
+
+再加上 Python 完全免費、任何人都能使用，全世界有非常多人在用它、也在
+網路上互相幫忙解答問題，之後你卡關時，通常能找到已經有人問過一模一樣的問題，這也是很多
+人把它當作「學程式的第一站」的原因。
+
+在正式往下走之前，先跟你打個預防針。這本書會反覆用兩個方式，幫你把 Python 的直覺建立
+起來，不只講一次就結束，你在後面很多章節都會重新看到它們。
+
+\begin{itemize}
+\item 一個是關於「把一個值指定給
+一個名字」這件事，到底在做什麼：你可能已經對「變數」有一套從數學課帶來的直覺，但那套
+直覺在 Python 裡有些地方會踩到坑，之後我們會花時間把這件事講清楚。
+\item 另一個是關於 Python
+遇到「事情可能會出錯」的時候，習慣的處理方式：是先做再說、出了問題再處理，還是先確認
+安全才動手，這兩種習慣看似都合理，Python 社群比較偏好其中一種，這本書後面也會帶你認識
+為什麼。
+\end{itemize}
+
+現在不用急著懂，只要有個印象就好，之後每次重新提起，你就會知道「啊，就是開頭
+說的那個」。
+
+接下來的路大致分成三段：
+
+\begin{enumerate}
+\item 前面十章左右是地基，變數、條件判斷、迴圈、函式、list 跟 dict
+這些最常用的積木，這段會走得比較慢，每個技巧都會讓你真的能自己重現一次，不會匆匆帶過。
+\item 中段開始把積木組合起來解決比較真實的任務，處理資料檔案、抓出並讀懂程式裡的錯誤、認識
+一些常用的套件。
+\item 最後幾章會拉高視角，帶你認識軟體業實際運作的樣子、串接一個真正的網路
+服務，並且在闔上這本書之前，指給你看接下來還可以往哪些方向繼續走。
+\end{enumerate}
+
+你已經在第一章的
+尾聲了，而且已經有一支自己跑得動的程式，這是個不錯的開始。
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:setup}~節}
+\begin{enumerate}
+\item 很可能是安裝 Python 時漏勾了「Add python.exe to PATH」這個選項，重新執行安裝
+程式、選擇解除安裝後再重新安裝一次，記得勾選即可。
+\item 直譯器負責真正執行程式碼；編輯器只負責讓你打字、整理、存檔，本身不會執行任何
+程式碼。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:hello-world}~節}
+\begin{enumerate}
+\item 會印出：My favorite programming language is Python。
+\item 開放性練習，只要程式能正確執行、印出你自己的名字即可，記得引號要成對、括號別
+漏掉。
+\item Python 3 的 \texttt{print} 一定要接括號，漏了括號會出現：
+\texttt{SyntaxError: Missing parentheses in call to 'print'. Did you mean print(...)?}，
+把文字用括號包起來就能修好，例如改成 \texttt{print("Hello")}。
+\item 會出現 \texttt{SyntaxError: unterminated string literal (detected at line 1)}，
+跟本節「頭尾引號種類不一致」那個例子一樣，因為 Python 只認雙引號對雙引號、單引號對單
+引號，頭尾種類不同時，等於整個字串都沒有真正被關起來。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:editor-pitfalls}~節}
+\begin{enumerate}
+\item 最可能看到 \texttt{SyntaxError: invalid character} 這一類錯誤，因為 Word 會把
+直引號自動換成彎引號，Python 完全不認得彎引號這個字元。
+\item 沒有差別。編輯器只負責讓你打字、存檔，真正決定程式碼能不能執行的是直譯器；只要
+存出來的是純文字、沒有被夾帶額外排版資訊的 \texttt{.py} 檔案，用哪一套編輯器寫都一樣。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:interpreter-vs-file}~節}
+\begin{enumerate}
+\item 互動模式，查完就結束，不需要留下任何檔案。
+\item 檔案模式，需要重複執行、之後還會修改，寫成 \texttt{.py} 檔案才留得住。
+\item 不會直接關掉，也不需要重新打開。互動模式只會針對出錯的那一行顯示錯誤訊息，之後
+照樣顯示 \texttt{>>>}，可以直接接著打下一行。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:reading-errors}~節}
+\begin{enumerate}
+\item 還是 \texttt{NameError}，但這次找不到的名字變成 \texttt{name}：問題出在「兩處
+拼法對不起來」，一邊打成 \texttt{nmae}，另一邊還在用 \texttt{name}。
+\item 先去程式碼裡找有沒有一個叫 \texttt{total} 的變數被使用了，但從來沒有被指定過值。
+可能是名字打錯，也可能是那一行原本該賦值的程式碼被漏掉了。
+\item 不會。程式一樣會先印出「Starting」，接著在第二行遇到 \texttt{pint} 就停下來丟出
+\texttt{NameError}，第三行不管有沒有手誤都不會被執行到，因為程式根本沒有機會跑到那
+一行。
+\item 會出現 \texttt{NameError: name 'total' is not defined. Did you mean: 'Total'?}，
+因為 \texttt{Total} 跟 \texttt{total} 對 Python 來說是兩個不同的名字，前面定義的是大寫
+開頭的 \texttt{Total}，後面卻查詢小寫開頭的 \texttt{total}，等於在問一個從沒定義過的
+名字。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:why-program}~節}
+\begin{enumerate}
+\item 開放性練習，沒有固定答案，重點是先具體想過一次「這件事似乎可以用程式解決」的
+感覺。
+\item 開放性練習：現在聽不懂完全正常，這本書第 \ref{ch:industry} 章會專門帶你認識這些詞彙背後在講
+什麼。
+\end{enumerate}

@@ -1,0 +1,1344 @@
+\chapter{Capstone：做一個像樣的專案}
+\label{ch:capstone}
+
+你在第 \ref{ch:automating} 章已經做過一次整合了。那一章把你前面學過的技巧接成一支能整理
+檔案的腳本，能分類、能搬移、能打包備份，甚至能上網抓東西回來。那支程式很好用，但它是
+\textbf{一支腳本}：所有東西擠在同一個檔案裡，跑完就結束，下一次執行的時候，它完全不記得
+上一次做了什麼。
+
+這一章要做的是另一件事：把同一批技巧，組織成一個\textbf{像真的軟體的專案}。差別不在難度，
+在「要同時顧的事情變多了」——程式要拆成好幾個檔案、要有人記得資料放在哪、要能重複執行而且
+記得上次的結果、要有辦法確認自己沒有改壞、還要讓別人拿到這個資料夾就知道怎麼跑。
+
+第 \ref{ch:api} 章那支查詢小工具也一樣，它做的是「打一次 API、把答案講給你聽」，查完就忘。
+這一章的 API 只是整個專案裡的\textbf{一塊零件}：它負責去外面拿一個數字回來，拿回來之後
+怎麼存、怎麼算、怎麼變成一份報表，才是這一章真正的重點。
+
+還有一件事要先講清楚，而且它比上面幾段都重要：\textbf{這一章不會教你任何新語法。一個都
+沒有。} 你接下來會用到的每一樣東西，前面的章節都已經教過了。如果你在某一節覺得吃力，
+那個吃力不會是「這個語法我沒學過」，而是「東西太多，我抓不住」——這正是這一章要練的東西，
+也是所有初學者第一次面對一個真正的專案時，唯一會卡住的地方。
+
+這一章分三段推進：
+
+\begin{itemize}
+\item 第一段從一句人話開始。我們會先寫下一段需求，當場把它拆成幾個檔案，把專案資料夾
+建起來，再決定「一筆花費」在程式裡該長什麼樣子
+（第 \ref{sec:capstone-spec}～\ref{sec:capstone-model} 節）。
+\item 第二段把零件一個一個做出來：把紀錄存進檔案再讀回來、去外面問一次匯率、把一堆紀錄
+變成一份看得懂的報表。每做完一個零件，整個專案都會比上一節多做一點事，而且立刻跑得起來
+（第 \ref{sec:capstone-storage}～\ref{sec:capstone-report} 節）。
+\item 第三段是「交出去」該做的事：寫一支檢查腳本確認自己沒有改壞、把六個檔案接成一支
+真正能用的工具、最後對照第 \ref{ch:industry} 章那些詞彙，看看你剛剛做的每一件事在業界
+叫什麼名字（第 \ref{sec:capstone-tests}～\ref{sec:capstone-handoff} 節）。
+\end{itemize}
+
+還有一個承諾要先給你：\textbf{每一節結束，你手上都會有一份能執行的程式}。這一章沒有任何
+一節是「先忍耐、最後一節才跑得起來」的。
+
+\section{從一句需求開始：把它拆成幾塊}
+\label{sec:capstone-spec}
+
+真實世界裡，一個專案很少是從「我想寫一個 class」開始的，通常是從一句抱怨開始的。這一章
+的抱怨是這樣：
+
+\begin{quote}
+我常常有一些花費不是台幣——網購日本的東西、訂閱美金計價的服務、出國旅遊刷卡。我想要一支
+工具：每次花錢就記一筆下來，之後隨時可以問它「我這陣子總共花了多少台幣、哪一類花最多」，
+外幣的部分請它自己去查匯率換算好。
+\end{quote}
+
+這段話就是這個專案的\textbf{規格}（spec），也就是「這個東西該做到什麼」的白紙黑字版本。
+\index{規格（spec）}
+它不長，但它已經把要做的事情全部講完了，接下來的工作只有一件：一句一句讀它，問「這句話
+要程式做什麼事」，然後把答案分堆。
+
+\begin{center}
+\begin{tabular}{@{}p{5.2cm}p{3.6cm}p{4.2cm}@{}}
+\toprule
+規格裡的話 & 要程式做什麼 & 變成哪個檔案 \\
+\midrule
+「每次花錢就記一筆下來」 & 描述一筆花費 & \texttt{expense.py} \\
+「記下來」「之後隨時可以問它」 & 存進檔案、讀回來 & \texttt{storage.py} \\
+「請它自己去查匯率換算」 & 去外面拿匯率 & \texttt{rates.py} \\
+「總共花了多少、哪一類花最多」 & 彙總、印成報表 & \texttt{report.py} \\
+「我想要一支工具」 & 跟使用者互動 & \texttt{main.py} \\
+（規格裡沒寫，但你會需要） & 確認自己沒改壞 & \texttt{check\_moneylog.py} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+這張表就是整個專案的地圖，也是這一章接下來六節的順序。它看起來像是憑感覺分的，其實只用了
+一個判準：\textbf{每一個檔案負責一件事，而且那件事講得出一句完整的話}。「描述一筆花費」是
+一句話，「去外面拿匯率」也是一句話；如果某個檔案要用「而且⋯⋯還要⋯⋯」才講得完，那它八成
+該被拆成兩個。
+
+順著同一段規格，還可以再多決定一件事：一筆花費要記哪些欄位？「每次花錢就記一筆」至少要有
+日期跟項目；「哪一類花最多」需要一個分類；「總共花了多少台幣」需要金額，而且因為有外幣，
+還需要知道這個金額是哪一國的錢。五個欄位：\textbf{日期、項目、分類、金額、幣別}。
+
+這個專案叫 \texttt{moneylog}。開工之前先把資料夾準備好，這幾個步驟你在第 \ref{ch:industry}
+章都讀過名字，這次要真的動手做一次：
+
+\begin{enumerate}
+\item 建一個叫 \texttt{moneylog} 的資料夾，之後所有檔案都放在裡面。
+\item 在這個資料夾裡建一個虛擬環境（第 \ref{sec:project-structure} 節解釋過它在解決什麼
+問題：讓每個專案有自己一份套件清單，不會互相打架）。
+\item 在虛擬環境裡執行 \texttt{pip install requests}，這是這個專案唯一需要的第三方套件，
+第 \ref{ch:api} 章已經裝過一次。
+\item 把它記進 \texttt{requirements.txt}。
+\item 寫一份 \texttt{.gitignore}。
+\item 開一個空的 \texttt{README.md}，先放標題就好，完整內容留到第 \ref{sec:capstone-wiring}
+節再補。
+\end{enumerate}
+
+\texttt{requirements.txt} 只有一行。版本號請照你自己裝到的那一版寫，不用跟這裡一樣：
+
+\begin{code}{text}{(moneylog/requirements.txt) 這個專案需要哪些套件}
+requests==2.32.5
+\end{code}
+
+\texttt{.gitignore} 三行：
+
+\begin{code}{text}{(moneylog/.gitignore) 哪些東西不進版本控制}
+venv/
+__pycache__/
+*.csv
+\end{code}
+
+前兩行跟第 \ref{sec:gitignore} 節那份範例一模一樣：虛擬環境資料夾可以靠
+\texttt{requirements.txt} 重建，\texttt{\_\_pycache\_\_} 是 Python 自己產生的暫存品——
+而且這一次你真的會看到它出現，因為這個專案開始用 \texttt{import} 匯入自己寫的模組了。
+
+第三行 \texttt{*.csv} 是這個專案特有的。這個資料夾裡的 CSV 檔案全部都是\textbf{程式跑出來
+的資料}，不是你手寫的程式碼：\texttt{expenses.csv} 是使用者自己的花費紀錄，
+\texttt{summary.csv} 是每次出報表都會整份覆蓋掉的產出。版本控制要保存的是「你寫了什麼
+程式」，不是「這台電腦上的人花了多少錢」，所以兩份都排除掉。星號的意思跟第
+\ref{sec:gitignore} 節那行 \texttt{*.pyc} 一樣：不管檔名前面是什麼都算。
+
+最後寫第一支 \texttt{main.py}。它現在什麼都不做，只印兩行字，目的只有一個：\textbf{確認
+你的環境是通的}，Python 跑得起來、資料夾位置對。
+
+\begin{example}{python}{(moneylog/main.py 第 0 版) 先確認跑得起來}
+TOOL_NAME = "moneylog"
+DATA_FILE = "expenses.csv"
+
+print(f"{TOOL_NAME}: a multi-currency expense log")
+print(f"Records will be stored in {DATA_FILE}")
+\end{example}
+
+\iosample{}{moneylog: a multi-currency expense log \\ Records will be stored in expenses.csv \\}
+
+在 \texttt{moneylog} 資料夾裡執行 \texttt{python main.py}，看到這兩行，這一節就結束了。
+五行程式碼看起來很可笑，但它證明了一件事：從現在開始，任何一次執行失敗都是你剛剛寫的東西
+造成的，不是環境的問題。
+
+\keypoint{把規格寫下來，不是形式主義。它有兩個非常實際的用途：第一，三個月後你回頭打開
+這個資料夾，你會忘記自己當初想做什麼，那段文字是你唯一的線索；第二，這個專案如果要交給
+別人接手，一份寫清楚「這是什麼、怎麼跑」的說明，常常是對方唯一的入口——這正是第
+\ref{sec:project-anatomy} 節講 README 時說過的那件事。差別只在於，那時候你是讀到它，
+這次你要自己寫一份。}
+
+\stylepoint{這個專案刻意把所有 \texttt{.py} 檔案放在同一層，沒有像第
+\ref{sec:project-anatomy} 節第二張樹狀圖那樣分成 \texttt{src/} 跟 \texttt{tests/} 兩個子
+資料夾。理由很誠實：模組一旦放進子資料夾，\texttt{import} 就要多一套規則才找得到它，而第
+\ref{ch:modules} 章明確講過「自己寫的模組要跟呼叫它的程式放在同一個資料夾裡」，那套規則
+這本書沒有教。真實的專案確實常常會分層，你以後一定會遇到；但分層不是這一章要練的東西，
+這一章要練的是「這件事該放進哪一個檔案」。這兩件事沒有關係——扁平的資料夾一樣可以分工
+分得很清楚。}
+
+\begin{drills}[label=drills:capstone-spec]
+\item 使用者又提了一個需求：「我還想知道每個月分別花了多少。」照這一節那張表的分法，
+這個功能主要應該加進哪一個檔案？為什麼不是 \texttt{storage.py}？
+\item 下面四樣東西，哪些該被寫進 \texttt{.gitignore}：\texttt{main.py}、虛擬環境資料夾、
+\texttt{requirements.txt}、\texttt{expenses.csv}？
+\item 如果把 \texttt{rates.py} 跟 \texttt{report.py} 兩個檔案合併成一個叫
+\texttt{money.py} 的檔案，程式還是會動。用這一節那個「講得出一句完整的話」的判準看，
+合併之後的檔案要怎麼描述它在做什麼？
+\end{drills}
+
+\section{先決定資料長什麼樣：\texttt{expense.py}}
+\label{sec:capstone-model}
+
+在寫任何一個功能之前，要先決定一件事：一筆花費在程式裡，到底是什麼東西？
+
+你手上有兩個選項，兩個都學過。一個是 dict：\texttt{\{"date": "2026-09-01", "item":
+"bento", ...\}}，五個欄位五個鍵，寫起來最快。另一個是 class（第 \ref{ch:objects} 章）。
+
+怎麼選？第 \ref{sec:methods-vs-functions} 節給過判準，這裡把它換成一個更好問的問題：
+\textbf{你最常對這份資料做什麼？}
+
+如果答案是「照順序走一遍、印出來」，那 dict 就夠了，你在第 \ref{ch:csv} 章整章都是這樣
+用的。但這裡的答案不是。這裡每一筆花費除了「有五個欄位」以外，還要\textbf{會做一件事}：
+把自己換算成台幣。這件事需要用到它自己的 \texttt{amount} 跟 \texttt{currency}，換句話說，
+資料跟動作是綁在一起的——這正是第 \ref{sec:why-objects} 節說「該用物件了」的那個訊號。
+
+還有一個決定要先講：\textbf{這裡不需要繼承}。第 \ref{sec:inheritance-vs-composition} 節
+教過一個判準：「A 是一種 B」用繼承，「A 裡面有一個 B」用組合。這個專案裡只有一種花費，
+沒有「日圓花費是一種花費」這種階層，也沒有「花費裡面裝著另一個物件」。學過的技巧不代表
+每次都要用，這是 capstone 該練的判斷之一。
+
+\begin{example}{python}{(moneylog/expense.py) 一筆花費長什麼樣}
+CATEGORIES = {
+    "ramen": "Food",
+    "bento": "Food",
+    "coffee": "Food",
+    "metro": "Transport",
+    "taxi": "Transport",
+    "movie": "Entertainment",
+    "book": "Learning",
+    "course": "Learning",
+}
+
+DEFAULT_CATEGORY = "Other"
+
+
+def guess_category(item):
+    return CATEGORIES.get(item.strip().lower(), DEFAULT_CATEGORY)
+
+
+class Expense:
+    def __init__(self, date, item, category, amount, currency):
+        self.date = date
+        self.item = item
+        self.category = category
+        self.amount = amount
+        self.currency = currency
+
+    def amount_in_twd(self, rate):
+        return self.amount * rate
+
+    def __str__(self):
+        return f"{self.date} {self.item} [{self.category}] {self.amount} {self.currency}"
+\end{example}
+
+這個檔案裡沒有一行是新的。\texttt{CATEGORIES} 是一張對照表，加上
+\texttt{.get(key, 預設值)} 查表——你在第 \ref{sec:classify-function} 節用同一招做過
+\texttt{EXTENSION\_MAP}，把「規則」放進 dict、把「怎麼套用規則」放進函式，之後要多支援
+一個項目只要加一行，不用動函式本體。\texttt{item.strip().lower()} 是第 \ref{ch:strings}
+章的兩個字串方法，讓使用者打成 \texttt{"Ramen "} 也查得到。
+
+\texttt{class Expense} 是第 \ref{sec:class-init} 節的 \texttt{\_\_init\_\_} 加五個屬性、
+第 \ref{sec:methods-and-self} 節的方法與 \texttt{self}、第 \ref{sec:str-method} 節的
+\texttt{\_\_str\_\_}，一樣都沒有多。
+
+值得停下來看一眼的只有 \texttt{amount\_in\_twd(self, rate)} 這一行的\textbf{參數}：它
+收下一個已經查好的匯率，然後拿自己的金額乘上去。它\textbf{不會自己去查匯率}。這個看起來
+很小的決定，會在第 \ref{sec:capstone-rates} 節跟第 \ref{sec:capstone-tests} 節各兌現
+一次，現在先記著它。
+
+\subsection*{接下來每一節，你會看到同一個檔名出現好幾次}
+
+在寫下一支程式之前，先講一下這一章的閱讀規則，不然你等一下會困惑。
+
+這個專案有六個 \texttt{.py} 檔案，其中五個（\texttt{expense.py}、\texttt{storage.py}、
+\texttt{rates.py}、\texttt{report.py}、\texttt{check\_moneylog.py}）\textbf{各自只會在
+自己那一節出現一次完整版，之後就不再改動}。寫完就定案，你可以放心把它們存起來。
+
+只有 \texttt{main.py} 例外。它是整個工具的門面——「這個專案目前會做什麼」，就寫在這個
+檔案裡，所以每加一塊新零件，它就會跟著長大一點。接下來每一節，這本書都會把
+\texttt{main.py} \textbf{完整重列一次}，並在標題裡標明是第幾版。它一直很短，重列比要你
+自己拼湊清楚得多。
+
+現在是第 1 版。它造兩筆花費、印出來，其中一筆是日圓，用一個先寫死的假匯率換算成台幣：
+
+\begin{example}{python}{(moneylog/main.py 第 1 版) 造兩筆花費看看}
+from expense import Expense, guess_category
+
+FAKE_JPY_RATE = 0.21
+
+lunch = Expense("2026-09-01", "bento", guess_category("bento"), 100, "TWD")
+ramen = Expense("2026-09-02", "ramen", guess_category("ramen"), 1200, "JPY")
+
+print(lunch)
+print(ramen)
+print(f"{ramen.item} costs about {round(ramen.amount_in_twd(FAKE_JPY_RATE), 2)} TWD")
+\end{example}
+
+\iosample{}{2026-09-01 bento [Food] 100 TWD \\ 2026-09-02 ramen [Food] 1200 JPY \\ ramen costs about 252.0 TWD \\}
+
+第一行 \texttt{from expense import Expense, guess\_category} 就是第
+\ref{sec:write-your-own-module} 節那個動作：\texttt{expense.py} 跟 \texttt{main.py} 放在
+同一個資料夾裡，所以 \texttt{import} 找得到它。前兩行輸出來自 \texttt{\_\_str\_\_}，
+第三行是 \texttt{amount\_in\_twd()} 收下 \texttt{0.21} 之後算出來的。
+
+那個 \texttt{FAKE\_JPY\_RATE = 0.21} 是暫時的，第 \ref{sec:capstone-rates} 節會換成真的
+去查。這裡先寫死一個數字，是為了讓這一節能立刻跑起來——先讓程式動，再讓它正確，是這一章
+會反覆用到的節奏。
+
+現在專案長這樣：
+
+\begin{verbatim}
+moneylog/
+|-- main.py            工具的門面（這一節改過）
+|-- expense.py         一筆花費長什麼樣        <- 這一節新增
+|-- requirements.txt   要裝哪些套件
+|-- README.md          給人看的說明（還是空的）
+`-- .gitignore         哪些東西不進版本控制
+\end{verbatim}
+
+\keypoint{同一批資料，在記憶體裡是一個 \texttt{Expense} 物件，在硬碟上會是 CSV 的一列
+文字。這是兩種完全不同的形狀，中間需要有人負責翻譯——那就是下一節 \texttt{storage.py}
+的全部工作。只要一個專案開始需要「跨執行記得事情」，就一定會出現這樣一層。}
+
+\begin{drills}[label=drills:capstone-model]
+\item 執行 \texttt{print(Expense("2026-09-05", "taxi", "Transport", 250, "TWD"))}
+會印出什麼？負責決定這個格式的是 \texttt{expense.py} 裡的哪一個方法？
+\item \texttt{guess\_category("hovercraft")} 會回傳什麼？是哪一行程式碼決定的？
+\item 如果之後想多記一個「付款方式」欄位（現金／刷卡），\texttt{expense.py} 裡有哪幾個
+地方要改？
+\end{drills}
+
+\section{把紀錄存下來、再讀回來：\texttt{storage.py}}
+\label{sec:capstone-storage}
+
+上一節那兩筆花費有一個致命的問題：程式一結束它們就消失了。規格裡「之後隨時可以問它」這
+半句話，要求的正是「這次記的東西，下次還在」。這一節要做的就是那層翻譯：把
+\texttt{Expense} 物件寫成 CSV 的一列，再把 CSV 的一列讀回成 \texttt{Expense} 物件。
+
+\begin{example}{python}{(moneylog/storage.py) 存進 CSV、再讀回來}
+import csv
+
+from expense import Expense
+
+FIELDS = ["date", "item", "category", "amount", "currency"]
+
+
+def append_expense(path, expense):
+    try:
+        with open(path, encoding="utf-8") as f:
+            file_is_empty = f.read() == ""
+    except FileNotFoundError:
+        file_is_empty = True
+
+    with open(path, "a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=FIELDS)
+        if file_is_empty:
+            writer.writeheader()
+        writer.writerow({
+            "date": expense.date,
+            "item": expense.item,
+            "category": expense.category,
+            "amount": expense.amount,
+            "currency": expense.currency,
+        })
+
+
+def load_expenses(path):
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            yield Expense(
+                row["date"],
+                row["item"],
+                row["category"],
+                float(row["amount"]),
+                row["currency"],
+            )
+\end{example}
+
+三個地方值得停下來看。
+
+\textbf{第一，開頭那段 \texttt{try}/\texttt{except} 在解決一個很具體的問題}：CSV 的第一列
+是欄位名稱，只該寫一次。但「這個檔案存在嗎、裡面有東西嗎」這種問題，第
+\ref{sec:lbyl-vs-eafp} 節講得很清楚：與其先檢查再動手，不如直接開開看，開不起來再說。
+所以這裡直接 \texttt{open()}，接到 \texttt{FileNotFoundError} 就知道「還沒有這個檔案，
+待會要寫標題列」。這就是 EAFP。
+
+\textbf{第二，\texttt{append\_expense()} 用的是 \texttt{"a"} 模式}（第
+\ref{sec:appending-files} 節）。這是整個專案「會累積」的關鍵：如果用 \texttt{"w"}，每記
+一筆就會把前面全部清空。\texttt{csv.DictWriter} 加 \texttt{writeheader()} 加
+\texttt{writerow()} 是第 \ref{sec:csv-dict} 節的寫法，餵給它的那個 dict，就是把
+\texttt{Expense} 物件的五個屬性攤平——這就是「翻譯」這件事真正的樣子。
+
+\textbf{第三，\texttt{load\_expenses()} 用的是 \texttt{yield}，不是 \texttt{return}}。
+它每讀一列就吐出一個 \texttt{Expense}，是一台第 \ref{sec:yield-basics} 節那樣的發號機。
+另外注意 \texttt{float(row["amount"])}：第 \ref{sec:csv-module-read} 節強調過「CSV 讀回來
+的東西全部是字串」，不轉成數字，後面所有加總都會出事。
+
+\stylepoint{\texttt{load\_expenses()} 大可以寫成「造一個空 list、把每一筆
+\texttt{append} 進去、最後 \texttt{return}」，那樣也完全正確。用 \texttt{yield} 的理由是
+第 \ref{sec:lazy-memory} 節那一條：記帳這件事只會愈記愈多，一份記了三年的
+\texttt{expenses.csv} 沒有理由整份先攤在記憶體裡，才開始處理第一筆。這個選擇在檔案還只有
+兩列的時候看不出差別，但它是「這個程式以後會長大」這個判斷的具體結果。}
+
+現在 \texttt{main.py} 升到第 2 版：造兩筆、存進去、再把檔案裡的紀錄全部讀出來。既然讀
+出來了，順便走第二趟，數數看總共有幾筆。
+
+\begin{example}{python}{(moneylog/main.py 第 2 版) 存下來，再讀回來}
+from expense import Expense, guess_category
+from storage import append_expense, load_expenses
+
+DATA_FILE = "expenses.csv"
+
+lunch = Expense("2026-09-01", "bento", guess_category("bento"), 100, "TWD")
+ramen = Expense("2026-09-02", "ramen", guess_category("ramen"), 1200, "JPY")
+
+append_expense(DATA_FILE, lunch)
+append_expense(DATA_FILE, ramen)
+
+records = load_expenses(DATA_FILE)
+
+print("Everything in the log:")
+for expense in records:
+    print(expense)
+
+print("Walking through it again:")
+for expense in records:
+    print(expense)
+
+print("(that's the end of the second walk)")
+\end{example}
+
+\iosample{}{Everything in the log: \\ 2026-09-01 bento [Food] 100.0 TWD \\ 2026-09-02 ramen [Food] 1200.0 JPY \\ Walking through it again: \\ (that's the end of the second walk) \\}
+
+第一趟兩筆都在。第二趟\textbf{什麼都沒有}。
+
+沒有 traceback、沒有紅字、沒有任何警告，第二個 \texttt{for} 迴圈確確實實執行了，只是跑了
+零輪。這就是第 \ref{sec:one-shot} 節那個坑，在一個真正的專案裡長出來的樣子：
+\texttt{load\_expenses()} 是一台發號機，號碼發完就沒了。它不是壞掉，它是用完了。
+
+修法也是第 \ref{sec:one-shot} 節給過的：如果你打算走不只一次，就先用
+\texttt{list()} 把它整個收下來。整份程式只要改一行：
+
+\begin{example}{python}{(moneylog/main.py 第 2 版，修好之後) 先收成 list 再走}
+from expense import Expense, guess_category
+from storage import append_expense, load_expenses
+
+DATA_FILE = "expenses.csv"
+
+lunch = Expense("2026-09-01", "bento", guess_category("bento"), 100, "TWD")
+ramen = Expense("2026-09-02", "ramen", guess_category("ramen"), 1200, "JPY")
+
+append_expense(DATA_FILE, lunch)
+append_expense(DATA_FILE, ramen)
+
+records = list(load_expenses(DATA_FILE))
+
+print("Everything in the log:")
+for expense in records:
+    print(expense)
+
+print("Walking through it again:")
+for expense in records:
+    print(expense)
+
+print("(that's the end of the second walk)")
+\end{example}
+
+\iosample{}{Everything in the log: \\ 2026-09-01 bento [Food] 100.0 TWD \\ 2026-09-02 ramen [Food] 1200.0 JPY \\ Walking through it again: \\ 2026-09-01 bento [Food] 100.0 TWD \\ 2026-09-02 ramen [Food] 1200.0 JPY \\ (that's the end of the second walk) \\}
+
+順帶留意一個小細節：第 1 版印出來的金額是 \texttt{100}，這一版變成 \texttt{100.0}。因為
+這一次的資料是從 CSV 讀回來的，中間經過了 \texttt{float()}。同一筆花費，繞了硬碟一圈
+回來，型別變了——這正是「兩種形狀之間有一層翻譯」最好的證據。
+
+打開 \texttt{expenses.csv}，會看到這個：
+
+\begin{verbatim}
+date,item,category,amount,currency
+2026-09-01,bento,Food,100,TWD
+2026-09-02,ramen,Food,1200,JPY
+\end{verbatim}
+
+還有一件事要提醒：這一版每執行一次就會多記兩筆。跑第二次，檔案裡就會有四列。這不是
+bug，是 \texttt{"a"} 模式該有的行為；示範完之後把 \texttt{expenses.csv} 刪掉，再往下一節
+走，你看到的數字才會跟書上一樣。
+
+\begin{verbatim}
+moneylog/
+|-- main.py            工具的門面（這一節改過）
+|-- expense.py         一筆花費長什麼樣
+|-- storage.py         存進 CSV、讀回來        <- 這一節新增
+|-- requirements.txt   要裝哪些套件
+|-- README.md          給人看的說明（還是空的）
+|-- .gitignore         哪些東西不進版本控制
+`-- expenses.csv       你的紀錄（程式產生）    <- 這一節開始出現
+\end{verbatim}
+
+\keypoint{\texttt{Expense} 是資料在記憶體裡的形狀，CSV 的一列是它在硬碟上的形狀，
+\texttt{storage.py} 是這兩種形狀之間唯一的翻譯層。這樣安排有一個具體好處：以後如果決定
+改用別的儲存方式，要動的只有這一個檔案，\texttt{expense.py} 跟後面的
+\texttt{report.py} 一行都不用改，因為它們從來就不知道資料是怎麼存的。}
+
+\begin{drills}[label=drills:capstone-storage]
+\item 如果把 \texttt{append\_expense()} 裡的 \texttt{"a"} 改成 \texttt{"w"}，執行第 2 版
+的 \texttt{main.py} 之後，\texttt{expenses.csv} 裡會剩下幾列？
+\item 如果把 \texttt{load\_expenses()} 裡的 \texttt{float(row["amount"])} 改成
+\texttt{row["amount"]}，第 2 版的 \texttt{main.py} 印出來會有什麼不同？哪一節之後會真的
+出事？
+\item \texttt{load\_expenses()} 裡的 \texttt{yield} 如果改成 \texttt{return}（其他都不
+動），第 2 版修好之後的那支 \texttt{main.py} 會怎樣？
+\end{drills}
+
+\section{跟外面的世界要匯率：\texttt{rates.py}}
+\label{sec:capstone-rates}
+
+到目前為止，那個 \texttt{0.21} 都是硬寫在程式裡的假數字。這一節要把它換成真的。
+
+匯率是第 \ref{ch:api} 章開頭講的那種資料：這一秒才剛剛決定、存在別人家的伺服器上，不會
+乖乖躺在你的電腦裡等你讀。所以要去問。
+
+要問的骨架你已經完整學過了，第 \ref{sec:currency-api} 節的學習要點也講得很白：換一個
+服務，套用同一套骨架，換掉細節就好。這一節就是那句話第一次被兌現。
+
+\begin{code}{python}{去問一個匯率的通用骨架}
+url = "the service URL"
+params = {"base": base_currency}
+response = requests.get(url, params=params, timeout=5)
+response.raise_for_status()
+data = response.json()
+rate = data["rates"][target_currency]
+\end{code}
+
+第 \ref{ch:api} 章用的 Frankfurter 有一個限制：它的資料來源是歐洲央行，那份清單裡\textbf{
+沒有台幣}。這個專案要把所有東西換成台幣，所以要換一個涵蓋台幣的服務。這裡用
+\texttt{open.er-api.com}，一樣公開、一樣不用註冊、不用金鑰。看看程式碼就知道，換服務對
+你的影響有多小：網址換掉、參數少一個，其餘每一行都跟第 \ref{sec:currency-api} 節一模
+一樣。
+
+\begin{example}{python}{(moneylog/rates.py) 去外面拿匯率，順便記起來}
+import requests
+
+URL = "https://open.er-api.com/v6/latest"
+
+
+def fetch_rate(base, target):
+    params = {"base": base}
+    response = requests.get(URL, params=params, timeout=5)
+    response.raise_for_status()
+    data = response.json()
+    return data["rates"][target]
+
+
+class RateBook:
+    def __init__(self, known_rates=None):
+        if known_rates is None:
+            self.rates = {}
+        else:
+            self.rates = known_rates
+
+    def get(self, currency):
+        if currency == "TWD":
+            return 1.0
+        if currency in self.rates:
+            return self.rates[currency]
+        print(f"(looking up the {currency} rate...)")
+        rate = fetch_rate(currency, "TWD")
+        self.rates[currency] = rate
+        return rate
+\end{example}
+
+\texttt{fetch\_rate()} 就是那個骨架，沒有別的。\texttt{RateBook} 才是這一節的重點：它是
+一本「匯率記事本」，裡面就一個 dict。\texttt{get()} 做三件事——台幣直接回 \texttt{1.0}、
+記事本裡有就直接給、都沒有才真的上網問一次，問到之後\textbf{記進 dict}，下次就不用再問。
+
+\texttt{known\_rates=None} 這個預設值不是隨便寫的。第 \ref{sec:mutable-default} 節講過，
+預設值\textbf{不能}直接寫成 \texttt{\{\}}，那個坑會讓所有 \texttt{RateBook} 共用同一本
+記事本。所以預設寫 \texttt{None}，進到 \texttt{\_\_init\_\_} 裡再造一個新的空 dict。
+至於「為什麼要留這個參數，讓別人可以塞一份現成的匯率進來」——第 \ref{sec:capstone-tests}
+節會揭曉，那是這個參數存在的唯一理由。
+
+\subsection*{為什麼 \texttt{amount\_in\_twd()} 不自己去查匯率}
+
+現在可以回答第 \ref{sec:capstone-model} 節埋的那個問題了。
+
+看起來，讓 \texttt{Expense.amount\_in\_twd()} 自己去打一次 API 會方便得多——呼叫端連匯率
+都不用管。但這麼寫會同時壞掉三件事：
+
+\begin{enumerate}
+\item \textbf{慢，而且失禮。} 一百筆日圓花費就會打一百次 API，問一百次同一個問題。你等得
+很久，對方的伺服器也白白被你敲了九十九次。
+\item \textbf{沒有必要。} 匯率一天只變一次，同一次執行裡查一次就夠了。「查過的答案先記
+起來，下次直接用」是 dict 最經典的用途之一。
+\item \textbf{最嚴重的一件：測試會跑不起來。} 「一千日圓乘上 0.21 等於多少」是一個純粹的
+算術，答案永遠一樣；但如果這個方法裡藏著一次 API 呼叫，那它就變成「要有網路才能回答、
+而且答案每天不一樣」。第 \ref{sec:capstone-tests} 節那支檢查腳本，會因此一個檢查都寫不
+出來。
+\end{enumerate}
+
+所以這個專案把「去拿資料」跟「拿資料來算」切成兩層：\texttt{rates.py} 負責跟外面的世界
+打交道，\texttt{expense.py} 負責算術，它們之間傳的是一個 \texttt{float}。
+
+\keypoint{這是整章唯一一個「不是語法、是判斷」的教學點，也是 capstone 真正的難度所在：
+\textbf{一個小決定會同時影響效能、可靠度、跟能不能被測試。} \texttt{amount\_in\_twd(rate)}
+跟 \texttt{amount\_in\_twd()} 只差一個參數，語法上沒有誰對誰錯，但前者讓這個專案的三個
+問題一次解決。你以後看別人的程式碼時，「這個函式要自己去拿它需要的東西，還是等別人餵給
+它」會是一個一直反覆出現的問題。}
+
+還有一個決定值得說一句：\texttt{RateBook.get()} 裡面\textbf{沒有} \texttt{try}/
+\texttt{except}。網路掛掉的時候，它就讓例外往外丟。這跟第 \ref{sec:download-multiple} 節
+那題練習的答案是同一個道理：接不接得住、接住之後要做什麼，呼叫的人比較清楚。一支只想印
+報表的程式可能想印一句話就算了，另一支程式可能想換個備援來源再試一次。真正接住它的地方
+在第 \ref{sec:capstone-wiring} 節的 \texttt{main.py}。
+
+\texttt{main.py} 升到第 3 版：多記兩筆（一筆美金、一筆台幣），然後把檔案裡所有紀錄都
+換算成台幣印出來。
+
+\begin{example}{python}{(moneylog/main.py 第 3 版) 換成真的匯率}
+from expense import Expense, guess_category
+from rates import RateBook
+from storage import append_expense, load_expenses
+
+DATA_FILE = "expenses.csv"
+
+new_expenses = [
+    Expense("2026-09-03", "movie", guess_category("movie"), 12.99, "USD"),
+    Expense("2026-09-03", "metro", guess_category("metro"), 30, "TWD"),
+]
+for expense in new_expenses:
+    append_expense(DATA_FILE, expense)
+
+rate_book = RateBook()
+
+for expense in list(load_expenses(DATA_FILE)):
+    rate = rate_book.get(expense.currency)
+    print(f"{expense} -> {round(expense.amount_in_twd(rate), 2)} TWD")
+
+print("Rates I ended up looking up:", rate_book.rates)
+\end{example}
+
+\iosample{}{2026-09-01 bento [Food] 100.0 TWD -> 100.0 TWD \\ (looking up the JPY rate...) \\ 2026-09-02 ramen [Food] 1200.0 JPY -> 237.44 TWD \\ (looking up the USD rate...) \\ 2026-09-03 movie [Entertainment] 12.99 USD -> 412.02 TWD \\ 2026-09-03 metro [Transport] 30.0 TWD -> 30.0 TWD \\ Rates I ended up looking up: \{'JPY': 0.197868, 'USD': 31.71834\} \\}
+
+\textbf{你跑的時候，看到的數字一定跟這裡不一樣。} 上面這些是某一天真的跑出來的結果，
+匯率每天都在動，這正是「這份資料存在別人家的伺服器上」的意思。看數字有沒有跟書上一致
+沒有意義，該看的是形狀對不對。
+
+有兩件事在這份輸出裡看得特別清楚。第一，台幣那兩筆完全沒有觸發任何一次查詢——
+\texttt{get()} 第一行就把它們攔下來了。第二，\texttt{(looking up ...)} 這句話對 JPY 跟
+USD 各只印了一次，就算後面還有更多同幣別的紀錄也不會再印，因為第二次開始都從 dict 裡拿。
+最後那一行 \texttt{rate\_book.rates} 把記事本整個攤開來，裡面就只有兩筆。
+
+\begin{verbatim}
+moneylog/
+|-- main.py            工具的門面（這一節改過）
+|-- expense.py         一筆花費長什麼樣
+|-- storage.py         存進 CSV、讀回來
+|-- rates.py           去外面拿匯率            <- 這一節新增
+|-- requirements.txt   要裝哪些套件
+|-- README.md          給人看的說明（還是空的）
+|-- .gitignore         哪些東西不進版本控制
+`-- expenses.csv       你的紀錄（程式產生）
+\end{verbatim}
+
+\begin{drills}[label=drills:capstone-rates]
+\item 如果把 \texttt{RateBook.get()} 裡的 \texttt{self.rates[currency] = rate} 這一行
+刪掉（其他都不動），第 3 版的 \texttt{main.py} 執行起來會有什麼不同？
+\item \texttt{RateBook.get()} 第一行為什麼要特別處理 \texttt{"TWD"}？如果拿掉這兩行，
+會發生什麼事？
+\item 執行第 3 版的時候把網路關掉，會看到什麼？是哪一行程式碼丟出例外的？（提示：
+\texttt{rates.py} 裡沒有任何 \texttt{try}/\texttt{except}。）
+\end{drills}
+
+\section{把資料變成一份報表：\texttt{report.py}}
+\label{sec:capstone-report}
+
+規格的最後半句還沒做：「總共花了多少台幣、哪一類花最多」。零件都到齊了——紀錄讀得回來、
+匯率查得到、每一筆都會把自己換算成台幣——剩下的只是把它們加起來、排個序、印成一張看得
+懂的表。
+
+\begin{example}{python}{(moneylog/report.py) 彙總、排版、輸出}
+import csv
+
+
+def summarize(expenses, rate_book):
+    categories = sorted({expense.category for expense in expenses})
+    return {
+        category: sum(
+            expense.amount_in_twd(rate_book.get(expense.currency))
+            for expense in expenses
+            if expense.category == category
+        )
+        for category in categories
+    }
+
+
+def format_table(summary):
+    ranked = sorted(summary.items(), key=lambda item: item[1], reverse=True)
+    lines = [f"{'Category':<16}{'TWD':>12}", "-" * 28]
+    for category, total in ranked:
+        lines.append(f"{category:<16}{total:>12,.2f}")
+    lines.append("-" * 28)
+    lines.append(f"{'Total':<16}{sum(summary.values()):>12,.2f}")
+    return "\n".join(lines)
+
+
+def write_summary_csv(path, summary):
+    ranked = sorted(summary.items(), key=lambda item: item[1], reverse=True)
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["category", "total_twd"])
+        for category, total in ranked:
+            writer.writerow([category, round(total, 2)])
+\end{example}
+
+三個函式，主力是第 \ref{ch:advanced-functions}、\ref{ch:comprehensions} 兩章那些「更
+Python 的寫法」，再加上第 \ref{ch:strings} 章的 f-string 跟第 \ref{ch:csv} 章的
+\texttt{csv} 模組。
+
+\texttt{summarize()} 最密，拆開來看只有兩層。裡面那個
+\texttt{\{expense.category for expense in expenses\}} 是一個 set comprehension（第
+\ref{sec:comp-dict-set} 節），把「總共有哪些分類」去重複整理出來，再用
+\texttt{sorted()} 固定順序。外面那一整包是 dict comprehension，對每一個分類算一個總額，
+而總額用的是 \texttt{sum(...)} 吃一個「還沒算好的東西」（第 \ref{sec:reducing-builtins}
+節），中間那個 \texttt{if expense.category == category} 就是第 \ref{sec:comp-filter} 節
+的篩選。
+
+\texttt{format\_table()} 用的是第 \ref{sec:f-string-format} 節那些格式規格：
+\texttt{:<16} 靠左補到 16 格、\texttt{:>12} 靠右補到 12 格、\texttt{,} 加千分位逗號、
+\texttt{.2f} 固定兩位小數。四個符號拼起來就是一張對齊的表。排序用
+\texttt{sorted(..., key=lambda item: item[1], reverse=True)}，也就是第 \ref{sec:lambda}
+節的 \texttt{lambda} 加第 \ref{sec:key-function} 節的 \texttt{key=}：\texttt{.items()}
+給出來的每一項是 \texttt{(分類, 金額)}，取 \texttt{item[1]} 就是照金額排，
+\texttt{reverse=True} 讓花最多的排最上面。
+
+\texttt{write\_summary\_csv()} 是第 \ref{sec:csv-module-write} 節的 \texttt{csv.writer}，
+用 \texttt{"w"} 模式——這裡跟 \texttt{storage.py} 相反，報表本來就該是「最新的那一份」，
+每次整份覆蓋才對。
+
+\subsection*{同一件事，用你三章前的寫法會長什麼樣}
+
+\texttt{summarize()} 那一大包看起來很陌生的話，把它換成第 \ref{ch:csv} 章那種寫法，就
+會發現它其實在做很簡單的事：
+
+\begin{code}{python}{同一個 summarize()，改用造空 dict、跑迴圈、逐一累加}
+def summarize(expenses, rate_book):
+    summary = {}
+    for expense in expenses:
+        rate = rate_book.get(expense.currency)
+        twd = expense.amount_in_twd(rate)
+        if expense.category in summary:
+            summary[expense.category] = summary[expense.category] + twd
+        else:
+            summary[expense.category] = twd
+    return summary
+\end{code}
+
+兩種寫法算出來的東西一模一樣，都對，換上去程式照跑。差別在讀的時候：迴圈版要一路讀到
+那個 \texttt{if}/\texttt{else}，才拼得出「喔，原來是在按分類加總」；comprehension 版
+第一眼就看得出「我要一個 dict，key 是分類、value 是那個分類的總和」。第
+\ref{ch:comprehensions} 章開場說的「一行就說完我要什麼」，在這裡第一次有了實際的對照組。
+
+\stylepoint{回頭翻一下你在第 \ref{ch:csv} 章寫過的那些程式——造一個空 list、跑一個迴圈、
+逐一 \texttt{append}。那時候那樣寫是對的，因為你手上只有那些工具。現在你手上多了
+comprehension、\texttt{sum}、\texttt{sorted(key=)}，同一件事寫出來就是不一樣的形狀了。
+這不是誰比較高級，是同一個人多學了一整個區塊的寫法之後，講同一件事的方式變簡潔了。}
+
+\texttt{main.py} 第 4 版，第一次印出完整報表：
+
+\begin{example}{python}{(moneylog/main.py 第 4 版) 印出報表、順便存成 CSV}
+from rates import RateBook
+from report import format_table, summarize, write_summary_csv
+from storage import load_expenses
+
+DATA_FILE = "expenses.csv"
+SUMMARY_FILE = "summary.csv"
+
+expenses = list(load_expenses(DATA_FILE))
+rate_book = RateBook()
+summary = summarize(expenses, rate_book)
+
+print(format_table(summary))
+
+write_summary_csv(SUMMARY_FILE, summary)
+print(f"The same numbers are now in {SUMMARY_FILE}:")
+
+with open(SUMMARY_FILE, encoding="utf-8") as f:
+    print(f.read())
+\end{example}
+
+這一次的輸出有一張對齊的表格，欄位寬度是靠空白撐出來的，所以這裡直接照終端機上看到的
+樣子印出來：
+
+\begin{verbatim}
+(looking up the USD rate...)
+(looking up the JPY rate...)
+Category                 TWD
+----------------------------
+Entertainment         412.02
+Food                  337.44
+Transport              30.00
+----------------------------
+Total                 779.46
+The same numbers are now in summary.csv:
+category,total_twd
+Entertainment,412.02
+Food,337.44
+Transport,30.0
+\end{verbatim}
+
+（匯率每天都在變，你跑出來的金額不會跟這裡一樣，看的是形狀對不對。）
+
+\textbf{這個專案的功能到這裡就齊了。} 記得下來、存得住、讀得回、換算得了、彙總得出來、
+印得出報表，規格裡的每一句話都有東西對應了。剩下兩節做的是另一種事：確認它沒壞，以及讓
+別人也能用。
+
+\begin{verbatim}
+moneylog/
+|-- main.py            工具的門面（這一節改過）
+|-- expense.py         一筆花費長什麼樣
+|-- storage.py         存進 CSV、讀回來
+|-- rates.py           去外面拿匯率
+|-- report.py          彙總、排版、輸出        <- 這一節新增
+|-- requirements.txt   要裝哪些套件
+|-- README.md          給人看的說明（還是空的）
+|-- .gitignore         哪些東西不進版本控制
+|-- expenses.csv       你的紀錄（程式產生）
+`-- summary.csv        最近一次的報表（程式產生）<- 這一節開始出現
+\end{verbatim}
+
+\begin{drills}[label=drills:capstone-report]
+\item 把 \texttt{format\_table()} 裡的 \texttt{reverse=True} 拿掉，印出來的表會有什麼
+不同？
+\item \texttt{summarize()} 收到一個空的 \texttt{expenses}（一筆紀錄都沒有）會回傳什麼？
+接著 \texttt{format\_table()} 拿到那個東西，會印出什麼？
+\item 要讓報表多一欄「這個分類佔總額的百分比」，要改的是 \texttt{report.py} 裡的哪一個
+函式？需不需要動到 \texttt{summarize()}？
+\end{drills}
+
+\section{怎麼確認自己沒改壞：一支檢查腳本}
+\label{sec:capstone-tests}
+
+專案現在有五個 \texttt{.py} 檔案在互相呼叫。這帶來一個第 \ref{ch:automating} 章那種單檔
+腳本不會有的煩惱：\textbf{你改 A 的時候，很難確定 B 有沒有跟著壞掉}。
+
+改一行 \texttt{expense.py}，然後手動跑一次 \texttt{main.py}、新增一筆、出一份報表、用
+眼睛看數字對不對——這件事你做第一次還可以，做第十次就會開始偷懶，偷懶第三次就會漏掉一個
+錯誤。解法是把「用眼睛看數字對不對」這件事寫成程式，讓它自己看。
+
+工具你已經有了：第 \ref{sec:assert} 節的 \texttt{assert}。它做的事情很單純——條件成立就
+安靜通過，條件不成立就馬上停下來丟出 \texttt{AssertionError} 並印出你寫的訊息。
+
+\begin{example}{python}{(moneylog/check\_moneylog.py) 一連串檢查點}
+from expense import Expense, guess_category
+from rates import RateBook
+from report import summarize
+
+assert guess_category("ramen") == "Food", "ramen should be Food"
+assert guess_category("hovercraft") == "Other", "unknown items fall back"
+
+ramen = Expense("2026-09-02", "ramen", "Food", 1000, "JPY")
+twd = round(ramen.amount_in_twd(0.21), 2)
+assert twd == 210.0, "1000 JPY at 0.21 should be 210 TWD"
+
+rate_book = RateBook({"JPY": 0.21, "USD": 32.0})
+assert rate_book.get("TWD") == 1.0, "TWD to TWD is always 1"
+assert summarize([], rate_book) == {}, "no records, empty report"
+
+expenses = [
+    Expense("2026-09-01", "bento", "Food", 100, "TWD"),
+    Expense("2026-09-02", "ramen", "Food", 1000, "JPY"),
+    Expense("2026-09-02", "metro", "Transport", 30, "TWD"),
+]
+summary = summarize(expenses, rate_book)
+assert round(summary["Food"], 2) == 310.0, "Food is 100 + 210 = 310"
+assert round(summary["Transport"], 2) == 30.0, "Transport is 30"
+
+print("All checks passed.")
+\end{example}
+
+\iosample{}{All checks passed. \\}
+
+這支檔案跟其他五個一樣，就是一支普通的 \texttt{.py}，用 \texttt{python check\_moneylog.py}
+直接執行。它沒有用任何測試工具，只有 \texttt{import}、\texttt{assert} 跟一個
+\texttt{print}。
+
+七個檢查大致分成三種。前兩個檢查\textbf{一般情況跟例外情況}：表裡有的項目分類要對，表裡
+沒有的項目要落到預設分類。中間三個檢查\textbf{最基本的算術跟邊界情況}——特別是
+\texttt{summarize([], rate\_book) == \{\}}，「一筆紀錄都沒有的時候會不會爆炸」是最容易
+忘記、也最容易出事的情況。最後兩個檢查\textbf{整條線接起來之後對不對}：三筆花費、跨兩個
+分類、其中一筆是外幣，加總出來的數字要正確。
+
+每個比較金額的地方都先包了一層 \texttt{round(x, 2)}（第 \ref{sec:arithmetic} 節）。
+處理錢的時候，先四捨五入到小數點後兩位再比較，是一個值得養成的習慣。
+
+\subsection*{這支腳本為什麼不需要網路}
+
+看一眼建立 \texttt{RateBook} 的那一行：\texttt{RateBook(\{"JPY": 0.21, "USD": 32.0\})}。
+
+這就是第 \ref{sec:capstone-rates} 節那個 \texttt{known\_rates} 參數存在的唯一理由。這裡
+直接塞一本已經填好的匯率記事本進去，\texttt{RateBook.get()} 查得到，就不會去打 API。
+整支檢查腳本因此\textbf{完全不碰網路}，可以在飛機上跑、可以跑一百次、每次結果都一樣。
+
+而這件事能成立，是因為第 \ref{sec:capstone-rates} 節做的那個決定：\texttt{amount\_in\_twd()}
+收匯率，不自己查匯率。當初那一句「這個小決定等一下會很重要」，兌現的就是這一刻。
+
+用到的東西只有第 \ref{sec:function-params} 節的預設參數跟第 \ref{ch:dict-set} 章的 dict，
+沒有任何特殊工具。
+
+\keypoint{\textbf{測試好不好寫，是設計好不好的一支溫度計。} 如果 \texttt{amount\_in\_twd()}
+自己去打 API，這一節每一個 assert 都會需要網路才跑得動，而且答案會隨著匯率每天變，根本
+寫不出「應該等於 210」這種檢查。反過來說也成立：\textbf{當你發現一個東西很難測，那通常
+不是測試的問題，是那段程式的分工出了問題。} 這是一個很好用的直覺，值得從現在開始養。}
+
+\subsection*{故意改壞一行，看它會不會叫}
+
+寫完檢查腳本，一定要做一件事：\textbf{確認它真的會失敗}。一支從來沒有紅過的檢查腳本，
+跟沒有檢查腳本是一樣的。
+
+把 \texttt{expense.py} 裡的 \texttt{amount\_in\_twd()} 故意改成加法（這是一個非常真實的
+手誤，\texttt{*} 跟 \texttt{+} 就在隔壁）：
+
+\begin{verbatim}
+    def amount_in_twd(self, rate):
+        return self.amount + rate
+\end{verbatim}
+
+再跑一次 \texttt{python check\_moneylog.py}：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "check_moneylog.py", line 10, in <module>
+    assert twd == 210.0, "1000 JPY at 0.21 should be 210 TWD"
+           ^^^^^^^^^^^^
+AssertionError: 1000 JPY at 0.21 should be 210 TWD
+\end{verbatim}
+
+跟第 \ref{sec:assert} 節看過的形狀完全一樣：哪一行、哪個條件、你自己寫的那句訊息。改壞的
+是 \texttt{expense.py}，跳出來罵人的是 \texttt{check\_moneylog.py}——這正是它存在的意義。
+把那一行改回乘法，再跑一次，應該又會看到 \texttt{All checks passed.}。
+
+最後補兩件事。第一，第 \ref{sec:assert} 節提過 \texttt{assert} 的兩個限制（條件誤包成
+tuple 會永遠成立、加上 \texttt{-O} 選項執行會被整個跳過），在這裡一樣適用。這也提醒你
+\texttt{assert} 的定位：它是\textbf{寫給你自己看的檢查點}，不是用來擋使用者亂輸入的關卡
+——那種事該用 \texttt{try}/\texttt{except}。
+
+第二，業界不會只用 \texttt{assert} 做這件事，而是用 \texttt{pytest} 這類專門的測試工具，
+第 \ref{sec:project-anatomy} 節那張樹狀圖裡 \texttt{tests/} 資料夾放的就是這種東西的
+正式版。它們能做的事多得多——自動找出所有測試、一次跑完之後給你一份報告、失敗的時候告訴
+你更多細節。這一章刻意只用 \texttt{assert}，因為它已經足以回答那個最重要的問題：\textbf{
+我剛剛那個改動，有沒有把別的地方弄壞？}
+
+\begin{drills}[label=drills:capstone-tests]
+\item 有一個檢查是寫不進這支腳本的：「\texttt{fetch\_rate("JPY", "TWD")} 應該回傳
+0.21」。為什麼不能寫？（兩個理由。）
+\item 如果把 \texttt{RateBook(\{"JPY": 0.21, "USD": 32.0\})} 改成 \texttt{RateBook()}，
+這支腳本執行起來會怎樣？
+\item 第 \ref{sec:capstone-report} 節那個「造空 dict、跑迴圈、逐一累加」的
+\texttt{summarize()} 版本，如果整個換上去，這支檢查腳本會不會有任何一個 assert 失敗？
+這說明了什麼？
+\end{drills}
+
+\section{把六個檔案接成一支工具：\texttt{main.py} 與 README}
+\label{sec:capstone-wiring}
+
+到目前為止，\texttt{main.py} 每一版都是寫給\textbf{你自己}測試用的：資料寫死在程式碼裡，
+想換一筆花費就得改程式。這一節要把它變成真正給\textbf{使用者}用的東西——啟動之後有一個
+選單，可以一直記帳、隨時出報表，不用每次都重新執行一次程式。
+
+這個形狀你在第 \ref{sec:weather-tool} 節看過：\texttt{while True} 包一個 \texttt{input()}，
+用 \texttt{if}/\texttt{elif}/\texttt{else} 分派指令，\texttt{break} 離開、
+\texttt{continue} 跳過這一輪。這裡沿用同一套。
+
+\begin{example}{python}{(moneylog/main.py 最終版) 一支真的能用的工具}
+import requests
+
+from expense import Expense, guess_category
+from rates import RateBook
+from report import format_table, summarize, write_summary_csv
+from storage import append_expense, load_expenses
+
+DATA_FILE = "expenses.csv"
+SUMMARY_FILE = "summary.csv"
+
+rate_book = RateBook()
+
+print("moneylog: a multi-currency expense log")
+
+while True:
+    command = input("What now? (add / report / quit): ")
+
+    if command == "quit":
+        print("Bye!")
+        break
+
+    if command == "add":
+        date = input("Date (YYYY-MM-DD): ")
+        item = input("Item: ")
+        amount = float(input("Amount: "))
+        currency = input("Currency (TWD / JPY / USD): ").upper()
+        expense = Expense(date, item, guess_category(item), amount, currency)
+        append_expense(DATA_FILE, expense)
+        print(f"Saved: {expense}")
+
+    elif command == "report":
+        try:
+            expenses = list(load_expenses(DATA_FILE))
+        except FileNotFoundError:
+            print("No records yet, use add to write one down first")
+            continue
+        try:
+            summary = summarize(expenses, rate_book)
+        except requests.exceptions.RequestException:
+            print("Couldn't reach the rate server, check your connection and try again")
+            continue
+        print(format_table(summary))
+        write_summary_csv(SUMMARY_FILE, summary)
+        print(f"The same numbers are now in {SUMMARY_FILE}")
+
+    else:
+        print("Unrecognized command, please try again")
+\end{example}
+
+跑一次完整的操作：從一個乾淨的資料夾開始，先手殘按了 \texttt{report}（那時候還沒有任何
+紀錄），再記兩筆（一筆台幣、一筆日圓），出報表，離開。這次直接照終端機上的樣子印出來，
+你打的字跟程式印的字會混在同一行——那就是互動式程式實際看起來的樣子：
+
+\begin{verbatim}
+moneylog: a multi-currency expense log
+What now? (add / report / quit): report
+No records yet, use add to write one down first
+What now? (add / report / quit): add
+Date (YYYY-MM-DD): 2026-09-01
+Item: bento
+Amount: 100
+Currency (TWD / JPY / USD): twd
+Saved: 2026-09-01 bento [Food] 100.0 TWD
+What now? (add / report / quit): add
+Date (YYYY-MM-DD): 2026-09-02
+Item: ramen
+Amount: 1200
+Currency (TWD / JPY / USD): jpy
+Saved: 2026-09-02 ramen [Food] 1200.0 JPY
+What now? (add / report / quit): report
+(looking up the JPY rate...)
+Category                 TWD
+----------------------------
+Food                  337.44
+----------------------------
+Total                 337.44
+The same numbers are now in summary.csv
+What now? (add / report / quit): quit
+Bye!
+\end{verbatim}
+
+注意 \texttt{twd} 打的是小寫，紀錄裡存進去的卻是大寫 \texttt{TWD}——那是
+\texttt{.upper()} 做的事，使用者不用管大小寫。
+
+兩個 \texttt{try}/\texttt{except} 各接住一種「本來就可能發生」的狀況。
+\texttt{FileNotFoundError} 是第一次使用的人一定會遇到的：還沒記過任何一筆就按了
+\texttt{report}。\texttt{requests.exceptions.RequestException} 是第 \ref{ch:automating}
+章跟第 \ref{sec:eafp-requests} 節提過的那個家族——連不上、逾時、伺服器回錯，全都是它底下
+的成員，一次接住就好。把網路關掉，用一份已經有外幣紀錄的 \texttt{expenses.csv} 再按一次
+\texttt{report}，看到的是這個：
+
+\begin{verbatim}
+moneylog: a multi-currency expense log
+What now? (add / report / quit): report
+(looking up the USD rate...)
+Couldn't reach the rate server, check your connection and try again
+What now? (add / report / quit): quit
+Bye!
+\end{verbatim}
+
+程式沒有當掉，只印了一句話，然後回到選單等你下一個指令。這就是第
+\ref{sec:capstone-rates} 節說的「讓例外往外丟、由呼叫端決定怎麼辦」——決定在這裡做出來
+了，而它的內容是「印一句話，繼續」。
+
+\keypoint{把 \texttt{main.py} 從頭讀到尾：它沒有一行在做計算。它只做三件事——問使用者
+要什麼、呼叫對的函式、把結果印出來。這也是為什麼第 \ref{sec:capstone-tests} 節那支檢查
+腳本完全不用測它：真正需要被檢查的邏輯，全都住在別的檔案裡。\textbf{把「跟人互動」跟
+「做事」分開，是這個專案最重要的一條分界線}，也是你以後看任何一個專案時，最值得先問的
+一個問題：這個檔案是門面，還是幹活的？}
+
+\subsection*{一句你以後一定會看到的話}
+
+真實專案的主程式最下面，常常會有一行 \texttt{if \_\_name\_\_ == "\_\_main\_\_":}，底下
+縮排包著一整段程式碼。它處理的是「這個檔案是被直接執行，還是被別的檔案 \texttt{import}」
+的差別。這本書用的是扁平的寫法——五個模組裡只有 \texttt{def} 跟常數，會動的程式碼全部
+集中在 \texttt{main.py} 跟 \texttt{check\_moneylog.py} 的頂層——所以完全用不到它。以後在
+別人的專案裡看到這一行，知道它在處理什麼問題就夠了，不用怕。
+
+\subsection*{最後幾份檔案}
+
+\texttt{requirements.txt} 跟 \texttt{.gitignore} 從第 \ref{sec:capstone-spec} 節寫下來
+之後就沒有改過，那兩份就是定稿。剩下 README，這是唯一一份還空著的檔案，也是別人拿到這個
+資料夾之後\textbf{第一個會打開的東西}：
+
+\begin{code}{text}{(moneylog/README.md) 寫給人看的說明書}
+# moneylog
+
+一支記帳的命令列小工具。每一筆花費會被附加到 expenses.csv；
+要看報表的時候，外幣的金額會用當天的匯率換算成台幣，
+再依分類加總、印成一張表，同時輸出一份 summary.csv。
+
+## 需要什麼
+
+- Python 3
+- requirements.txt 裡列的套件（只有 requests 一個）
+
+安裝：
+
+    pip install -r requirements.txt
+
+## 怎麼跑
+
+    python main.py
+
+要執行的檔案只有 main.py 一個，其他 .py 都是它 import 進去的零件。
+啟動之後有三個指令：
+
+    add      記一筆花費
+    report   印出報表，並寫出 summary.csv
+    quit     離開
+
+## 資料放在哪
+
+- expenses.csv   你記過的每一筆花費，第一次 add 的時候自動建立
+- summary.csv    最近一次的報表，每次出報表都會整份覆蓋
+
+這兩個檔案都不進版本控制，原因見 .gitignore。
+
+## 怎麼確認程式沒壞
+
+    python check_moneylog.py
+
+順利的話會印出 All checks passed.，而且完全不需要網路。
+\end{code}
+
+這份 README 只回答五個問題：這是什麼、要裝什麼、怎麼跑、資料在哪、怎麼確認沒壞。不需要
+更多了。特別注意第二段裡「要執行的檔案只有 \texttt{main.py} 一個」這一句——一個資料夾裡
+有六支 \texttt{.py}，拿到的人第一個困惑一定是「我該執行哪一支」，一句話就能省掉對方十分鐘。
+
+專案完成的樣子：
+
+\begin{verbatim}
+moneylog/
+|-- main.py              工具的門面 <- 唯一要執行的檔案
+|-- expense.py           一筆花費長什麼樣
+|-- storage.py           存進 CSV、讀回來
+|-- rates.py             去外面拿匯率
+|-- report.py            彙總、排版、輸出
+|-- check_moneylog.py    確認自己沒改壞
+|-- requirements.txt     要裝哪些套件
+|-- README.md            給人看的說明          <- 這一節補完
+|-- .gitignore           哪些東西不進版本控制
+|-- expenses.csv         你的紀錄（程式產生）
+`-- summary.csv          最近一次的報表（程式產生）
+\end{verbatim}
+
+其餘五個模組維持第 \ref{sec:capstone-model}～\ref{sec:capstone-tests} 節列出來的樣子，
+從頭到尾沒有再改過一行。六支 \texttt{.py} 加起來大約 200 行。
+
+\begin{drills}[label=drills:capstone-wiring]
+\item 使用者在 \texttt{Amount:} 那一題輸入 \texttt{"一百"}，程式會怎樣？要接住它的話，
+該在 \texttt{main.py} 的哪裡加什麼？
+\item \texttt{rate\_book = RateBook()} 這一行寫在 \texttt{while} 迴圈\textbf{外面}。如果
+把它搬到 \texttt{elif command == "report":} 裡面，程式還是會動，但會有什麼差別？
+\end{drills}
+
+\section{如果這份程式碼要交出去：對照第 \ref{ch:industry} 章走一次}
+\label{sec:capstone-handoff}
+
+程式寫完了，這一節不寫程式。
+
+你在第 \ref{ch:industry} 章讀過一整章的詞：專案、虛擬環境、\texttt{requirements.txt}、
+README、commit、branch、pull request、code review、CI。那一章說的是「業界大概是這樣運作
+的」，讀起來多少有點像在看別人的世界。這一節要做的事很簡單：把那些詞，一個一個對回你
+前面七節真的做過的事。
+
+\subsection*{你剛剛做的每一件事，業界叫什麼}
+
+\begin{center}
+\begin{tabular}{@{}p{5.2cm}p{5.2cm}p{2.4cm}@{}}
+\toprule
+你剛剛做的事 & 那一章的說法 & 在哪一節 \\
+\midrule
+建一個資料夾，裡面好幾個檔案 & 一個「正常專案」 & 第 \ref{sec:project-anatomy} 節 \\
+建虛擬環境、寫 \texttt{requirements.txt} & 虛擬環境與套件管理 & 第 \ref{sec:project-structure} 節 \\
+寫 \texttt{.gitignore} & 不該被拍進快照裡的東西 & 第 \ref{sec:gitignore} 節 \\
+寫 README & 寫給人看的說明書 & 第 \ref{sec:project-anatomy} 節 \\
+每做完一節就是一個能跑的狀態 & commit & 第 \ref{sec:version-control-why} 節 \\
+交出去之前先請人看過 & branch／pull request／code review & 第 \ref{sec:version-control} 節 \\
+那支 \texttt{check\_moneylog.py} & CI 那一關自動跑的東西 & 第 \ref{sec:cicd} 節 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+第五列值得多說一句。第 \ref{sec:version-control-why} 節說 commit 是「存檔加上一句話說明
+這次改了什麼」。這一章的八節結構，本身就是八次 commit 的節奏——每一節結束的時候，程式都
+能跑，而且比上一節多做一件事，那正是「一個值得記住的狀態」的定義。如果你把這個專案放進
+版本控制，最自然的切法就是照著節走：「加上 \texttt{Expense} 這個 class」「紀錄可以存進
+CSV 了」「接上匯率查詢」⋯⋯每一句都講得出這次改了什麼。
+
+（這一章從頭到尾沒有出現任何一行 Git 指令，跟第 \ref{ch:industry} 章一樣。那是另一件要
+花時間單獨學的事，這裡要建立的只有節奏感。）
+
+\subsection*{模擬一次 code review}
+
+第 \ref{sec:version-control} 節說過，程式碼合併進主線之前，通常會先請同事看過一遍。假設
+你把 \texttt{moneylog} 交出去了，同事大概會問這幾個問題。有趣的是，答案幾乎都已經在前面
+幾節裡了：
+
+\begin{itemize}
+\item \textbf{「金鑰有沒有寫死在程式碼裡？」} 沒有——這個專案刻意挑了不需要金鑰的匯率
+服務。萬一以後換成需要金鑰的服務，第 \ref{sec:api-keys} 節跟第 \ref{sec:gitignore} 節
+講過該怎麼處理：不要寫進程式碼，而且那份放金鑰的檔案要進 \texttt{.gitignore}。
+\item \textbf{「網路掛掉，整支程式會不會跟著掛？」} 不會，第 \ref{sec:capstone-wiring}
+節的 \texttt{main.py} 接住了，只印一句話就回到選單。
+\item \textbf{「這個函式在做幾件事？」} 每個都只做一件。最值得講的是第
+\ref{sec:capstone-rates} 節那個分層：拿資料歸 \texttt{rates.py}，算資料歸
+\texttt{expense.py}。
+\item \textbf{「別人拿到這個資料夾，知道怎麼跑嗎？」} README 講了要裝什麼、執行哪一支、
+資料存在哪；\texttt{requirements.txt} 讓對方一行指令就把環境裝好。
+\item \textbf{「你怎麼知道自己沒改壞？」} \texttt{python check\_moneylog.py}，第
+\ref{sec:capstone-tests} 節。而且它不需要網路，任何時候都能跑。
+\item \textbf{「\texttt{expenses.csv} 該不該進版本控制？」} 不該。判準很清楚：版本控制
+保存的是\textbf{程式碼}，不是\textbf{使用者的資料}。這個檔案的內容因人而異、每天都在變，
+把它記進版本控制，除了讓紀錄變得又大又吵之外，還等於把某個人的消費紀錄公開出去。所以第
+\ref{sec:capstone-spec} 節那份 \texttt{.gitignore} 裡的 \texttt{*.csv} 是刻意的，而且它
+順便把 \texttt{summary.csv} 也一起擋掉了——那份是程式每次重跑就會重新產生的東西，同樣沒
+有保存的必要。
+\end{itemize}
+
+\subsection*{這個專案還沒做的事}
+
+一份誠實的交件，該講的不只是做了什麼，還有\textbf{刻意沒做什麼}。以下四件事都是有意識
+留白的，不是忘了：
+
+\begin{itemize}
+\item \textbf{沒有分 \texttt{src/}／\texttt{tests/} 子資料夾}，理由見第
+\ref{sec:capstone-spec} 節那個風格要點。
+\item \textbf{沒有處理「同一筆花費被記兩次」}。連按兩次 \texttt{add} 輸入一樣的內容，
+CSV 裡就會有兩列一模一樣的東西，程式不會攔你。
+\item \textbf{報表沒有分月份、也沒有算佔比}。目前只能看「從開始記帳到現在的總和」。
+\item \textbf{匯率查的是「現在」，不是「花費當天」}。一筆去年的日圓花費，會用今天的匯率
+換算。對記帳來說這其實不太對，但要做對就得改成查歷史匯率，那是另一個規格了。
+\end{itemize}
+
+一份講得出自己缺什麼的專案，比一份假裝什麼都做到的專案可信得多。這四件事剛好變成這一章
+的最後幾題練習。
+
+\subsection*{你剛剛完成的事}
+
+回頭看一下這一章走過的路：從一句抱怨開始，拆成六個檔案，一個一個做出來，中間做了一個
+會同時影響效能、可靠度跟可測試性的判斷，寫了一支不需要網路的檢查腳本，最後接成一支真的
+能用的工具，還附了一份說明書。整章沒有教任何新語法——所有零件都是你在前面的章節裡一塊
+一塊學會的，這一章只是第一次把它們裝在同一台機器上。
+
+這件事的意義不在於 \texttt{moneylog} 這個工具本身，而在於：下一次有人跟你描述一個需求，
+你腦子裡會開始自動出現「這句話要程式做什麼、這件事該放進哪一個檔案」這種問題。那就是這
+一章真正想留給你的東西。
+
+下一章不教程式，它要回答的是「接下來呢」：這本書沒教到的東西還有哪些、你現在的程度可以
+往哪幾個方向走、要怎麼繼續。
+
+\begin{drills}[label=drills:capstone-handoff]
+\item 開放式練習：幫報表加上「每個分類佔總額的百分比」。（提示：總額就是
+\texttt{sum(summary.values())}，要改的只有 \texttt{report.py} 裡的
+\texttt{format\_table()}，\texttt{summarize()} 不用動。）
+\item 開放式練習：讓 \texttt{report} 可以只看某一個月的紀錄，例如只算 2026 年 9 月。
+（提示：篩選就是一個 comprehension 的 \texttt{if}；每一筆的 \texttt{date} 是
+\texttt{"2026-09-01"} 這種字串，第 \ref{ch:strings} 章有現成的方法可以判斷開頭。）
+\item 幫你上面兩題新增的功能，各補一個 \texttt{assert} 進 \texttt{check\_moneylog.py}。
+補完之後，故意把新功能改壞一行，確認那個 assert 真的會叫。
+\end{drills}
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:capstone-spec}~節}
+\begin{enumerate}
+\item 加進 \texttt{report.py}。「每個月分別花了多少」是一個彙總的問題，跟「怎麼把資料
+存進檔案、讀回來」無關——日期本來就已經記在每一筆紀錄裡了，\texttt{storage.py} 一行都
+不用改。
+\item 虛擬環境資料夾跟 \texttt{expenses.csv} 該進 \texttt{.gitignore}：前者可以靠
+\texttt{requirements.txt} 重建，後者是使用者的資料不是程式碼。\texttt{main.py} 跟
+\texttt{requirements.txt} 都是你親手寫的、需要被保存的東西，不排除。
+\item 大概會變成「去外面拿匯率\textbf{而且}把資料彙總成報表」——需要用「而且」才講得完，
+就是該拆成兩個檔案的訊號。實際的壞處是：以後如果想換一個匯率服務，你得在一個同時裝著
+報表排版邏輯的檔案裡東翻西找。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:capstone-model}~節}
+\begin{enumerate}
+\item 印出 \texttt{2026-09-05 taxi [Transport] 250 TWD}。決定這個格式的是
+\texttt{\_\_str\_\_}。
+\item 回傳 \texttt{"Other"}。因為 \texttt{"hovercraft"} 不在 \texttt{CATEGORIES} 這張表
+裡，\texttt{CATEGORIES.get(..., DEFAULT\_CATEGORY)} 這一行就會給出預設值。
+\item 三個地方：\texttt{\_\_init\_\_} 的參數列多一個、裡面多一行
+\texttt{self.payment = payment}，以及（如果希望它被印出來）\texttt{\_\_str\_\_} 的
+f-string。另外提醒，\texttt{storage.py} 的 \texttt{FIELDS} 跟兩個函式也要跟著改，否則
+新欄位存不進 CSV——這就是「改一個地方，別的地方會不會壞」的實際樣子。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:capstone-storage}~節}
+\begin{enumerate}
+\item 只剩一列，而且是 \texttt{2026-09-02,ramen,Food,1200,JPY} 這一列——連標題列都沒了。
+\texttt{"w"} 每次開檔都會把內容整個清空，所以第二次呼叫把第一次寫的兩列（標題列加第一筆）
+全部蓋掉；而這一次前面那段 EAFP 讀到的檔案「不是空的」，所以它認為標題列已經寫過了，
+不會再寫一次。結果就是一份沒有標題列的 CSV，接著 \texttt{load\_expenses()} 會把僅存的那
+一列當成標題列，一筆紀錄都讀不出來。一個字的差別，可以讓資料悄悄消失。
+\item 印出來看不出差別，因為 \texttt{\_\_str\_\_} 只是把值放進 f-string，字串照樣印得
+出來。真正出事的是第 \ref{sec:capstone-rates} 節：\texttt{amount\_in\_twd()} 會變成
+「字串乘上一個小數」，直接丟出 \texttt{TypeError}。
+\item 完全不會印出任何一筆紀錄。\texttt{return} 會在讀到第一列的時候就把整個函式結束掉，
+只回傳一個 \texttt{Expense} 物件（不是一串），\texttt{list()} 拿到一個物件會再對它做
+走訪、丟出 \texttt{TypeError}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:capstone-rates}~節}
+\begin{enumerate}
+\item 最後那行 \texttt{rate\_book.rates} 會印出一個空 dict——查到的匯率沒有被記下來。
+不過在這一節這份只有四筆的紀錄裡，日圓跟美金剛好各只出現一次，所以
+\texttt{(looking up ...)} 印的次數看起來沒變。等到同一個幣別有第二筆紀錄（例如第
+\ref{sec:capstone-wiring} 節那份），你就會看到同一句話被印兩次，那時候快取的價值才會
+現形。這也提醒一件事：效能問題常常在資料還很少的時候完全看不出來。
+\item 因為「台幣換台幣」的答案一定是 1，根本不需要問任何人。這兩行省下的不只是一次網路
+來回：沒有它們的話，一個從頭到尾只記台幣的使用者，也會被迫要有網路才出得了報表——而他
+的報表裡根本沒有任何一筆需要換算。拿掉之後程式仍然算得對，只是變慢，而且在沒有網路的
+時候會整個失敗。
+\item 會看到一個 \texttt{requests.exceptions.ConnectionError} 的 traceback，程式直接
+中斷。丟出例外的是 \texttt{fetch\_rate()} 裡的 \texttt{requests.get()}，而
+\texttt{rates.py} 沒有接住它，所以它一路往外傳到 \texttt{main.py}——第
+\ref{sec:capstone-wiring} 節才會真正接住。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:capstone-report}~節}
+\begin{enumerate}
+\item 會變成金額由小到大排，花最少的排在最上面。
+\item \texttt{summarize()} 會回傳一個空 dict \texttt{\{\}}（那正是檢查腳本裡那個 assert
+在確認的事）。\texttt{format\_table()} 拿到空 dict，中間的 \texttt{for} 迴圈跑零輪，
+所以只會印出標題列、兩條分隔線、跟一行 \texttt{Total} 加 \texttt{0.00}——不會出錯，因為
+\texttt{sum(\{\}.values())} 是 0。
+\item 改 \texttt{format\_table()} 就好。總額可以用
+\texttt{sum(summary.values())} 當場算出來，每一列的佔比就是
+\texttt{total / grand\_total}，\texttt{summarize()} 一行都不用動。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:capstone-tests}~節}
+\begin{enumerate}
+\item 兩個理由：第一，它需要網路，飛機上或斷線時就跑不了；第二，匯率每天都在變，今天
+寫 0.21 明天就不成立了，這個 assert 會在程式完全沒問題的情況下失敗——一個會亂叫的檢查
+腳本，很快就會被大家忽略。
+\item 會變成需要網路才能跑，而且會慢很多（每個沒查過的幣別都真的去打一次 API）。更糟的
+是那個 \texttt{assert round(summary["Food"], 2) == 310.0} 幾乎一定會失敗，因為 310 這個
+答案是用 0.21 這個假匯率算出來的。
+\item 不會有任何一個 assert 失敗，因為兩個版本算出來的東西完全一樣。這說明檢查腳本檢查
+的是\textbf{行為}，不是\textbf{寫法}——只要對外的結果沒變，你可以放心把裡面重寫成任何
+形狀，這正是有檢查腳本之後最大的好處。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:capstone-wiring}~節}
+\begin{enumerate}
+\item \texttt{float("一百")} 會丟出 \texttt{ValueError}，整支程式直接中斷，前面記的紀錄
+雖然已經存進 CSV 了，但使用者得重新執行一次。修法是把
+\texttt{amount = float(input("Amount: "))} 包進一個 \texttt{try}/\texttt{except
+ValueError}，接住之後印一句話再 \texttt{continue}，回到選單。
+\item 差別在快取的壽命。寫在迴圈外面，這本匯率記事本活過整支程式，你連出五次報表也只會
+查一次匯率；搬進 \texttt{elif} 裡面，每按一次 \texttt{report} 就會造一本全新的空記事本，
+每次都得重查。程式仍然正確，只是白白多打了好幾次 API。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:capstone-handoff}~節}
+\begin{enumerate}
+\item 開放式練習。方向：在 \texttt{format\_table()} 裡先算
+\texttt{grand\_total = sum(summary.values())}，再把每一列的 f-string 多加一個欄位，
+例如 \texttt{f"\{total / grand\_total:>8.1\%\}"}；記得處理 \texttt{grand\_total} 是 0
+的情況，不然會除以零。
+\item 開放式練習。方向：在 \texttt{summarize()} 之前先篩一次，
+\texttt{expenses = [e for e in expenses if e.date.startswith("2026-09")]}，其餘完全不用
+改。這一題的重點是體會到：因為每一層各做一件事，加一個篩選只要動一個地方。
+\item 開放式練習。方向：百分比那題可以檢查「三筆假資料裡 Food 佔多少」；月份那題可以
+準備兩筆不同月份的假資料，確認篩完之後只剩該有的那幾筆。重點是最後那個動作——把新功能
+故意改壞一行、確認 assert 真的會叫，一支從來沒紅過的檢查腳本等於沒有。
+\end{enumerate}

@@ -1,0 +1,826 @@
+\chapter{Dict 與 Set：用「線索」而不是「位置」找答案}
+\label{ch:dict-set}
+
+想找一個朋友的電話號碼時，你腦中不會想「這是我認識的第幾個人」，而是直接用他的名字去
+想：名字才是你真正拿來查東西的線索，「第幾個」根本不重要。前面幾章學過的 list，只能用
+「第幾個」這種位置去查資料，遇到「我想用名字查電話」這種需求就沒轍了。
+
+這一章要教的 dict（字典），就是專門解決這件事的容器：讓你用任何一個有意義的「線索」去
+對應一個「答案」，而不是死板地用位置查東西。你會先學會 dict 的骨架，也就是怎麼造一個
+dict、怎麼用線索查到答案、查不到的時候會發生什麼事、以及怎麼把資料放進去、改掉、拿掉。
+\index{dict}
+
+接著會往上疊一層，教 dict 真正好用的地方：
+
+\begin{itemize}
+\item 怎麼把整個 dict 掃過一遍（不只查單一個線索）
+\item 怎麼一次合併大量資料進去
+\item 怎麼一邊拿資料一邊把它刪掉
+\item 怎麼用 dict 做一件很常見的事，也就是數東西出現幾次
+\end{itemize}
+
+還有一個之後會反覆看到的寫法習慣：與其每次查之前都先問「這個線索存在嗎？」，Python
+更常見的做法是直接假設它存在，用 \texttt{get()} 順便準備好一個備用答案。這個習慣現在
+只是先讓你眼熟，完整的道理要等到第 \ref{ch:files-exceptions} 章講到檔案與例外處理時才會攤開來講。
+
+最後會轉到一個新角色：set（集合）。如果把 dict 想成「線索對答案」的兩欄表格，set 就是
+把「答案」那一欄整個拿掉，只留下線索本身，你不在乎每個東西對應什麼，只在乎「這個東西
+在不在裡面」，還有「兩群東西裡面，哪些是共同的、哪些只有一邊有、哪些是任何一邊都算數
+的」。
+
+這種需求生活裡也很常見，比如兩個社團的成員名單，想知道誰兩邊都參加、誰只參加了
+其中一邊、或是把兩份名單合併成一份不重複的名單。set 的操作方式跟 dict 有很多地方相通，
+畢竟它本質上就是「只留 key 的 dict」，所以放在 dict 之後教，你可以直接把剛學過的直覺
+搬過來用，不用重新建立一套心智模型。
+
+\section{Dict 是什麼：建立字典、用線索查資料}
+\label{sec:dict-basics}
+
+要建立一個 dict，你在大括號裡放進一組一組的「線索：答案」，中間用冒號分開，好幾組之間
+用逗號隔開。查資料的方式跟 list 很像，一樣用中括號，只是裡面放的線索是你自己定義的，
+不再是位置：正式的說法，這個線索叫做 key（鍵），對應的答案叫做 value（值）。
+\index{key}
+\index{value}
+
+而且用 key 查 value 的速度通常很快，不太受 dict 裡東西數量的影響，這跟 list 得一個一個
+位置比對過去很不一樣，但背後的原理這裡先不深究。
+
+\begin{code}{python}{建立與存取 dict}
+my_dict = {key1: value1, key2: value2}
+my_dict[key1]
+\end{code}
+
+如果想從一個空字典開始，之後再一筆一筆加資料進去，可以寫 \texttt{my\_dict = \{\}}，或是
+用 \texttt{dict()} 這個函式，效果一樣。
+
+\begin{example}{python}{(phonebook.py) 查電話本}
+phonebook = {"Alice": "0912-345-678", "Bob": "0933-222-111"}
+print(phonebook["Alice"])
+\end{example}
+
+\iosample{}{0912-345-678 \\}
+
+如果你查的線索根本不在 dict 裡面，會發生什麼事？
+
+\begin{example}{python}{(phonebook-error.py) 查不存在的名字}
+phonebook = {"Alice": "0912-345-678"}
+print(phonebook["Bob"])
+\end{example}
+
+存檔執行後，螢幕上不會印出電話號碼，而是會看到這樣的訊息：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "phonebook-error.py", line 2, in <module>
+    print(phonebook["Bob"])
+          ~~~~~~~~~^^^^^^^^
+KeyError: 'Bob'
+\end{verbatim}
+
+\texttt{KeyError} 的意思很直接：這個 key 在 dict 裡找不到。\texttt{phonebook} 這個字典
+裡根本沒有 \texttt{"Bob"} 這個線索，Python 也不會幫你猜一個相近的答案，就直接讓程式
+停下來、告訴你出錯了。
+
+\index{KeyError}
+查不到答案時，Python 選擇直接讓程式停下來報錯，而不是默默給你一個奇怪的預設值，這種
+「先做、錯了才處理」的態度，之後你會在 Python 裡看到更多次，第 \ref{ch:files-exceptions} 章會把整套完整的
+道理講清楚，這裡你只要先認得 \texttt{KeyError} 長什麼樣子就好。
+
+\begin{drills}[label=drills:dict-basics]
+\item 這段程式執行後，螢幕上會印出什麼？
+\begin{verbatim}
+grades = {"Alice": 90, "Bob": 85}
+print(grades["Bob"])
+\end{verbatim}
+\item 這段程式執行後會發生什麼事？如果會出錯，是哪一種錯誤？
+\begin{verbatim}
+grades = {"Alice": 90, "Bob": 85}
+print(grades["Taylor"])
+\end{verbatim}
+\item 如果你想從一個空字典開始，之後再一筆一筆加資料進去，除了 \texttt{\{\}}，還可以用
+哪一個函式建立空 dict？
+\end{drills}
+
+\section{新增、修改、刪除 Dict 裡的資料}
+\label{sec:dict-modify}
+
+光會查還不夠，dict 建好之後你多半會想繼續維護它：加一筆新的資料進去、把舊資料改掉、
+不要的資料整筆刪掉。這三件事都很直接，用的語法你其實都已經見過。
+
+\begin{code}{python}{新增、修改、刪除 dict 裡的資料}
+my_dict[key] = value   # 如果 key 不存在就新增；如果 key 已存在就覆蓋原本的值
+del my_dict[key]       # 整筆刪除這個 key
+\end{code}
+
+\begin{example}{python}{(picnic-list.py) 野餐要帶的東西}
+picnic_items = {
+    "Alice": ["drinks", "fruit"],
+    "Bob": ["napkins", "hula hoop"],
+}
+
+picnic_items["Alice"].append("sandwich")   # 幫 Alice 的清單再加一項
+picnic_items["Taylor"] = ["grill", "charcoal"]  # 新增一個人，以及他要帶的東西
+del picnic_items["Bob"]                  # Bob 說他不來了，把他的資料刪掉
+
+print(picnic_items)
+\end{example}
+
+\iosample{}{\{'Alice': ['drinks', 'fruit', 'sandwich'], 'Taylor': ['grill', 'charcoal']\} \\}
+
+留意 \texttt{picnic\_items["小美"]} 本身是一份 list，所以可以直接對它呼叫
+\texttt{.append()}。這也順便提醒了你一件事：dict 的 value 可以是任何型別，不只是數字
+或字串，list、甚至另一個 dict 都可以，之後處理比較複雜的資料時會常常用到這一點。
+
+\begin{drills}[label=drills:dict-modify]
+\item 這段程式執行後，\texttt{scores} 最後會是什麼？
+\begin{verbatim}
+scores = {"Alice": 70}
+scores["Alice"] = 85
+scores["Bob"] = 92
+del scores["Alice"]
+print(scores)
+\end{verbatim}
+\item 這段程式執行後會印出什麼？
+\begin{verbatim}
+cart = {"apple": ["red", "green"]}
+cart["apple"].append("yellow")
+print(cart)
+\end{verbatim}
+\item 如果你想在 dict 裡新增一筆從來沒出現過的 key，要用哪一種語法（不是 \texttt{del}，
+也不是 \texttt{print}）？
+\end{drills}
+
+\section{一次合併多筆資料：update()}
+\label{sec:dict-update}
+
+上一節的 \texttt{my\_dict[key] = value} 一次只能新增或改掉一筆。如果你手上已經有另一份
+dict，想把它整個併進來（有重複的 key 就用新的蓋掉舊的），一筆一筆用迴圈慢慢寫也可以，
+但 Python 幫你把這件事包成一個方法：\texttt{update()}。
+\index{update()}
+
+\begin{code}{python}{update()：把另一份 dict 併進來}
+my_dict.update(other_dict)
+\end{code}
+
+\begin{example}{python}{(merge-settings.py) 合併預設設定與使用者設定}
+default_settings = {"volume": 50, "brightness": 80, "language": "English"}
+user_settings = {"volume": 70, "font_size": 16}
+
+default_settings.update(user_settings)
+print(default_settings)
+\end{example}
+
+\iosample{}{\{'volume': 70, 'brightness': 80, 'language': 'English', 'font\_size': 16\} \\}
+
+\texttt{update()} 的邏輯很直覺：\texttt{user\_settings} 裡有的 key，如果
+\texttt{default\_settings} 也有（例如「volume」），就用 \texttt{user\_settings} 的值蓋過去；
+如果是 \texttt{default\_settings} 原本沒有的 key（例如「font\_size」），就直接新增進來。
+沒被 \texttt{user\_settings} 提到的 key（例如「brightness」「language」）維持原樣不變。留意這個
+方法是直接原地修改 \texttt{default\_settings} 本身，不會回傳一份新的 dict，跟第 \ref{ch:lists} 章
+list 的 \texttt{.append()}、\texttt{.sort()} 是同一種脾氣。
+
+\begin{drills}[label=drills:dict-update]
+\item 這段程式執行後，\texttt{a} 最後會是什麼？
+\begin{verbatim}
+a = {"x": 1, "y": 2}
+b = {"y": 20, "z": 30}
+a.update(b)
+print(a)
+\end{verbatim}
+\item \texttt{update()} 呼叫完之後，\texttt{b} 這份 dict 本身會不會被改動？
+\end{drills}
+
+\section{一邊拿資料一邊刪除：pop()}
+\label{sec:dict-pop}
+
+\texttt{del} 可以整筆刪除一個 key，但刪掉之後那個值就直接消失了，你沒機會再用到它。很多
+情境下你其實想要「把這筆資料拿出來用，同時把它從 dict 裡移除」，例如處理完一筆訂單就把
+它從待處理清單拿掉。這正是 \texttt{pop()} 在做的事：刪除的同時，把被刪除的 value
+回傳給你。
+\index{pop()}
+
+\begin{code}{python}{pop()：刪除並拿回這個 key 對應的值}
+my_dict.pop(key)            # 如果 key 不存在會丟出 KeyError，跟中括號查詢一樣
+my_dict.pop(key, default)   # 如果 key 不存在不會報錯，會回傳你給的預設值
+\end{code}
+
+\begin{example}{python}{(serve-orders.py) 依序處理點餐佇列}
+orders = {"table3": "beef noodles", "table5": "braised pork rice"}
+
+dish = orders.pop("table3")
+print(dish)
+print(orders)
+
+print(orders.pop("table9", "no such table"))
+\end{example}
+
+\iosample{}{beef noodles \\ \{'table5': 'braised pork rice'\} \\ no such table \\}
+
+\texttt{orders.pop("table3")} 做了兩件事：把 \texttt{"table3"} 這筆從 \texttt{orders} 裡
+刪掉，同時把它的 value（\texttt{"beef noodles"}）回傳出來存進 \texttt{dish}。之後
+\texttt{orders} 裡就只剩下 \texttt{"table5"} 這一筆。
+
+第二次呼叫 \texttt{orders.pop("table9",
+"no such table")} 因為 \texttt{"table9"} 根本不存在，但因為有給第二個引數當預設值，程式不會
+出錯，直接拿到 \texttt{"no such table"}。如果沒給預設值又查一個不存在的 key，
+\texttt{pop()} 一樣會丟出 \texttt{KeyError}，行為跟中括號查詢一致，跟你在
+\ref{sec:dict-get} 節會看到的 \texttt{get()} 剛好相反：\texttt{get()} 不給預設值時預設
+值是 \texttt{None} 不會報錯，\texttt{pop()} 不給預設值則會直接報錯。
+
+\begin{drills}[label=drills:dict-pop]
+\item 這段程式執行後，依序會印出什麼？
+\begin{verbatim}
+stock = {"apple": 10, "banana": 5}
+amount = stock.pop("banana")
+print(amount)
+print(stock)
+\end{verbatim}
+\item 這段程式執行後會印出什麼？
+\begin{verbatim}
+stock = {"apple": 10}
+print(stock.pop("orange", 0))
+\end{verbatim}
+\item \texttt{stock.pop("orange")}（沒有給第二個引數，且 \texttt{"orange"} 不在
+\texttt{stock} 裡）執行後會發生什麼事？
+\end{drills}
+
+\section{走訪整個 Dict：keys()、values()、items()}
+\label{sec:dict-iterate}
+
+現在你已經會對單一線索查、改 dict 了。但很多時候你想要的是把整個 dict 掃過一遍，
+不只是查一筆，例如列出所有人跟他們各自要帶的東西。這裡會用到三個方法：\texttt{keys()}
+拿到全部的線索、\texttt{values()} 拿到全部的答案、\texttt{items()} 拿到「線索、答案」
+成對的組合。
+\index{keys()}
+\index{values()}
+\index{items()}
+
+\begin{code}{python}{走訪整個 dict}
+for key in my_dict:
+    ...
+
+for key, value in my_dict.items():
+    ...
+\end{code}
+
+直接對 dict 做 \texttt{for} 迴圈，預設走的是 key，效果跟寫
+\texttt{for key in my\_dict.keys()} 一樣，只是 \texttt{.keys()} 這幾個字通常可以省略。
+想要同時拿到 key 跟 value，就用 \texttt{.items()}，配合兩個變數名字一次接住一組。
+
+\begin{example}{python}{(picnic-checklist.py) 列出每個人要帶的東西}
+picnic_items = {
+    "Alice": ["drinks", "fruit", "sandwich"],
+    "Taylor": ["grill", "charcoal"],
+}
+
+for name, items in picnic_items.items():
+    print(f"{name} is bringing: {', '.join(items)}")
+\end{example}
+
+\iosample{}{Alice is bringing: drinks, fruit, sandwich \\ Taylor is bringing: grill, charcoal \\}
+
+順帶一提，dict 的賦值也是貼名字牌的行為，跟第 \ref{ch:lists} 章 list 的別名行為一模一樣：
+\texttt{other = picnic\_items} 之後改 \texttt{other} 的內容，\texttt{picnic\_items}
+也會跟著變，因為兩個名字指的是同一份 dict，不是各自獨立的一份。真的想要另外一份互不
+影響的複製，要用 \texttt{.copy()}。
+
+\begin{drills}[label=drills:dict-iterate]
+\item 這段程式執行後，螢幕上會依序印出什麼？
+\begin{verbatim}
+prices = {"apple": 30, "banana": 15}
+for name in prices:
+    print(name)
+\end{verbatim}
+\item 這段程式執行後，螢幕上會依序印出什麼？
+\begin{verbatim}
+prices = {"apple": 30, "banana": 15}
+for name, price in prices.items():
+    print(f"{name}: {price}")
+\end{verbatim}
+\end{drills}
+
+\section{用 Dict 數東西出現幾次}
+\label{sec:dict-counter}
+
+dict 有一個特別常見的用途：數東西出現幾次。例如統計一段文字裡每個字元各出現幾次。你可能
+會很直覺地想：先檢查這個字元有沒有出現過，沒出現過就先設成 0，出現過就直接加一。
+
+\begin{example}{python}{(word-count.py) 統計文字裡每個字元出現幾次}
+text = "banana"
+counts = {}
+
+for ch in text:
+    if ch not in counts:
+        counts[ch] = 0
+    counts[ch] += 1
+
+print(counts)
+\end{example}
+
+\iosample{}{\{'b': 1, 'a': 3, 'n': 2\} \\}
+
+這種「先檢查、再決定」的寫法沒有錯，能算出正確答案。但下一節你會看到一個更常見的
+Python 寫法，可以把中間那段判斷式縮成一行。
+
+\section{get()：與其先檢查，不如直接查}
+\label{sec:dict-get}
+
+剛才那段程式，每次都要先問一次「這個字元出現過嗎？」，才決定要不要先把值設成 0。Python
+比較常見的寫法，是省略掉「先問」這一步，直接呼叫 \texttt{get(key, default)}：如果 key
+存在，就拿到它目前的值；如果不存在，就直接給你準備好的預設值，不會噴 \texttt{KeyError}。
+\index{get()}
+
+\begin{code}{python}{get()：查不到就用預設值}
+my_dict.get(key, default)
+\end{code}
+
+\begin{example}{python}{(word-count-get.py) 用 get() 精簡統計程式}
+text = "banana"
+counts = {}
+
+for ch in text:
+    counts[ch] = counts.get(ch, 0) + 1
+
+print(counts)
+\end{example}
+
+\iosample{}{\{'b': 1, 'a': 3, 'n': 2\} \\}
+
+跟上一節的版本比對一下，答案完全一樣，但省掉了一整段 \texttt{if} 判斷。
+
+\stylepoint{與其先寫 \texttt{if key not in my\_dict} 再決定要不要處理，Python 更常見的
+做法是直接用 \texttt{get(key, default)} 把「查不到怎麼辦」一次講清楚，這個習慣你會在
+後面章節一直看到，先讓自己眼熟這個寫法就好，完整的道理留到第 \ref{ch:files-exceptions} 章講檔案與例外處理時
+再攤開。}
+
+如果呼叫 \texttt{get()} 時完全不給第二個引數，查不到的話會回傳 \texttt{None}，不會報錯，
+也不會像不給預設值的 \texttt{pop()} 那樣丟出 \texttt{KeyError}。這個差異值得記住：
+\texttt{get()} 天生就是「查不到也沒關係」的個性，\texttt{pop()} 則是預設「查不到就該讓
+你知道」，除非你自己明確給了第二個引數。
+
+\begin{drills}[label=drills:dict-get]
+\item 這段程式執行後會印出什麼？
+\begin{verbatim}
+text = "apple"
+counts = {}
+for ch in text:
+    if ch not in counts:
+        counts[ch] = 0
+    counts[ch] += 1
+print(counts)
+\end{verbatim}
+\item 把下面這段「先檢查再存取」的程式碼，改寫成用 \texttt{get()} 的版本：
+\begin{verbatim}
+if "Alice" in grades:
+    score = grades["Alice"]
+else:
+    score = 0
+\end{verbatim}
+\item 這段程式執行後會印出什麼？
+\begin{verbatim}
+grades = {"Alice": 90}
+print(grades.get("Bob", "not registered"))
+\end{verbatim}
+\end{drills}
+
+\section{setdefault()：查不到就先設好、順便拿回來}
+\label{sec:dict-setdefault}
+
+\texttt{get()} 適合用在「拿到值之後想直接拿去用」（例如加 1 累計次數），但如果每個
+key 對應的 value 本身是一份 list，你想要的往往不只是「查到就用、查不到就給預設值」，
+而是「查不到的話，順便把這個預設值真的存進 dict 裡」，這樣才能接著對它呼叫
+\texttt{.append()}。這正是 \texttt{setdefault()} 要處理的情境。
+\index{setdefault()}
+
+\begin{code}{python}{setdefault()：查不到就先存進去，再回傳}
+my_dict.setdefault(key, default)
+\end{code}
+
+\texttt{setdefault(key, default)} 的行為分兩種情況：如果 \texttt{key} 已經在
+\texttt{my\_dict} 裡，直接回傳它目前的 value，\texttt{default} 完全不會被用到；如果
+\texttt{key} 不在裡面，就先把 \texttt{my\_dict[key] = default} 這件事做掉，再把
+\texttt{default} 回傳給你。跟 \texttt{get()} 最大的差別在這裡：\texttt{get()} 查不到時
+只是「借你看一下」預設值，並不會真的存進 dict；\texttt{setdefault()} 查不到時會真的把
+預設值寫進去。
+
+\begin{example}{python}{(group-by-letter.py) 依照開頭第一個字分組}
+words = ["apple", "banana", "blueberry", "watermelon", "cherry"]
+groups = {}
+
+for word in words:
+    first = word[0]
+    groups.setdefault(first, []).append(word)
+
+print(groups)
+\end{example}
+
+\iosample{}{\{'a': ['apple'], 'b': ['banana', 'blueberry'], 'w': ['watermelon'], 'c': ['cherry']\} \\}
+
+每一輪迴圈裡，\texttt{groups.setdefault(first, [])} 先確保 \texttt{groups[first]} 這個
+key 一定存在（第一次遇到某個開頭字時，會自動存進一份空 list），再把回傳值（不管是原本
+就有的 list，還是剛存進去的空 list）直接接上 \texttt{.append(word)}。整個過程只需要一行，
+不用像前面 \nameref{sec:dict-counter} 節那樣先寫一段 \texttt{if} 判斷 key 存不存在。
+
+跟 \texttt{get()} 用在「數字累加」的情境相比，\texttt{setdefault()} 更常用在這種「value 是
+可變容器、要先確保它存在才能對它動手」的情境，兩者是同一種精神在不同場景下的變化。
+
+\begin{drills}[label=drills:dict-setdefault]
+\item 這段程式執行後，\texttt{groups} 最後會是什麼？
+\begin{verbatim}
+groups = {"sweet": ["apple"]}
+groups.setdefault("sweet", []).append("banana")
+groups.setdefault("sour", []).append("lemon")
+print(groups)
+\end{verbatim}
+\item \texttt{setdefault()} 跟 \texttt{get()} 最主要的差別是什麼？（提示：查不到的時候，
+兩者對 dict 本身分別做了什麼事）
+\end{drills}
+
+\section{Set 是什麼：只留線索，不留答案}
+\label{sec:set-basics}
+
+如果把 dict 想成「線索對答案」的兩欄表格，set 就是把答案那一欄整個拿掉，只留下線索
+本身，你不在乎每個東西對應什麼，只在乎「這個東西在不在裡面」。
+\index{set}
+
+\begin{code}{python}{建立與操作 set}
+my_set = {item1, item2, item3}
+my_set.add(item)      # 把 item 加進 set 裡
+my_set.remove(item)   # 從 set 裡把 item 刪掉
+item in my_set
+\end{code}
+
+這裡要特別小心一件事：空的大括號 \texttt{\{\}} 造出來的是空 dict，不是空 set，這是很多人
+第一次用 set 時會踩到的陷阱。
+
+\begin{example}{python}{(empty-set-trap.py) 空大括號其實是空 dict}
+empty = {}
+print(type(empty))
+\end{example}
+
+\iosample{}{<class 'dict'> \\}
+
+想要一個真正的空 set，要寫 \texttt{empty\_set = set()}。
+
+\begin{example}{python}{(club-members.py) 社團成員名單}
+book_club = {"Alice", "Bob", "Taylor"}
+book_club.add("Charlie")
+book_club.remove("Bob")
+
+print("Alice" in book_club)
+print(book_club)
+\end{example}
+
+\iosample{}{True \\ \{'Alice', 'Charlie', 'Taylor'\} \\}
+
+\keypoint{如果你自己執行這段程式，印出來的 \texttt{book\_club} 順序可能跟這裡不一
+樣，這是正常現象，跟到目前為止看過的 dict 不同，set 不會記得元素被加進去的順序。你只
+要在乎某個東西在不在裡面（用 \texttt{in} 檢查）、以及裡面實際有哪些元素就好，順序本身
+不重要。之後這一章只要再出現印出 set 本身的例子，都會有同樣的情況，不會每次都重複
+提醒。}
+
+set 造出來之後如果放進重複的元素，Python 也只會留一份，不會噴錯、也不會出現兩個一模
+一樣的東西：\texttt{\{"Alice", "Alice", "Bob"\}} 造出來的 set，內容跟
+\texttt{\{"Alice", "Bob"\}} 完全一樣。這個特性也直接呼應了下一節要講的第一個用途。
+
+\begin{drills}[label=drills:set-basics]
+\item 這段程式執行後會印出什麼？
+\begin{verbatim}
+colors = {"red", "red", "blue"}
+print(len(colors))
+\end{verbatim}
+\item 空大括號 \texttt{\{\}} 造出來的是什麼型別？想造一個真正的空 set 要怎麼寫？
+\end{drills}
+
+\section{Set 的兩個常見用途：去重複、比較兩群東西}
+\label{sec:set-ops}
+
+認識了 set 的基本操作後，來看 set 最常見的兩個用途：把一份可能有重複的資料去掉重複、
+以及拿兩個 set 互相比較。
+
+\begin{example}{python}{(remove-duplicates.py) 去除清單裡重複的名字}
+signups = ["Alice", "Bob", "Alice", "Taylor", "Bob"]
+unique_names = set(signups)
+print(unique_names)
+\end{example}
+
+\iosample{}{\{'Bob', 'Taylor', 'Alice'\} \\}
+
+把一份 list 直接丟進 \texttt{set()}，重複的東西就自動只留一份，這是 Python 裡最常見
+的去重複寫法（同樣的，順序可能因人而異）。
+
+\begin{example}{python}{(club-overlap.py) 兩個社團的共同成員}
+book_club = {"Alice", "Bob", "Taylor"}
+hiking_club = {"Bob", "Charlie", "Alice"}
+
+both = book_club & hiking_club
+either = book_club | hiking_club
+
+print(both)
+print(either)
+\end{example}
+
+\iosample{}{\{'Alice', 'Bob'\} \\ \{'Charlie', 'Taylor', 'Bob', 'Alice'\} \\}
+
+\texttt{\&} 算出兩邊都有的東西（交集）、\texttt{|} 算出兩邊合起來、不重複的東西（聯
+集）。想知道「兩個社團都參加的人」用 \texttt{\&}，想把「兩份名單合併成一份不重複的名
+單」用 \texttt{|}，兩種需求生活裡都很常見。
+\index{交集}
+\index{聯集}
+
+\begin{drills}[label=drills:set-ops]
+\item 這段程式執行後會依序印出什麼？
+\begin{verbatim}
+club = {"Alice", "Bob", "Taylor"}
+print("Bob" in club)
+print("Charlie" in club)
+\end{verbatim}
+\item 這段程式執行後會印出什麼？
+\begin{verbatim}
+votes = ["apple", "banana", "apple", "orange", "banana"]
+choices = set(votes)
+print(len(choices))
+\end{verbatim}
+\item 這段程式執行後會依序印出什麼？
+\begin{verbatim}
+a = {"Alice", "Bob", "Taylor"}
+b = {"Bob", "Alice", "Charlie"}
+print(len(a & b))
+print(len(a | b))
+\end{verbatim}
+\end{drills}
+
+\section{Set 的另外兩種比較：差集與對稱差集}
+\label{sec:set-diff}
+
+上一節的交集（\texttt{\&}）跟聯集（\texttt{|}）已經能回答「兩邊都有誰」跟「兩邊合起來
+有誰」，但還有兩種同樣常見的問法：「只在這一邊、不在另一邊的是誰」，還有「只在其中一邊、
+不是兩邊都有的是誰」。這兩個問法分別對應差集跟對稱差集。
+\index{差集}
+\index{對稱差集}
+
+\begin{code}{python}{差集與對稱差集}
+my_set - other_set   # 差集：在 my_set 裡、但不在 other_set 裡的東西
+my_set ^ other_set    # 對稱差集：剛好只出現在其中一個 set 裡的東西
+\end{code}
+
+\begin{example}{python}{(club-diff.py) 只參加書友會、以及只參加一邊的人}
+book_club = {"Alice", "Bob", "Taylor"}
+hiking_club = {"Bob", "Charlie", "Alice"}
+
+only_book = book_club - hiking_club
+only_one_club = book_club ^ hiking_club
+
+print(only_book)
+print(only_one_club)
+\end{example}
+
+\iosample{}{\{'Taylor'\} \\ \{'Taylor', 'Charlie'\} \\}
+
+\texttt{book\_club - hiking\_club} 只留下在 \texttt{book\_club} 裡、但沒出現在
+\texttt{hiking\_club} 裡的人，也就是「只參加書友會、沒參加健行社」的 Taylor。留意減法的
+方向會影響結果：\texttt{hiking\_club - book\_club} 算出來的會是只參加健行社的 Charlie，
+跟前面算出來的不是同一組人，這點跟數字的減法一樣，交換順序答案就不一樣。
+
+\texttt{book\_club \^{} hiking\_club} 則是把兩邊都算進來，但排除掉兩邊都有的人（Alice、
+Bob），只留下「剛好只在其中一邊出現」的 Taylor 跟 Charlie，效果等於聯集扣掉交集。
+
+\begin{drills}[label=drills:set-diff]
+\item 這段程式執行後會印出什麼？
+\begin{verbatim}
+a = {"apple", "banana", "orange"}
+b = {"banana", "watermelon"}
+print(a - b)
+\end{verbatim}
+\item 這段程式執行後會印出什麼？
+\begin{verbatim}
+a = {"apple", "banana", "orange"}
+b = {"banana", "watermelon"}
+print(len(a ^ b))
+\end{verbatim}
+\item \texttt{a - b} 跟 \texttt{b - a} 算出來的結果會不會一樣？
+\end{drills}
+
+\section{安全地刪除、快速地判斷有沒有}
+\label{sec:set-membership}
+
+前面用過的 \texttt{remove()}，如果要刪除的東西根本不在 set 裡，會直接報錯：
+
+\begin{example}{python}{(remove-error.py) 刪除一個不存在的成員}
+book_club = {"Alice", "Bob", "Taylor"}
+book_club.remove("David")
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "remove-error.py", line 2, in <module>
+    book_club.remove("David")
+    ~~~~~~~~~~~~~~~~^^^^^^^^
+KeyError: 'David'
+\end{verbatim}
+
+有意思的是，即使你刪的是 set 裡的元素，錯誤訊息顯示的仍然是 \texttt{KeyError}，因為
+set 內部運作的機制跟 dict 的 key 很接近（只是沒有對應的 value）。如果你不確定要刪除的
+東西存不存在、又不想每次都先寫一次 \texttt{if ... in ...} 判斷，可以改用
+\texttt{discard()}：找不到就什麼事都不做，不會報錯。
+\index{discard()}
+
+\begin{code}{python}{discard()：找不到也不會報錯的刪除}
+my_set.discard(item)
+\end{code}
+
+\begin{example}{python}{(safe-remove.py) 用 discard() 安全地刪除}
+book_club = {"Alice", "Bob", "Taylor"}
+book_club.discard("Bob")
+book_club.discard("David")
+
+print(book_club)
+\end{example}
+
+\iosample{}{\{'Alice', 'Taylor'\} \\}
+
+第一次 \texttt{discard("Bob")} 因為「Bob」真的在 \texttt{book\_club} 裡，效果跟
+\texttt{remove()} 一樣，直接刪掉；第二次 \texttt{discard("David")} 因為「David」根本不在
+裡面，程式照樣往下跑，不會像 \texttt{remove()} 那樣中斷。什麼時候該用哪一個，看你要不要
+被提醒「這個東西其實不存在」：確定一定存在、想在少了它時被提醒就用 \texttt{remove()}；
+只是想確保它「最後一定不在裡面」、不在乎它原本有沒有，就用 \texttt{discard()}。
+
+除了刪除，set 另一個常被用到的地方是快速判斷「這個東西在不在一大堆東西裡面」。用
+\texttt{in} 檢查一個東西在不在 set 裡，速度跟 dict 用 key 查 value 一樣快，不太受 set
+裡東西數量的影響，這跟 list 得從頭一個一個比對過去很不一樣。
+
+如果你手上有一份很長的
+名單，需要反覆檢查「這個名字有沒有出現過」，比起每次都對 list 做 \texttt{in} 檢查，先
+把名單轉成 set 再檢查，會是更常見、也更划算的寫法：
+
+\begin{example}{python}{(fast-membership.py) 用 set 快速檢查名字有不有效}
+valid_names = ["Alice", "Bob", "Taylor", "Charlie"]
+valid_set = set(valid_names)
+
+print("Taylor" in valid_set)
+print("David" in valid_set)
+\end{example}
+
+\iosample{}{True \\ False \\}
+
+\begin{drills}[label=drills:set-membership]
+\item 這段程式執行後會發生什麼事？如果會出錯，是哪一種錯誤？
+\begin{verbatim}
+fruits = {"apple", "banana"}
+fruits.remove("orange")
+\end{verbatim}
+\item 把上一題的 \texttt{remove("orange")} 換成 \texttt{discard("orange")}，執行後會發生
+什麼事？
+\item 手上有一份很長的名單，需要反覆檢查某個名字在不在裡面，為什麼通常會先把它轉成
+set，而不是直接對原本的 list 做 \texttt{in} 檢查？
+\end{drills}
+
+\section{一行造出 dict 或 set：dict comprehension、set comprehension}
+\label{sec:comprehension}
+\index{dict comprehension}
+\index{set comprehension}
+
+第 \ref{ch:lists} 章教過的 list comprehension，把「造一份空清單、跑迴圈、逐一加東西進去」濃縮成一行。
+同樣的邏輯，其實也可以直接套用在 dict 跟 set 上，只是把方括號換成大括號：造 set 的寫法
+省略冒號，跟 list comprehension 幾乎一樣；造 dict 的寫法則需要冒號分開 key 跟 value。
+
+\begin{code}{python}{set comprehension 與 dict comprehension}
+{expression for item in iterable}              # 這是 set comprehension（集合生成式）
+{key_expr: value_expr for item in iterable}    # 這是 dict comprehension（字典生成式）
+\end{code}
+
+\begin{example}{python}{(comprehension.py) 用一行分別造出 set 與 dict}
+signups = ["Alice", "Bob", "Alice", "Taylor", "Bob"]
+
+unique_names = {name for name in signups}
+name_lengths = {name: len(name) for name in signups}
+
+print(unique_names)
+print(name_lengths)
+\end{example}
+
+\iosample{}{\{'Taylor', 'Alice', 'Bob'\} \\ \{'Alice': 5, 'Bob': 3, 'Taylor': 6\} \\}
+
+\texttt{\{name for name in signups\}} 跟 \nameref{sec:set-ops} 節用
+\texttt{set(signups)} 去重複，效果完全一樣，只是寫法換成了 comprehension；
+\texttt{\{name: len(name) for name in signups\}} 則是幫每個名字造出一筆「名字對應到它
+的字數」的資料，重複出現的名字（例如「Alice」出現兩次）在 dict 裡自然只會留一份，因為
+同一個 key 後面出現的賦值會直接蓋掉前一次。
+
+跟 list comprehension 一樣，這兩種寫法你
+現在看得懂、知道長什麼樣子就好，之後章節用得上時會愈來愈熟。
+
+\begin{drills}[label=drills:comprehension]
+\item 這段程式執行後會印出什麼？
+\begin{verbatim}
+nums = [1, 2, 2, 3, 3, 3]
+unique = {n for n in nums}
+print(len(unique))
+\end{verbatim}
+\item 把下面這段用迴圈寫的程式，改寫成一行 dict comprehension：
+\begin{verbatim}
+squares = {}
+for n in [1, 2, 3, 4]:
+    squares[n] = n * n
+\end{verbatim}
+\end{drills}
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:dict-basics}~節}
+\begin{enumerate}
+\item 會印出：85。
+\item 會出現 \texttt{KeyError: 'Taylor'}，因為 \texttt{grades} 這個字典裡沒有這個 key。
+\item \texttt{dict()}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:dict-modify}~節}
+\begin{enumerate}
+\item \texttt{\{'Bob': 92\}}，因為「Alice」先被改成 85，後來又被 \texttt{del} 整筆刪掉，
+只剩「Bob」。
+\item \texttt{\{'apple': ['red', 'green', 'yellow']\}}，因為 value 本身是一份 list，
+\texttt{.append()} 直接改的是那份 list。
+\item 用 \texttt{my\_dict[key] = value} 這種索引賦值語法，key 不存在時就會新增一筆。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:dict-update}~節}
+\begin{enumerate}
+\item \texttt{\{'x': 1, 'y': 20, 'z': 30\}}，「y」這個 key 兩邊都有，被 \texttt{b} 裡的
+值蓋過去；「z」是 \texttt{b} 才有的 key，直接新增進來；「x」沒被提到，維持原樣。
+\item 不會，\texttt{update()} 只會修改呼叫它的那份 dict（例子裡是 \texttt{a}），
+\texttt{b} 本身完全沒有變動。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:dict-pop}~節}
+\begin{enumerate}
+\item 依序印出：5、\texttt{\{'apple': 10\}}，「banana」對應的值被拿出來存進
+\texttt{amount}，同時從 \texttt{stock} 裡刪掉。
+\item 印出：0，因為 \texttt{"orange"} 不在 \texttt{stock} 裡，\texttt{pop()} 回傳給的
+第二個引數當作預設值。
+\item 會出現 \texttt{KeyError: 'orange'}，因為沒有給預設值、\texttt{pop()} 又找不到這個
+key。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:dict-iterate}~節}
+\begin{enumerate}
+\item 依序印出：apple、banana（dict 會記得新增的順序）。
+\item 依序印出：apple: 30、banana: 15。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:dict-get}~節}
+\begin{enumerate}
+\item \texttt{\{'a': 1, 'p': 2, 'l': 1, 'e': 1\}}。
+\item \texttt{score = grades.get("Alice", 0)}。
+\item not registered，因為 \texttt{"Bob"} 不在 \texttt{grades} 裡，\texttt{get()} 回傳給的
+預設值。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:dict-setdefault}~節}
+\begin{enumerate}
+\item \texttt{\{'sweet': ['apple', 'banana'], 'sour': ['lemon']\}}，「sweet」這個 key 本來就存在，
+\texttt{setdefault()} 直接回傳原本的 list 讓 \texttt{.append()} 接上去；「sour」不存在，
+先被存成一份空 list 再接上 \texttt{.append()}。
+\item \texttt{get()} 查不到時只是「借你看一下」預設值，不會真的把它存進 dict 裡；
+\texttt{setdefault()} 查不到時會把預設值真的寫進 dict、之後同一個 key 再查就查得到。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:set-basics}~節}
+\begin{enumerate}
+\item 印出：2，因為 set 裡重複的「red」只會留一份。
+\item 空大括號造出來的是空 dict；真正的空 set 要寫 \texttt{set()}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:set-ops}~節}
+\begin{enumerate}
+\item 依序印出：True、False，「Bob」在 \texttt{club} 裡，「Charlie」不在。
+\item 印出：3，\texttt{votes} 裡不重複的東西只有 apple、banana、orange 三種，跟印出來的
+順序無關。
+\item 依序印出：2、4，\texttt{a} 跟 \texttt{b} 共同的成員是「Alice」跟「Bob」兩個
+人，兩邊合起來不重複總共有「Alice」「Bob」「Taylor」「Charlie」四個人。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:set-diff}~節}
+\begin{enumerate}
+\item \texttt{\{'orange', 'apple'\}}，這兩樣只在 \texttt{a} 裡，沒出現在 \texttt{b} 裡。
+\item 印出：3，兩邊合起來不重複的東西是 apple、banana、orange、watermelon 共 4 個，扣掉兩邊都有的
+banana 1 個，剩下 3 個。
+\item 不會一樣，\texttt{a - b} 是只在 \texttt{a} 的東西，\texttt{b - a} 是只在
+\texttt{b} 的東西，除非 \texttt{a} 跟 \texttt{b} 完全沒有交集，否則兩者不同。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:set-membership}~節}
+\begin{enumerate}
+\item 會出現 \texttt{KeyError: 'orange'}，因為 \texttt{"orange"} 不在 \texttt{fruits}
+裡，\texttt{remove()} 找不到要刪除的東西就會報錯。
+\item 什麼事都不會發生，程式照常往下執行，\texttt{fruits} 內容不變，因為
+\texttt{discard()} 找不到要刪除的東西時不會報錯。
+\item 因為對 set 用 \texttt{in} 檢查東西在不在裡面，速度不太受 set 裡東西數量影響；對
+list 用 \texttt{in}，內容越多、檢查得越久，需要一個一個比對過去。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:comprehension}~節}
+\begin{enumerate}
+\item 印出：3，\texttt{nums} 裡不重複的數字只有 1、2、3 三種。
+\item \texttt{squares = \{n: n * n for n in [1, 2, 3, 4]\}}。
+\end{enumerate}

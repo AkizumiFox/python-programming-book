@@ -1,0 +1,670 @@
+\chapter{正規表達式}
+\label{ch:regex}
+
+到目前為止，你已經用 \texttt{in}、\texttt{.replace()}、\texttt{.split()} 這些字串方法處理過
+不少「文字裡有沒有出現某個東西、要不要換掉某段文字」的問題。這些方法有一個共同的前提：你得
+\textbf{確切知道}要找的字串長什麼樣子。
+
+但現實裡很多時候你要找的其實是一種\textbf{格式}：
+你可能不知道一支電話號碼的確切數字是什麼，但看到「三個數字、一個連字號、三個數字、一個連字
+號、四個數字」這種形狀，你一眼就認得出那是電話號碼；一個 email 地址也是一樣，不管帳號跟網域
+是什麼，「一段文字、一個 \texttt{@}、再一段文字、一個點」這個形狀是固定的。正規表達式
+（regular expression，常簡稱 regex）就是讓你把這種形狀寫給 Python 看的工具。
+\index{正規表達式}
+
+這一章分幾段推進：
+
+\begin{itemize}
+\item 先從你已經會的字串方法出發，看看「找格式」這件事跟「找固定字串」有什麼不
+一樣，順便學會 \texttt{re} 模組最基本的用法。
+\item 接著把「形狀」拆解成幾個最常用的積木（數字、
+文字、空白、重複次數），組出電話號碼、email 這類實際會用到的 pattern。
+\item 再來學怎麼一次把一段
+文字裡所有符合的地方都找出來、怎麼確認一整段文字完全符合某種格式（也就是「驗證」）、怎麼用
+regex 做搜尋取代跟切字串。
+\end{itemize}
+
+要先說在前面：正規表達式是一個很深的主題，光是語法規則就能寫成一
+整本書，但這一章的目標不是讓你精通它，只要看到常見的 pattern 看得懂在比對什麼、需要的時候
+自己也能寫出簡單的 pattern（數字、email 這種格式），這一章的任務就完成了，更進階的寫法留給
+你以後真的用到時再自己查文件。
+
+\section{為什麼需要正規表達式、\texttt{re} 模組怎麼用}
+\label{sec:regex-basics}
+
+假設你在整理一批客服留言，想知道哪些留言裡有留電話號碼、哪些沒有。用你已經會的工具，你會
+怎麼寫？如果你知道確切的電話號碼是什麼，\texttt{in} 可以幫你判斷這段文字有沒有出現；但你
+不可能事先知道每個客戶會留下哪個號碼，你真正想問的其實是「這裡有沒有出現\textbf{一串數字}」，
+而不是「這裡有沒有出現某個特定的字串」。
+
+這正是字串方法做不到、但正規表達式擅長的事：它讓你
+可以描述「找長這種樣子的東西」，不只是「找這個字」。
+
+要在 Python 裡用正規表達式，第一步是 \texttt{import re}。\texttt{re} 是 Python 內建的正規
+表達式模組，不用另外安裝。最常用的入口是 \texttt{re.search(pattern, text)}：如果 \texttt{text}
+裡有一段符合 \texttt{pattern} 這個「形狀」的文字，它會回傳一個 Match 物件；找不到的話，回傳
+\texttt{None}。拿到 Match 物件之後，呼叫它的 \texttt{.group()} 方法，就能取出實際比對到的那段
+文字。
+\index{re 模組}
+\index{re.search()}
+\index{Match 物件}
+
+\begin{code}{python}{Matching a pattern and extracting the matched text}
+import re
+
+match = re.search(pattern, text)
+if match:
+    print(match.group())
+else:
+    print("Not found")
+\end{code}
+
+這裡 \texttt{pattern} 通常會寫成 \texttt{r'...'} 這種前面多一個 \texttt{r} 的字串，叫 raw
+string。正規表達式常常要用到反斜線（像等一下會教的 \texttt{\textbackslash d}），如果不加
+這個 \texttt{r}，反斜線可能被 Python 字串本身的跳脫規則誤解成別的意思。之後每一段 pattern，
+這本書都會統一用 \texttt{r'...'} 這種寫法，你也照著做就好，不用另外深究背後的規則。
+\index{raw string}
+
+比對「一個數字」的 pattern 寫作 \texttt{\textbackslash d}，先只用這一個最基本的元件，其他
+常用的元件留到下一節再教。
+
+\begin{example}{python}{(check-digit.py) Checking whether a message contains a digit}
+import re
+
+message = "Hello, my phone number is 0912345678, please call back soon."
+
+match = re.search(r'\d', message)
+if match:
+    print("This message contains a digit, the first one is:", match.group())
+else:
+    print("This message has no digits")
+\end{example}
+
+\iosample{}{This message contains a digit, the first one is: 0 \\}
+
+如果同一個 pattern 之後還要重複用好幾次，你也可以先用 \texttt{re.compile()} 把它變成一個
+regex 物件、貼給一個名字，例如 \texttt{pattern = re.compile(r'\textbackslash d')}，之後
+每次呼叫 \texttt{pattern.search(text)} 就好。這裡的 \texttt{pattern} 這個名字牌，跟你前面
+幾章看過的物件用法完全一樣，只是這次貼的對象是一個 regex 物件而已。
+
+\index{re.compile()}
+還記得第 \ref{ch:files-exceptions} 章教的「先做、錯了再處理」（EAFP）嗎？這裡看起來不太一樣：\texttt{search()} 比對
+不到的時候，是老實回傳 \texttt{None}，不是丟例外，所以慣用寫法是先用 \texttt{if match:} 檢查
+再用，乍看之下比較像「先檢查」（LBYL）。
+
+這其實仍然算是 EAFP 的精神，只是同一個原則的另一面：
+EAFP 真正在乎的是操作本身可能失敗時，要用能反映這件事的寫法。\texttt{search()} 的設計本來
+就是老實回答「有」或「沒有」，不是「可能出錯會丟例外的操作」（不像開檔案、字典查詢那樣），所以
+檢查 \texttt{if match:} 才是正確的寫法，不需要每個地方都硬套 \texttt{try/except}。
+
+如果忘記檢查、直接對比對結果呼叫 \texttt{.group()}，會發生什麼事？
+
+\begin{example}{python}{(check-digit-broken.py) Calling .group() without checking first}
+import re
+
+message = "Thank you for your message, a representative will get back to you soon."
+match = re.search(r'\d', message)
+print(match.group())
+\end{example}
+
+這則留言裡沒有任何數字，\texttt{match} 會是 \texttt{None}，執行到最後一行時會看到：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "check-digit-broken.py", line 4, in <module>
+    print(match.group())
+          ^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'group'
+\end{verbatim}
+
+由下往上讀：最後一行 \texttt{AttributeError: 'NoneType' object has no attribute 'group'}
+是說「\texttt{None} 這種東西身上沒有 \texttt{group} 這個方法可以呼叫」，因為 \texttt{match}
+根本不是 Match 物件，是 \texttt{search()} 老實告訴你「沒找到」的 \texttt{None}。修法很直接：
+呼叫 \texttt{.group()} 之前，一定要先用 \texttt{if match:} 確認真的有比對到，這也是為什麼
+本節一開始的片語會把 \texttt{if match:} 當成固定樣板的一部分，不是可有可無的裝飾。
+
+\begin{drills}[label=drills:regex-basics]
+\item 用 \texttt{re.search(r'\textbackslash d', "Customer ID A007")} 這行程式，你覺得會不會
+比對到？如果會，比對到的是哪個字元？
+\item 用 \texttt{re.search(r'\textbackslash d', "A sentence without any digits")}，你覺得 \texttt{match}
+最後會是 \texttt{None} 還是一個 Match 物件？如果接著不檢查、直接寫
+\texttt{match.group()}，會發生什麼事？
+\end{drills}
+
+\section{常用 pattern 積木：\texttt{\textbackslash d}、\texttt{\textbackslash w}、
+\texttt{\textbackslash s} 與量詞}
+\label{sec:regex-patterns}
+
+上一節只用了「比對一個數字」這個最小的積木，但實際情境裡，你通常要描述的是一整段有規律的
+格式，例如「三個數字、一個連字號、三個數字、一個連字號、四個數字」。要做到這件事，你需要
+兩種積木：一種是「這個位置該是什麼樣的字元」，另一種是「這個位置要重複幾次」。
+
+最常用的三個字元類別：
+
+\begin{itemize}
+\item \texttt{\textbackslash d}：一個數字（0 到 9 之間任何一個）。
+\item \texttt{\textbackslash w}：一個「文字字元」，包含英文字母、數字、底線。
+\item \texttt{\textbackslash s}：一個空白字元，包含空格、換行、tab。
+\end{itemize}
+\index{字元類別 d, w, s}
+
+拿標點符號試試就能感受到 \texttt{\textbackslash w} 跟你想像的「文字」不完全一樣：
+\texttt{re.search(r'\textbackslash w', "！")} 會是 \texttt{None}，因為驚嘆號不算英文
+字母、數字或底線；而 \texttt{re.search(r'\textbackslash s', "a b").group()} 會找到
+\texttt{"a"} 跟 \texttt{"b"} 中間那個空格。
+
+光有字元類別還不夠，你還需要說「要重複幾次」，這就是量詞的工作：
+
+\begin{itemize}
+\item \texttt{*}：前面那個元件出現零次以上（可以完全不出現）。
+\item \texttt{+}：前面那個元件出現一次以上（至少要有一個）。
+\item \texttt{?}：前面那個元件可有可無（出現零次或一次）。
+\item \texttt{\{n\}}：前面那個元件精確出現 \texttt{n} 次。
+\item \texttt{\{n,m\}}：前面那個元件出現 \texttt{n} 到 \texttt{m} 次（含頭尾兩端）。
+\end{itemize}
+\index{量詞}
+
+把字元類別跟量詞組合起來，就能寫出「三個數字、一個連字號、三個數字、一個連字號、四個數字」
+這種格式：\texttt{\textbackslash d\{3\}-\textbackslash d\{3\}-\textbackslash d\{4\}}。
+
+\begin{code}{python}{Combining character classes with quantifiers}
+import re
+
+pattern = r'\d{3}-\d{3}-\d{4}'
+match = re.search(pattern, text)
+if match:
+    print(match.group())
+\end{code}
+
+\begin{example}{python}{(check-phone-format.py) Checking whether a message has a phone number in the required format}
+import re
+
+message = "Hello, my phone number is 091-234-5678, please call back soon."
+
+match = re.search(r'\d{3}-\d{3}-\d{4}', message)
+if match:
+    print("Found a phone number matching the format:", match.group())
+else:
+    print("No phone number matching the format was found")
+\end{example}
+
+\iosample{}{Found a phone number matching the format: 091-234-5678 \\}
+
+如果客戶留的號碼格式不太一樣，例如少了一個連字號、或分段方式不同，就比對不到。把
+\texttt{message} 換成 \texttt{"Hello, my phone number is 0912-345-678, please call back soon."} 再跑一次，
+會印出「No phone number matching the format was found」，因為 \texttt{4-3-3} 這種分段方式跟
+\texttt{\textbackslash d\{3\}-\textbackslash d\{3\}-\textbackslash d\{4\}} 描述的
+\texttt{3-3-4} 形狀對不上。
+
+\keypoint{字元類別跟量詞要記住的重點是「規律的東西才需要 regex」，不是要你把每個符號背下
+來。如果你要找的字串本身就是固定的（例如一定是 \texttt{"客服專線"} 這四個字），直接用
+\texttt{in} 或 \texttt{.replace()} 更簡單、也更好懂，不用每個地方都想著要動用正規表達式。}
+
+\begin{drills}[label=drills:regex-patterns]
+\item 下面三個字串，哪些符合 \texttt{\textbackslash d\{3\}-\textbackslash d\{3\}-%
+\textbackslash d\{4\}} 這個 pattern？為什麼：
+(a) \texttt{"091-234-5678"}
+(b) \texttt{"0912-345-678"}
+(c) \texttt{"12-345-6789"}
+\item 如果要用同樣的精神，寫一個「兩碼-兩碼-兩碼-兩碼」格式的 pattern（例如
+\texttt{"12-34-56-78"}），你會怎麼寫？
+\item 句子 \texttt{"Customer service line: 091-234-5678, service hours 9:00-18:00"} 用
+\texttt{re.search(r'\textbackslash d\{3\}-\textbackslash d\{3\}-\textbackslash d\{4\}',
+sentence)} 去找，比對到的會是哪一段文字？
+\item 用 \texttt{\{n,m\}} 這個新學到的量詞，寫一個「密碼長度要在 6 到 12 個文字字元之間」
+的 pattern（提示：文字字元就是上面教的 \texttt{\textbackslash w}）。
+\end{drills}
+
+\section{\texttt{findall()}：一次找出所有符合的地方}
+\label{sec:regex-findall}
+
+前面兩節的 \texttt{re.search()} 只會告訴你「有沒有找到、第一個找到的是哪段」，但很多實際
+任務要的是這段文字裡\textbf{所有}符合的地方，例如從一份聯絡資訊清單裡，一次把所有 email
+地址都抓出來。這種時候要用 \texttt{re.findall(pattern, text)}：它會把 \texttt{text} 裡所有
+符合 \texttt{pattern} 的地方，通通收集成一個 list 回傳給你。
+\index{re.findall()}
+
+在動手之前，先組出「email 地址」這個 pattern。一個 email 大致長這樣：帳號部分（英文字母、
+數字，可能夾雜幾個符號）、一個 \texttt{@}、網域部分（英文字母、數字、點）、最後接一段純
+英文字母。把這幾段用上一節的積木拼起來，會得到
+\texttt{[a-zA-Z0-9.\_\%+-]+@[a-zA-Z0-9.-]+\textbackslash.[a-zA-Z]+}。
+
+中括號
+\index{字元集合}
+\texttt{[...]} 是「這個位置可以是括號裡列出的任何一個字元」，\texttt{+} 表示「這樣的字元
+至少出現一次」，\texttt{\textbackslash.} 則是用反斜線跳脫，表示「真正的一個點，不是別的
+意思」。這個 pattern 已經比前面幾節複雜不少，你不需要自己從零想出這種寫法，記得它長什麼
+樣子、看得懂在比對什麼，需要的時候查文件或直接沿用，就已經達到這一章的目標。
+
+「點要記得跳脫」是初學正規表達式很容易忽略的一個細節，因為 \texttt{.} 這個符號在正規表達式
+裡有自己的意思：它代表「任何一個字元都可以」，不是專指「一個真正的點」。如果忘記在點前面加
+反斜線，pattern 會比你以為的鬆很多：
+
+\begin{example}{python}{(dot-escape.py) Forgetting to escape the dot makes a pattern too loose}
+import re
+
+samples = ["3.14", "3x14", "3-14"]
+
+pattern_loose = r'\d.\d'    # 這裡的 . 沒有跳脫，所以可以比對任何字元
+pattern_strict = r'\d\.\d'  # 這裡的 \. 才會真正比對到一個點
+
+for s in samples:
+    loose = re.search(pattern_loose, s)
+    strict = re.search(pattern_strict, s)
+    print(s, "loose:", loose.group() if loose else None,
+          "strict:", strict.group() if strict else None)
+\end{example}
+
+\iosample{}{3.14 loose: 3.1 strict: 3.1 \\
+3x14 loose: 3x1 strict: None \\
+3-14 loose: 3-1 strict: None \\}
+
+沒有跳脫的 \texttt{pattern\_loose} 對 \texttt{"3x14"}、\texttt{"3-14"} 這兩個字串也照樣
+比對成功，因為 \texttt{.} 把中間那個 \texttt{x} 或 \texttt{-} 都當成「隨便一個字元」接受
+了，並非只認得真正的點。加上反斜線的 \texttt{pattern\_strict} 才正確地只認得真正的一個點。
+本節開頭 email pattern 裡的 \texttt{\textbackslash.}，用的就是這個跳脫寫法。
+
+\begin{code}{python}{Finding all text that matches a pattern at once}
+import re
+
+results = re.findall(pattern, text)
+print(results)
+\end{code}
+
+\begin{example}{python}{(find-emails.py) Finding all email addresses in a block of contact info}
+import re
+
+contacts = """Alice - alice.wang@example.com
+Bob - bob99@mail-service.net
+Cindy hasn't left an email yet, just wrote a note"""
+
+pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]+'
+emails = re.findall(pattern, contacts)
+print(emails)
+
+# 把 pattern 用括號包起來，findall() 就只會回傳括號裡比對到的那一段
+username_pattern = r'([a-zA-Z0-9._%+-]+)@[a-zA-Z0-9.-]+\.[a-zA-Z]+'
+usernames = re.findall(username_pattern, contacts)
+print(usernames)
+\end{example}
+
+\iosample{}{['alice.wang@example.com', 'bob99@mail-service.net'] \\{}
+['alice.wang', 'bob99'] \\}
+
+留意最後兩行的差別：第一次的 pattern 沒有括號，\texttt{findall()} 回傳的是完整比對到的
+email；第二次把帳號的部分用括號 \texttt{()} 包起來，\texttt{findall()} 就只回傳括號裡比對
+到的那一小段。這其實跟第一節 \texttt{match.group()} 是同一件事的延伸：括號告訴 Python
+「這一段我特別在意，之後只要把這段還我就好」。這個用法叫「分組」，正式的規則（多個括號怎麼
+編號、怎麼分別取出）還有更多細節，這裡先知道加了括號、拿到的東西會變就夠用。
+\index{分組}
+
+如果一個 pattern 裡有好幾組括號，光靠「第一個括號、第二個括號」這種順序去記，讀起來會很
+吃力。這種時候可以把括號寫成\textbf{命名分組}，語法是 \texttt{(?P<名字>...)}，之後就能用
+這個名字取出對應的那一段，而不用去數第幾個括號：
+\index{命名分組}
+
+\begin{example}{python}{(named-group-phone.py) Using named groups to pull apart a phone number}
+import re
+
+text = "Taylor's phone number is 091-234-5678"
+pattern = r'(?P<area>\d{3})-(?P<mid>\d{3})-(?P<last>\d{4})'
+
+match = re.search(pattern, text)
+if match:
+    print(match.group("area"))
+    print(match.group("mid"))
+    print(match.group("last"))
+\end{example}
+
+\iosample{}{091 \\
+234 \\
+5678 \\}
+
+命名分組的好處是可讀性：一段複雜的 pattern 裡如果有好幾個括號，用名字取比用數字數第幾個
+括號清楚很多。這裡先知道有這個寫法即可，之後真的碰到分組較多、需要清楚標示每一段代表什麼的
+情境，再回頭查文件細節。
+
+\section{驗證格式：用 \texttt{fullmatch()} 檢查整段字串}
+\label{sec:regex-fullmatch}
+
+前面幾節的 \texttt{search()}、\texttt{findall()} 有一個共同的特性：它們只在乎文字裡「有
+沒有一段」符合 pattern，不在乎符合的那一段前後還有沒有其他文字。這對「找出留言裡的電話
+號碼」這種任務很合適，但如果你的任務換成「驗證使用者填的這整個欄位是不是一支合法的電話
+號碼」，\texttt{search()} 反而會讓你上當：
+
+\begin{example}{python}{(search-trap.py) search() is not suitable for validation}
+import re
+
+pattern = r'\d{3}-\d{3}-\d{4}'
+text = "091-234-5678abc"
+
+match = re.search(pattern, text)
+print("search() found:", match.group())
+\end{example}
+
+\iosample{}{search() found: 091-234-5678 \\}
+
+這個輸入其實不是一支合法的電話號碼（後面多了 \texttt{"abc"}），但 \texttt{search()} 只顧
+找出「有沒有一段符合」，找到 \texttt{"091-234-5678"} 這一段就滿意收工，完全不管後面還跟著
+什麼。要正確做「驗證」，你需要的是確認\textbf{整段字串從頭到尾}都符合 pattern，不能有多餘
+的部分，也不能少。這正是 \texttt{re.fullmatch(pattern, text)} 的工作：只有整個 \texttt{text}
+完全符合 \texttt{pattern}，才會回傳 Match 物件，只要頭尾任何一邊多了或少了字元，都回傳
+\texttt{None}。
+\index{re.fullmatch()}
+
+\begin{code}{python}{Confirming a whole string fully matches a pattern}
+import re
+
+result = re.fullmatch(pattern, text)
+if result:
+    print("Format is valid")
+else:
+    print("Format is invalid")
+\end{code}
+
+\begin{example}{python}{(validate-phone.py) Validating whether a phone field is in a legal format}
+import re
+
+def is_valid_phone(text):
+    pattern = r'\d{3}-\d{3}-\d{4}'
+    return re.fullmatch(pattern, text) is not None
+
+print(is_valid_phone("091-234-5678"))
+print(is_valid_phone("091-234-5678 "))
+print(is_valid_phone("my phone number is 091-234-5678"))
+\end{example}
+
+\iosample{}{True \\
+False \\
+False \\}
+
+三個輸入裡，只有第一個從頭到尾完全符合「三碼-三碼-四碼」的格式。第二個結尾多了一個空格、
+第三個開頭多了一段文字，用 \texttt{search()} 都還是找得到，但用 \texttt{fullmatch()} 都會
+正確判定「不合法」，因為它們符合的都只是字串中間夾著的一段，整段字串本身並不完全符合格式。
+
+\keypoint{\texttt{search()} 跟 \texttt{fullmatch()} 很容易搞混，因為兩者的呼叫方式幾乎
+一樣。判斷用哪一個的標準很簡單：如果任務是「這段文字裡有沒有出現某種格式」，用
+\texttt{search()}；如果任務是「使用者填的這整個欄位，是不是一個合法的格式」，用
+\texttt{fullmatch()}。用錯的後果是實際的資安風險，例如驗證信箱格式時如果誤用
+\texttt{search()}，使用者填 \texttt{"attacker@evil.com; DROP TABLE users"} 這種夾帶額外
+內容的字串也會被判定成合法，因為裡面確實藏著一段符合 email pattern 的文字。}
+
+同樣的做法拿來驗證 email 也一樣：
+
+\begin{example}{python}{(validate-email.py) Validating whether an email field is in a legal format}
+import re
+
+email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]+'
+
+def is_valid_email(text):
+    return re.fullmatch(email_pattern, text) is not None
+
+for candidate in ["alice.wang@example.com", "alice.wang@example.com please inquire",
+                  "alice@", "a@b.tw"]:
+    print(candidate, "->", is_valid_email(candidate))
+\end{example}
+
+\iosample{}{alice.wang@example.com -> True \\
+alice.wang@example.com please inquire -> False \\
+alice@ -> False \\
+a@b.tw -> True \\}
+
+留意 \texttt{"alice@"} 這個輸入：帳號跟 \texttt{@} 都在，但少了網域部分，不符合 pattern
+要求的「\texttt{@} 後面要有網域、一個點、再一段英文字母」，所以正確判定成不合法。這正是
+regex 驗證的價值：不用一項一項手動檢查「有沒有 \texttt{@}」「有沒有點」，一個 pattern 就
+把整套格式規則講清楚。
+
+\begin{drills}[label=drills:regex-fullmatch]
+\item 用本節教的 \texttt{is\_valid\_phone()} 函式，\texttt{is\_valid\_phone("0912345678")}
+（沒有連字號）的結果會是 \texttt{True} 還是 \texttt{False}？為什麼？
+\item 如果只是想確認一段文字「有沒有出現」合法格式的電話號碼，而不是要求使用者填的整個
+欄位都得是電話號碼，這種情境該用 \texttt{search()} 還是 \texttt{fullmatch()}？
+\item 承上一節的命名分組 pattern，你會怎麼把它跟 \texttt{fullmatch()} 結合，寫一個
+\texttt{is\_valid\_phone\_named(text)} 函式？（提示：命名分組不影響 \texttt{fullmatch()}
+判斷整段字串符不符合的邏輯，只是額外多了取出各段的能力。）
+\end{drills}
+
+\section{\texttt{sub()}：簡單的搜尋取代}
+\label{sec:regex-sub}
+
+找到符合格式的文字之後，另一個常見需求是把它換掉，例如把一份客服留言紀錄裡的電話號碼、
+email 地址都遮蔽掉再存檔，避免個資外流。跟字串的 \texttt{.replace()} 一樣，正規表達式也有
+對應的取代工具，只是它換的是符合某個 pattern 的所有地方，不是固定字串：
+\texttt{re.sub(pattern, replacement, text)} 會把 \texttt{text} 裡所有符合 \texttt{pattern}
+的部分，統統換成 \texttt{replacement}，回傳換完的新字串。
+\index{re.sub()}
+
+\begin{code}{python}{Replacing all text that matches a pattern with something else}
+import re
+
+new_text = re.sub(pattern, replacement, text)
+print(new_text)
+\end{code}
+
+\begin{example}{python}{(mask-contact-info.py) Masking emails and phone numbers in messages}
+import re
+
+log = """Customer message log:
+Alice: please reply to alice.wang@example.com for me
+Bob: my phone number is 091-234-5678, please call back soon
+"""
+
+email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]+'
+phone_pattern = r'\d{3}-\d{3}-\d{4}'
+
+masked = re.sub(email_pattern, '****', log)
+masked = re.sub(phone_pattern, '****', masked)
+print(masked)
+\end{example}
+
+\iosample{}{Customer message log: \\
+Alice: please reply to **** for me \\
+Bob: my phone number is ****, please call back soon \\}
+
+這支程式呼叫了兩次 \texttt{re.sub()}：第一次先把符合 email 格式的部分換掉，第二次接著在
+換過的文字上再處理電話號碼格式，兩次取代互不干擾。像 \texttt{sub()} 用 \texttt{\textbackslash
+1}、\texttt{\textbackslash 2} 這種寫法把比對到的分組內容原封不動塞回換掉的文字裡，是更進階
+的用法，這裡不展開。
+
+\section{\texttt{split()}：用正規表達式切字串}
+\label{sec:regex-split}
+
+第 \ref{ch:strings} 章教過的 \texttt{.split()} 方法，只能按照一種固定的分隔符號切字串，例如
+\texttt{"a,b,c".split(",")}。但有些真實資料的分隔方式並不統一，同一份清單裡逗號、分號、
+空格可能混著用，甚至同一種符號還連續出現好幾次（像打字時不小心多打了幾個空格）。
+
+這種時候
+用固定分隔符號的 \texttt{.split()} 就不夠用了，你需要的是「照某種格式切」，而不是「照某個
+固定字元切」，這正是 \texttt{re.split(pattern, text)} 的工作：它會把 \texttt{text} 裡所有
+符合 \texttt{pattern} 的地方當成分隔點，切成好幾段，回傳一個 list。
+\index{re.split()}
+
+\begin{code}{python}{Splitting a string using a pattern-described separator}
+import re
+
+parts = re.split(pattern, text)
+print(parts)
+\end{code}
+
+\begin{example}{python}{(split-messy-list.py) Splitting a list with inconsistent separators}
+import re
+
+text = "apple, banana;  cherry   durian"
+
+# 字元集合 [,;\s] 代表「一個逗號、分號、或任何空白字元」，
+# 後面的 + 代表「連續出現一次以上的這些分隔符號，都算成同一個分隔點」
+words = re.split(r'[,;\s]+', text)
+print(words)
+\end{example}
+
+\iosample{}{['apple', 'banana', 'cherry', 'durian'] \\}
+
+這個 pattern 裡的 \texttt{[,;\textbackslash s]} 是字元集合 \texttt{[...]} 的另一種用法：
+不只可以放英文字母、數字這種範圍，也可以直接列出幾個具體的字元（逗號、分號）跟一個字元類別
+（\texttt{\textbackslash s}）混在一起，意思是「這個位置可以是逗號、分號、或一個空白字元」。
+後面的 \texttt{+} 讓連續好幾個分隔符號（例如中間那三個空格）合併當成一個分隔點，不會因為
+分隔符號重複出現就切出一堆空字串。
+
+\begin{example}{python}{(split-record.py) Using a regular expression to split a custom-format record}
+import re
+
+record = "Taylor:091-234-5678|Jordan:092-111-2222|Morgan:093-333-4444"
+entries = re.split(r'[:|]', record)
+print(entries)
+\end{example}
+
+\iosample{}{['Taylor', '091-234-5678', 'Jordan', '092-111-2222', 'Morgan', '093-333-4444'] \\}
+
+這裡的分隔符號有兩種（冒號跟直線），如果用 \texttt{.split()} 只能處理其中一種，剩下的還得
+再對每一段跑第二次 \texttt{.split()}。用 \texttt{re.split(r'[:|]', record)} 一次描述「冒號
+或直線都算分隔點」，一步就切完，不用分兩階段處理。
+
+\begin{drills}[label=drills:regex-split]
+\item 給定 \texttt{text = "red/green,blue   yellow"}（分隔符號有斜線、逗號、空格三
+種），你會怎麼寫一個 \texttt{re.split()} 的 pattern，把它切成
+\texttt{['red', 'green', 'blue', 'yellow']}？
+\item 用 \texttt{re.split(r'\textbackslash s+', "restore   multiple    spaces")} 這行程式，你覺得
+回傳的 list 長什麼樣子？
+\item \texttt{.split()} 跟 \texttt{re.split()} 該用哪一個，判斷的標準是什麼？
+\end{drills}
+
+\section{除錯正規表達式的小技巧}
+\label{sec:regex-debug}
+
+正規表達式有一個共同的痛點：一個 pattern 寫錯，通常不會出現 \texttt{SyntaxError} 這種明確
+的錯誤訊息，程式照樣能執行，只是比對結果不是你要的（比對不到、或比對到不對的那一段）。這種
+「沒有報錯、但結果不對」的狀況，比看得到錯誤訊息的問題更難抓，這裡整理幾個實用的除錯習慣。
+
+第一個習慣是\textbf{從小處著手，不要一次寫出完整 pattern}。與其一口氣寫出一整段又長又複雜
+的 pattern、丟給一段很長的真實資料去測，不如先寫一個最簡單的版本、丟一個你自己確定答案的短
+字串去測，確認這一小段沒問題，再一步步加上其他部分。下面用一個日期格式的例子示範這個過程：
+
+\begin{example}{python}{(debug-step-by-step.py) Debugging a date pattern step by step}
+import re
+
+text = "The registration deadline is 2026-09-01, act soon"
+
+# 第一次嘗試：\d 只代表一個數字，忘了加上量詞
+pattern_v1 = r'\d-\d-\d'
+match = re.search(pattern_v1, text)
+print("v1:", match)
+
+# 加上量詞，改成「四位數字、兩位數字、兩位數字」
+pattern_v2 = r'\d{4}-\d{2}-\d{2}'
+match = re.search(pattern_v2, text)
+print("v2:", match.group())
+\end{example}
+
+\iosample{}{v1: None \\
+v2: 2026-09-01 \\}
+
+\texttt{pattern\_v1} 比對不到任何東西，因為 \texttt{\textbackslash d} 預設只代表「一個」
+數字，寫 \texttt{2026} 這種四位數完全不符合「一個數字、一個連字號、一個數字」的形狀。這種
+時候與其對著長長的 pattern 一直瞪，不如像上面這樣先印出中間結果，確認到底是哪一段假設錯了
+（這裡是漏了量詞），再逐步修正。
+
+第二個習慣是\textbf{善用 \texttt{match.group()} 檢查「比對到的到底是哪一段」}。有時候
+pattern 確實比對到東西了，但比對到的不是你以為的那一段，例如量詞寫太寬鬆，把不該算進去的
+字元也吃了進去。與其用眼睛猜，直接印出 \texttt{match.group()} 看實際結果，比憑感覺判斷可靠
+得多。
+
+第三個習慣是\textbf{借助線上工具}。網路上有像 regex101.com 這類網站，讓你把 pattern 跟測試
+字串貼上去，畫面會即時標示出比對到的每一段，也會逐條解釋 pattern 裡每個符號在做什麼。這種
+視覺化的回饋，通常比在終端機裡印文字更快抓出問題所在，尤其是 pattern 開始變長、變複雜的
+時候。
+
+\keypoint{正規表達式沒有比對到東西，問題通常出在 pattern 描述的形狀跟你以為的不一樣，很少
+是 Python 或 \texttt{re} 模組本身壞了。除錯的第一步永遠是回頭檢查 pattern 本身：量詞有沒有
+漏加、字元類別選對了沒有、raw string 的 \texttt{r} 前綴有沒有忘記加，把力氣花在懷疑
+\texttt{re.search()} 這個函式本身有問題，通常是走錯方向。}
+
+\begin{drills}[label=drills:regex-debug]
+\item 一個 pattern \texttt{r'\textbackslash d+'} 原本是想比對「一段連續的數字」，拿去比對
+\texttt{"Order number AB-123"} 卻只比對到 \texttt{"123"}，沒有把 \texttt{"AB"} 算進去，這是
+pattern 寫錯了嗎？還是 pattern 本來就只該比對到 \texttt{"123"}？
+\item 如果一個 pattern 在你自己準備的短測試字串上跑起來正常，換到真實資料上卻常常找不到，
+你會優先懷疑哪裡出了問題？
+\end{drills}
+
+正規表達式其實還有很多這一章沒教到的語法，像用 \texttt{|} 表示「這個或那個」、用
+\texttt{\^{}} 和 \texttt{\$} 限定「一定要出現在開頭／結尾」（本章改用 \texttt{fullmatch()}
+達到類似的驗證效果）、\texttt{re.IGNORECASE} 這種忽略英文字母大小寫的選項、還有更精細的
+非貪婪比對寫法。這些留給你以後真的用到時，再查 Python 官方文件裡 \texttt{re} 模組的說明
+即可，不需要現在就全部記住。
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:regex-basics}~節}
+\begin{enumerate}
+\item 會比對到，字串裡的 \texttt{"007"} 含有數字，\texttt{\textbackslash d} 會比對到第一個
+出現的數字字元，也就是 \texttt{"0"}。
+\item \texttt{match} 會是 \texttt{None}，因為這句話裡沒有任何數字字元。如果不檢查就直接呼叫
+\texttt{match.group()}，會出現
+\texttt{AttributeError: 'NoneType' object has no attribute 'group'}，因為 \texttt{None}
+身上沒有 \texttt{group} 這個方法可以呼叫。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:regex-patterns}~節}
+\begin{enumerate}
+\item 只有 (a) \texttt{"091-234-5678"} 符合，它剛好是「三碼-三碼-四碼」的形狀。(b) 是
+「四碼-三碼-三碼」，(c) 是「兩碼-三碼-四碼」，分段的數字個數都對不上 pattern 要求的
+\texttt{3-3-4}。
+\item \texttt{r'\textbackslash d\{2\}-\textbackslash d\{2\}-\textbackslash d\{2\}-%
+\textbackslash d\{2\}'}，把重複次數從 \texttt{\{3\}}／\texttt{\{4\}} 換成
+\texttt{\{2\}}，段數也跟著改成四段。
+\item 比對到的是 \texttt{"091-234-5678"}，\texttt{search()} 只會找出文字裡第一段符合
+pattern 的部分，後面的 \texttt{"9:00-18:00"} 因為格式不符（不是三碼-三碼-四碼），不會被
+算進去。
+\item \texttt{r'\textbackslash w\{6,12\}'}，用 \texttt{\{6,12\}} 表示「6 到 12 次」，
+\texttt{\textbackslash w} 涵蓋英文字母、數字、底線這些常見的密碼字元。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:regex-findall}~節}
+\begin{enumerate}
+\item \texttt{['amy@school.edu.tw', 'david.chen@company.com']}，兩個 email 地址都符合
+pattern，依出現順序收集成一個 list。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:regex-fullmatch}~節}
+\begin{enumerate}
+\item \texttt{False}，因為 \texttt{is\_valid\_phone()} 用的 pattern 要求整段字串一定要有
+兩個連字號分隔的「三碼-三碼-四碼」形狀，\texttt{"0912345678"} 雖然數字個數對，但完全沒有
+連字號，不符合 pattern 描述的形狀。
+\item 用 \texttt{search()}，因為這裡只在乎「有沒有出現」，不要求整個欄位都得是電話號碼。
+\item 把 pattern 換成命名分組版本、其他邏輯不變即可：
+\texttt{re.fullmatch(r'(?P<area>\textbackslash d\{3\})-(?P<mid>\textbackslash d\{3\})-%
+(?P<last>\textbackslash d\{4\})', text) is not None}，命名分組不影響 \texttt{fullmatch()}
+判斷整段字串符不符合的邏輯，只是讓你多了事後取出各段內容的能力。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:regex-sub}~節}
+\begin{enumerate}
+\item 給定 \texttt{text2 = "Customer service email: service@shop.com, complaints go to complain@shop.com"}，
+執行 \texttt{re.sub(pattern, "****", text2)}（\texttt{pattern} 是本章教的 email
+pattern）之後，會印出 \texttt{"Customer service email: ****, complaints go to ****"}，兩個 email 地址都被換成
+\texttt{"****"}，其他文字維持原樣。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:regex-split}~節}
+\begin{enumerate}
+\item \texttt{r'[/,\textbackslash s]+'}，字元集合裡列出斜線、逗號，再搭配
+\texttt{\textbackslash s} 涵蓋空格，後面接 \texttt{+} 讓連續出現的分隔符號合併成一個
+分隔點。
+\item \texttt{['restore', 'multiple', 'spaces']}，\texttt{\textbackslash s+} 表示「一個以上連續的
+空白字元」，所以中間那三個空格會被當成同一個分隔點，不會切出空字串。
+\item 如果分隔符號固定只有一種、也不會重複出現，用 \texttt{.split()} 就夠了，寫法更簡單；
+如果分隔符號有好幾種、或同一種符號可能連續出現好幾次，才需要 \texttt{re.split()} 描述
+「這是一種格式」而不是「這是一個固定字元」。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:regex-debug}~節}
+\begin{enumerate}
+\item pattern 本身沒有寫錯，只是它本來就只描述「一段連續的數字」，\texttt{"AB"} 是英文
+字母，不符合 \texttt{\textbackslash d+} 的定義，所以理所當然不會被比對進去。如果原本的
+目的是想把 \texttt{"AB-123"} 整個編號都抓出來，那才是 pattern 該加上 \texttt{\textbackslash
+w+} 或類似的元件去涵蓋英文字母的部分，不是 \texttt{\textbackslash d+} 本身出錯。
+\item 優先懷疑真實資料裡藏著測試字串沒有涵蓋到的變化，例如多了空格、少了連字號、大小寫
+不同、或多了測試時沒想到的標點符號。這種時候可以把幾筆比對失敗的真實資料印出來，當成新的
+測試字串，重複「從小處著手」的除錯習慣，逐步調整 pattern，而不是直接懷疑工具本身壞了。
+\end{enumerate}

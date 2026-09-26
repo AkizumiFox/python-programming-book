@@ -1,0 +1,1131 @@
+\chapter{CSV 與簡單資料檔}
+\label{ch:csv}
+
+資料要在不同系統、不同程式之間搬來搬去，最可靠的做法通常是把資料寫成「誰都看得懂、誰都
+打得開」的純文字格式。這就像你把一串電話號碼寫在一張紙條上交給朋友：不管對方用什麼手機、
+什麼記事習慣，攤開紙條都看得懂內容。但如果你把號碼鎖進一個只有你自己那支手機才能打開的
+備忘錄裡，紙條換成別人手上就成了一堆看不懂的東西。
+
+程式的世界也是同一個道理，一份資料如果
+存成「純文字、有固定規則」的格式，不管換到哪一台電腦、哪一種程式語言、哪一個系統，都能
+被讀懂、被處理。
+
+這一章要學的兩種格式是 CSV（逗號分隔的表格資料）跟 JSON（有層次、有欄位
+名稱的資料），它們就是程式世界裡最常見的兩種「誰都讀得懂」的純文字資料格式。
+\index{純文字資料格式}
+
+這一章分三段推進：
+
+\begin{itemize}
+\item 第一段先不急著學新工具，用你已經會的字串方法跟迴圈，自己動手把一份
+逗號分隔的純文字檔案解析成看得懂的資料，順便親身感受一下「自己手動處理資料」在哪裡會卡
+關、會出包。
+\item 第二段換上 Python 專門為表格式資料準備的 \texttt{csv} 模組，解決第一段手動
+處理時遇到的坑，學會用欄位名稱而不是死背第幾欄的方式存取資料，也會碰到幾個實際處理 CSV
+檔案時常見的眉角：檔案有沒有標題列、檔案的編碼是不是跟你以為的一樣。
+\item 第三段介紹另一種更
+有彈性、可以有層次（欄位裡面還能包欄位）的純文字格式 JSON，包括怎麼把巢狀資料直接寫成
+一份 JSON 檔案。
+\end{itemize}
+
+三段合起來，你會建立起「純文字資料格式」這個概念，知道 CSV 和 JSON
+各自適合什麼場合，也會親手體驗一次「手動處理資料」跟「用對工具處理資料」之間的落差，這種
+落差感，正是後面認識更專門的資料工具時最實在的參考點。
+
+\section{讀一份逗號分隔的純文字檔案}
+\label{sec:csv-manual-read}
+
+想像你手上有一份班級或社團匯出的成績清單，存成一個純文字檔案，每一行是一筆資料，欄位
+之間用逗號隔開，這種格式就叫 CSV（comma-separated values，逗號分隔值）。
+\index{CSV（comma-separated values）}
+
+要把這種檔案
+讀進程式裡，你其實已經具備所有需要的工具了：第 \ref{ch:files-exceptions} 章學過的 \texttt{with open()} 負責把
+檔案打開、逐行讀出來；字串的 \texttt{split()} 方法可以把一行文字按逗號拆成一份份欄位。
+這一節要做的事，就是把這兩樣東西接在一起，看看一份 CSV 檔案讀進 Python 之後長什麼樣子。
+
+\begin{code}{python}{讀取一份逗號分隔的純文字檔案}
+with open("filename.csv") as f:
+    for line in f:
+        fields = line.strip().split(",")
+        # fields 是這一列的欄位清單，用 fields[0]、fields[1]... 依序取出每個欄位
+\end{code}
+
+\texttt{line.strip()} 先把這一行頭尾的空白字元去掉，包含結尾看不見的換行符號。這裡刻意
+換用 \texttt{strip()}，而不是第 \ref{ch:files-exceptions} 章讀檔案時用的 \texttt{rstrip()}：\texttt{rstrip()}
+只清掉字串「尾端」的空白，\texttt{strip()} 則是頭尾兩端都清，因為 CSV 欄位除了結尾的換行
+之外，前後也可能夾帶多餘空白。再用 \texttt{split(",")} 把整行文字按逗號切開，變成一份字
+串構成的清單。假設有
+一份 \texttt{quiz\_scores.csv}，內容如下：
+
+\begin{verbatim}
+name,score
+Alice,88
+Bob,76
+Taylor,92
+Charlie,65
+David,79
+\end{verbatim}
+
+第一行是欄位標題，之後每一行是一筆資料。把它讀進來、每一行都拆成欄位清單再印出來看看：
+
+\begin{example}{python}{(read-quiz-scores.py) 讀出一份成績清單}
+with open("quiz_scores.csv") as f:
+    for line in f:
+        fields = line.strip().split(",")
+        print(fields)
+\end{example}
+
+\iosample{}{['name', 'score'] \\{} ['Alice', '88'] \\{} ['Bob', '76'] \\{} ['Taylor', '92'] \\{} ['Charlie', '65'] \\{} ['David', '79'] \\}
+
+留意一件事：連第一行的欄位標題「name」「score」也被當成一般資料讀進來、印出來了。對
+Python 來說，這份檔案裡每一行看起來都一樣，它並不知道第一行其實是「標題」，這件事要靠
+你自己的程式邏輯去處理（例如跳過它，或是拿它當欄位名稱用，後面 CSV 模組那一節會示範更
+乾淨的做法）。
+
+另外也留意每個欄位都是字串，就算內容看起來像數字（例如 \texttt{'88'}），
+拆出來之後仍然是字串，不是整數，這一點在下一節要動手做計算的時候會很重要。
+
+\section{動手寫迴圈：算出總分與平均}
+\label{sec:csv-manual-average}
+
+光是把資料讀出來、印出來還不夠，你通常想拿這些資料做點計算，例如算出全班的平均分數。
+這裡要用到的技巧，其實你在第 \ref{ch:loops} 章學迴圈的時候就已經練過了：用一個「累加器」變數，在迴圈
+裡一次次把值加上去，跑完迴圈之後這個變數就存著總和。差別只在於，這次的數字不是憑空打出
+來的，是從檔案裡讀出來、再親手轉型過的。
+
+這一段程式碼務必自己動手重現一次，不只是因為
+「累加器迴圈算總和、算平均」是一個到處都用得到的基本功，更因為下一章要認識的資料工具，
+一開始就是拿這一段手寫的迴圈當對照組，讓你看看有專門工具之後可以省掉多少麻煩。
+
+\begin{example}{python}{(average-quiz-score.py) 手動算出總分與平均}
+with open("quiz_scores.csv") as f:
+    lines = f.readlines()
+
+scores = []
+for line in lines[1:]:                      # 第一行是標題，不是資料，跳過
+    fields = line.strip().split(",")
+    score = int(fields[1])                   # 索引 1 是分數欄位，把字串轉成整數
+    scores.append(score)
+
+total = 0
+for score in scores:
+    total += score
+
+average = total / len(scores)
+
+print("Total:", total)
+print("Average score:", average)
+\end{example}
+
+\iosample{}{Total: 400 \\{} Average score: 80.0 \\}
+
+把這段程式拆開來看三個步驟：
+
+\begin{enumerate}
+\item 把每一行（跳過第一行標題）拆出分數欄位、用
+\texttt{int()} 轉成整數，收進一份叫 \texttt{scores} 的清單。這一步結束後，你手上有的
+是一份「乾淨的數字清單」，不再是字串、也不再夾雜標題行。
+\item 也是全章最值得記住的一
+段：先在迴圈外把累加器 \texttt{total} 設成 \texttt{0}，再用 \texttt{for} 迴圈把
+\texttt{scores} 裡每一個數字依序加進 \texttt{total}，\texttt{total += score} 這一行，
+意思是「把 \texttt{total} 現在的值，加上這次迴圈拿到的 \texttt{score}，再存回
+\texttt{total}」。
+\item 迴圈跑完之後，\texttt{total} 就是所有分數的總和，再除以
+\texttt{len(scores)}（清單裡有幾個數字），就是平均值。注意這裡除的是
+\texttt{len(scores)}，不是檔案的行數，因為 \texttt{scores} 已經是跳過標題行之後、只
+剩下真正資料的乾淨清單。
+\end{enumerate}
+
+\keypoint{「\texttt{total = 0} → 迴圈裡 \texttt{total += 這次的值} → 迴圈外
+\texttt{total / len(數量)}」這個三段式寫法，是用迴圈算總和、算平均最標準的樣板，幾乎
+任何「把一堆數字合併成一個結果」的需求都是同一套邏輯的變形。把這個樣板記熟，比背任何
+特定的函式名稱都值得，因為不是每種語言、每個情境都有現成的函式可以用，但這個手寫的邏輯
+到哪裡都通。}
+
+\begin{drills}[label=drills:csv-manual-average]
+\item 預測輸出：如果把 \texttt{average-quiz-score.py} 裡的 \texttt{scores} 換成
+\texttt{[10, 20, 30, 40, 50]}，程式印出的「總分」跟「平均分數」會是多少？
+\item 填空：下面這段程式想計算一份數字清單 \texttt{numbers} 的總和與平均，請把三個空格
+填上正確的內容：
+\begin{verbatim}
+total = ______
+for n in numbers:
+    total ______ n
+average = total / ______
+\end{verbatim}
+\item 抓蟲：如果 \texttt{average-quiz-score.py} 裡忘記寫 \texttt{lines[1:]}，直接對
+整個 \texttt{lines} 清單跑迴圈（也就是把標題那一行也當成資料處理），程式執行時會發生
+什麼事？
+\end{drills}
+
+\section{手動 split 的極限：值裡面有逗號怎麼辦}
+\label{sec:csv-manual-limits}
+
+前面兩節手動處理 CSV 都很順利，但那是因為資料剛好乾淨，每個欄位裡都沒有藏著逗號。如果
+資料本身就長了一個逗號在裡面呢？比如說一份報名資料裡，「地址」這個欄位寫成「Springfield,
+Downtown」，中間就有一個逗號。假設有一份 \texttt{signup.csv}，內容如下：
+
+\begin{verbatim}
+name,address,phone
+Charlie,"Springfield, Downtown",0912345678
+Emma,Riverside East,0922333444
+\end{verbatim}
+
+留意第二行。因為地址裡面本來就有逗號，正確的 CSV 格式會在這種欄位外面加一對雙引號
+\texttt{"..."}，標記「這整段都算同一個欄位，裡面的逗號不要拆」。如果你還是用上一節那種
+最簡單的 \texttt{split(",")}，並不會知道這對雙引號代表什麼特殊意義，只會傻傻地看到逗號
+就拆：
+
+\begin{example}{python}{(broken-address-split.py) 地址欄裡的逗號讓資料錯位}
+with open("signup.csv") as f:
+    for line in f:
+        fields = line.strip().split(",")
+        print(fields)
+\end{example}
+
+\iosample{}{['name', 'address', 'phone'] \\{} ['Charlie', '"Springfield', ' Downtown"', '0912345678'] \\{} ['Emma', 'Riverside East', '0922333444'] \\}
+
+第二筆資料本來應該是 3 個欄位（name、address、phone），結果被拆成了 4 個，而且雙引號還原封
+不動地留在字串裡面。如果你以為 \texttt{fields[2]} 是電話號碼，實際拿到的卻是
+\texttt{' Downtown"'} 這種殘缺的地址片段，電話號碼反而被擠到 \texttt{fields[3]} 去了。
+
+這種錯位很難用肉眼一眼看穿，尤其資料筆數一多，你根本不會知道哪幾行悄悄錯位了。逗號分隔
+的欄位裡本身又能出現逗號、甚至換行，這類「格式裡的特殊規則」要靠手動 \texttt{split()}
+自己想清楚每一種狀況，既麻煩又容易漏掉，這正是需要一個專門工具的時候。
+
+\section{用 csv 模組正確讀取資料}
+\label{sec:csv-module-read}
+
+Python 標準函式庫內建了一個 \texttt{csv} 模組，專門處理「表格式、逗號分隔」這種資料格
+式的所有細節，包括上一節卡住的「欄位裡面有逗號」這種情況。
+
+這種一批批寫好、用
+\texttt{import} 叫進來就能直接用的現成程式碼，就叫「模組」，
+\index{模組}
+第 \ref{ch:files-exceptions} 章 \texttt{import os}
+那裡已經先遇過一次，模組系統完整的運作方式要等第 \ref{ch:modules} 章才會介紹；而 Python 本身內建的一
+大批這樣的模組，合起來就叫「標準函式庫」，
+\index{標準函式庫}
+不用另外安裝，直接 \texttt{import} 就能用，
+\texttt{csv}、\texttt{json}、\texttt{os} 都屬於這一類。用法跟你已經熟悉的
+\texttt{with open()} 差不多，只是多包一層 \texttt{csv.reader()}。
+\index{csv 模組／csv.reader()}
+
+\begin{code}{python}{用 csv.reader() 逐列讀取}
+import csv
+
+with open("filename.csv") as f:
+    reader = csv.reader(f)
+    for row in reader:
+        # row 是這一列的欄位清單，每個元素都是字串
+        ...
+\end{code}
+
+\texttt{import csv} 這一行，就是把 \texttt{csv} 這個模組叫進來給你用，跟第 \ref{ch:files-exceptions} 章
+\texttt{import os} 的道理一樣。用同一份 \texttt{signup.csv} 試試看：
+
+\begin{example}{python}{(fix-address-split.py) 用 csv 模組正確讀出地址欄}
+import csv
+
+with open("signup.csv") as f:
+    reader = csv.reader(f)
+    for row in reader:
+        print(row)
+\end{example}
+
+\iosample{}{['name', 'address', 'phone'] \\{} ['Charlie', 'Springfield, Downtown', '0912345678'] \\{} ['Emma', 'Riverside East', '0922333444'] \\}
+
+這次每一列都乖乖地是 3 個欄位，地址欄裡的逗號被完整保留在同一個欄位裡，外層的雙引號也
+自動被拿掉了，剛剛手動處理會出包的地方，\texttt{csv} 模組已經幫你想好了。也留意一下
+電話號碼那一欄：\texttt{'0912345678'} 開頭的 \texttt{0} 完整保留著，因為它本來就是
+字串，不是數字。
+
+\keypoint{CSV 檔案裡讀出來的每一個值，不管看起來多像數字，一律都是字串。\texttt{csv}
+模組不會替你自動判斷、自動轉型。這剛好救了電話號碼一命：如果它自動被轉成整數，開頭的
+\texttt{0} 就會憑空消失，變成一個少一位數的號碼。要不要轉型、轉成什麼型別，永遠是你自己
+決定的事。}
+
+那如果你真的需要把某個欄位轉成數字呢？資料常常不會乾乾淨淨，可能有人那天缺考，分數欄
+位是空的。假設有一份 \texttt{scores\_with\_gaps.csv}：
+
+\begin{verbatim}
+name,score
+Alice,88
+Bob,
+Taylor,92
+\end{verbatim}
+
+Bob 那一行分數欄位是空字串，直接用 \texttt{int()} 轉型會失敗。呼應第 \ref{ch:files-exceptions} 章學過的
+EAFP（先做、錯了再處理），與其自己先寫一堆檢查字串是不是「看起來像數字」，不如直接
+\texttt{int()} 硬轉，轉失敗了再用 \texttt{try/except} 接住：
+
+\begin{example}{python}{(sum-scores-safely.py) 安全地把分數欄位轉成整數}
+import csv
+
+with open("scores_with_gaps.csv") as f:
+    reader = csv.reader(f)
+    next(reader)                              # 跳過標題列
+    for row in reader:
+        name, score_text = row
+        try:
+            score = int(score_text)
+            print(name, "score:", score)
+        except ValueError:
+            print(name, "has no score recorded, skipping")
+\end{example}
+
+\iosample{}{Alice score: 88 \\{} Bob has no score recorded, skipping \\{} Taylor score: 92 \\}
+
+這裡也順便介紹一個小技巧：\texttt{next(reader)} 會從 \texttt{reader} 裡拿走「下一列」
+資料。放在 \texttt{for} 迴圈之前呼叫一次，效果就是把第一列（也就是標題列）先讀掉、丟在
+一邊，之後的 \texttt{for row in reader} 就只會拿到真正的資料列。
+\index{next()}
+
+\stylepoint{比起自己先檢查字串「是不是每個字元都是數字」，直接嘗試 \texttt{int()} 轉型、
+失敗了再用 \texttt{except ValueError} 接住，是更 Python 的寫法。這正是第 \ref{ch:files-exceptions} 章鋪陳過
+的 EAFP：先做、錯了再處理，而不是先確認安全才動手。}
+
+\section{用 csv 模組把資料寫出去}
+\label{sec:csv-module-write}
+
+讀資料學會了，接下來換成反方向：把程式裡算出來的結果寫成一份 CSV 檔案，讓它可以被
+Excel、Google Sheets，或是任何其他程式打開。用的是 \texttt{csv.writer()}，搭配
+\texttt{writerow()} 一次寫入一列。
+\index{csv.writer()／writerow()}
+
+\begin{code}{python}{用 csv.writer() 逐列寫入}
+import csv
+
+with open("filename.csv", "w", newline="") as f:
+    writer = csv.writer(f)
+    writer.writerow([field1, field2, ...])
+\end{code}
+
+用第~\ref{sec:csv-manual-average}~節的成績資料，幫每個人多算一個「及格與否」欄位，
+寫成一份新的 CSV：
+
+\begin{example}{python}{(write-quiz-results.py) 寫出成績與及格結果}
+import csv
+
+students = [
+    ("Alice", 88),
+    ("Bob", 76),
+    ("Taylor", 92),
+    ("Charlie", 65),
+    ("David", 79),
+]
+
+with open("quiz_results.csv", "w", newline="") as f:
+    writer = csv.writer(f)
+    writer.writerow(["name", "score", "passed"])
+    for name, score in students:
+        passed = "Yes" if score >= 70 else "No"
+        writer.writerow([name, score, passed])
+
+print("Wrote quiz_results.csv")
+\end{example}
+
+\iosample{}{Wrote quiz\_results.csv \\}
+
+程式執行完之後，\texttt{quiz\_results.csv} 這個檔案的內容會是：
+
+\begin{verbatim}
+name,score,passed
+Alice,88,Yes
+Bob,76,Yes
+Taylor,92,Yes
+Charlie,65,No
+David,79,Yes
+\end{verbatim}
+
+留意 \texttt{open()} 那一行多寫了 \texttt{newline=""} 這個參數。這是使用
+\texttt{csv.writer()} 時官方文件明講的固定寫法，接下來就要老實示範一次，如果漏寫它會
+發生什麼事。
+
+\texttt{csv} 模組自己輸出的每一列，結尾用的是 \texttt{\textbackslash r\textbackslash n}
+這兩個字元。如果你打開檔案時沒有加 \texttt{newline=""}，Python 的文字模式可能會把
+\texttt{csv} 模組已經寫好的換行符號「再翻譯一次」，導致每一列後面多出一個看不見的
+\texttt{\textbackslash r}，在某些系統上，這個多出來的字元會讓 Excel 或某些編輯器把每
+一列資料之間顯示成多了一行空白。這裡直接動手檢查一次，看看在這台寫這本書用的電腦上，
+這件事實際發生了沒有：
+
+\begin{example}{python}{(check-newline-bug.py) 檢查漏寫 newline='' 的後果}
+import csv
+
+rows = [("name", "score"), ("Alice", 88), ("Bob", 76)]
+
+with open("with_newline.csv", "w", newline="") as f:
+    writer = csv.writer(f)
+    for row in rows:
+        writer.writerow(row)
+
+with open("without_newline.csv", "w") as f:          # 忘記寫 newline=""
+    writer = csv.writer(f)
+    for row in rows:
+        writer.writerow(row)
+
+with_bytes = open("with_newline.csv", "rb").read()
+without_bytes = open("without_newline.csv", "rb").read()
+
+print("With newline='':", with_bytes.count(b"\r\r\n"), "extra newlines")
+print("Without newline='':", without_bytes.count(b"\r\r\n"), "extra newlines")
+\end{example}
+
+\iosample{}{With newline='': 0 extra newlines \\{} Without newline='': 0 extra newlines \\}
+
+老實說：在這台測試用的 macOS 電腦上，兩個檔案幾乎一模一樣，完全看不出差異。原因出在
+「多一個 \texttt{\textbackslash r}」這個坑，根源是作業系統本身的換行慣例跟 \texttt{csv}
+模組自己輸出的換行符號重複翻譯。macOS 跟 Linux 系統本身的換行字元本來就只有
+\texttt{\textbackslash n}，不會被文字模式的換行轉換再多加一個 \texttt{\textbackslash r}；
+但 Windows 系統的換行慣例是 \texttt{\textbackslash r\textbackslash n}，同一段程式如果
+在 Windows 上執行，就真的會讓每一列資料之間多出一行看得見的空白。
+
+\keypoint{\texttt{newline=""} 這個坑不是每台電腦都看得到，但這不代表可以放心省略它。
+你寫的程式不會只在你自己的電腦上跑，你的讀者、你的同事很可能就在 Windows 上打開你寫的
+程式。每次用 \texttt{csv.writer()} 都養成加上 \texttt{newline=""} 的習慣，比每次都去
+記「我現在是不是在 Windows 上」更可靠，這也是 Python 官方文件明講建議的固定寫法。}
+
+\begin{drills}[label=drills:csv-writer-bugs]
+\item 抓蟲：一段程式先用 \texttt{writerow(["name", "score", "passed"])} 寫入標題列，接著
+對某一位學生寫 \texttt{writerow(["Alice", 88])}（只給了兩個值），又對另一位學生寫
+\texttt{writerow(["Bob", 76, "Yes", "extra"])}（給了四個值）。這段程式執行時會報錯
+嗎？寫出來的 csv 檔案內容大概會是什麼樣子？
+\item 概念題：為什麼在這一節實際測試用的電腦上，忘記寫 \texttt{newline=""} 沒有看到
+「每列資料多一行空白」的症狀？這樣是不是代表以後可以不用寫它？
+\item 如果你想在程式每次執行時，把新的一筆資料「接著」寫進已經存在的 csv 檔案後面，而
+不是每次都把整個檔案清空重寫，\texttt{open()} 那一行該怎麼改？
+\end{drills}
+
+\section{用欄位名稱存取：DictReader 與 DictWriter}
+\label{sec:csv-dict}
+
+前面用 \texttt{csv.reader()} 讀出來的每一列，都是靠數字索引取值，像 \texttt{row[0]}、
+\texttt{row[1]} 這樣。這樣寫有個隱患：萬一以後欄位的順序調整了（例如「地址」欄搬到最
+前面），所有靠索引取值的程式碼就通通要跟著改，而且改錯了也不會有任何錯誤訊息提醒你，只
+會默默拿錯欄位。呼應第 \ref{ch:dict-set} 章學過的字典操作，\texttt{csv} 模組提供了
+\texttt{csv.DictReader}，可以直接用欄位名稱取值。
+\index{csv.DictReader／csv.DictWriter}
+
+\begin{code}{python}{用 csv.DictReader() 依欄位名稱讀取}
+import csv
+
+with open("filename.csv") as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        # row 是一個 dict，key 是欄位標題，例如 row["name"]
+        ...
+\end{code}
+
+用第~\ref{sec:csv-module-write}~節寫出來的 \texttt{quiz\_results.csv}，篩選出及格的
+學生，再用 \texttt{csv.DictWriter} 把篩選結果寫成一份新檔案：
+
+\begin{example}{python}{(filter-and-write-passed.py) 篩選及格名單並寫出}
+import csv
+
+with open("quiz_results.csv") as f:
+    reader = csv.DictReader(f)
+    passed_students = []
+    for row in reader:
+        if row["passed"] == "Yes":
+            passed_students.append(row)
+
+with open("passed.csv", "w", newline="") as f:
+    writer = csv.DictWriter(f, fieldnames=["name", "score", "passed"])
+    writer.writeheader()
+    for student in passed_students:
+        writer.writerow(student)
+
+with open("passed.csv") as f:
+    print(f.read())
+\end{example}
+
+\iosample{}{name,score,passed \\{} Alice,88,Yes \\{} Bob,76,Yes \\{} Taylor,92,Yes \\{} David,79,Yes \\}
+
+\texttt{DictReader} 讀出來的每一列都是一個 dict，用 \texttt{row["passed"]} 取值，比
+\texttt{row[2]} 一眼就看得懂在取什麼；\texttt{DictWriter} 反過來，寫入前要先用
+\texttt{fieldnames} 告訴它欄位順序，再用 \texttt{writeheader()} 寫出標題列，之後每次
+\texttt{writerow()} 都直接餵一個 dict 進去即可（不需要自己排欄位順序，\texttt{DictWriter}
+會照 \texttt{fieldnames} 幫你排好）。
+
+\stylepoint{用欄位名稱存取比用數字索引更好讀、也更不容易因為欄位順序調整而悄悄出錯。這
+跟第 \ref{ch:dict-set} 章學到的道理是一樣的：字典用 key 存取，永遠比「猜第幾個位置」更清楚。}
+
+到目前為止的範例，餵給 \texttt{writerow()} 的 dict，key 都跟 \texttt{fieldnames} 完全
+對得上。如果哪天資料剛好缺了一欄，或是多了一欄呢？這兩種情況 \texttt{DictWriter} 的處理
+方式並不對稱，值得認識清楚。
+
+先看「缺欄位」的情況：
+
+\begin{example}{python}{(write-missing-field.py) dict 少了 fieldnames 裡的一個欄位}
+import csv
+
+with open("missing_field.csv", "w", newline="", encoding="utf-8") as f:
+    writer = csv.DictWriter(f, fieldnames=["name", "score", "passed"])
+    writer.writeheader()
+    writer.writerow({"name": "Alice", "score": 88})   # 少了 "passed"
+
+with open("missing_field.csv", encoding="utf-8") as f:
+    print(f.read())
+\end{example}
+
+\iosample{}{name,score,passed \\{} Alice,88, \\}
+
+「passed」這一欄沒有出現在 dict 裡，\texttt{DictWriter} 並不會報錯，而是安靜地把這一欄
+填成空字串，寫出來的那一列結尾多了一個逗號、後面什麼都沒有。如果想讓它填一個自己指定的
+預設值，而不是空字串，可以在建立 \texttt{DictWriter} 時多給一個 \texttt{restval} 參數，
+例如 \texttt{csv.DictWriter(f, fieldnames=[...], restval="Unknown")}。
+\index{restval／extrasaction}
+
+再看「多欄位」的情況：
+
+\begin{example}{python}{(write-extra-field.py) dict 多了一個 fieldnames 沒有的欄位}
+import csv
+
+with open("extra_field.csv", "w", newline="", encoding="utf-8") as f:
+    writer = csv.DictWriter(f, fieldnames=["name", "score"])
+    writer.writeheader()
+    try:
+        writer.writerow({"name": "Alice", "score": 88, "note": "transfer student"})
+    except ValueError:
+        print("Write failed: dict has a key not in fieldnames")
+\end{example}
+
+\iosample{}{Write failed: dict has a key not in fieldnames \\}
+
+這次反而直接丟出 \texttt{ValueError}，因為 \texttt{DictWriter} 不知道多出來的「note」
+這個 key 該塞進哪一欄，寧可直接告訴你有問題，也不會自己偷偷決定要不要保留它。如果確定這
+些多出來的欄位可以直接丟掉，可以在建立 \texttt{DictWriter} 時加上
+\texttt{extrasaction="ignore"}，讓它安靜地忽略掉 \texttt{fieldnames} 以外的 key。
+
+\keypoint{\texttt{DictWriter} 面對「dict 跟 fieldnames 對不上」這件事，兩種方向的處理
+並不對稱：少寫的欄位會被默默填成空字串（除非用 \texttt{restval} 指定別的預設值），多出
+來的欄位則會直接丟出 \texttt{ValueError}（除非用 \texttt{extrasaction="ignore"} 明確
+允許忽略）。這種不對稱剛好反映一種設計上的態度：資料「不夠」還能用預設值撐過去，資料
+「莫名其妙多了東西」卻可能代表哪裡搞錯了，值得讓程式直接告訴你。}
+
+\section{如果分隔符號不是逗號：delimiter 參數}
+\label{sec:csv-delimiter}
+
+CSV 的全名雖然是「逗號分隔值」，但實務上收到的「表格式純文字檔案」不見得都乖乖用逗號
+分隔欄位。最常見的另一種是用 Tab（鍵盤上的跳格鍵）當分隔符號，這種格式通常存成
+\texttt{.tsv} 檔（tab-separated values，跟 CSV 是同一套邏輯，只是分隔符號不同）。假設
+有一份用 Tab 分隔的 \texttt{scores.tsv}（下面用一個中括號 \texttt{[Tab]} 代表實際檔案
+裡看不見的跳格字元）：
+
+\begin{verbatim}
+name[Tab]score
+Alice[Tab]88
+Bob[Tab]76
+\end{verbatim}
+
+如果直接用 \texttt{csv.reader(f)}，它預設只認得逗號，遇到這種檔案只會把整行當成一個
+欄位，完全拆不開。\texttt{csv.reader()} 和 \texttt{csv.writer()} 都接受一個
+\texttt{delimiter} 參數，讓你自己指定分隔符號：
+\index{delimiter 參數}
+
+\begin{code}{python}{用 delimiter 參數指定分隔符號}
+import csv
+
+with open("filename.tsv") as f:
+    reader = csv.reader(f, delimiter="\t")
+    for row in reader:
+        ...
+\end{code}
+
+\begin{example}{python}{(read-tsv.py) 讀取一份用 Tab 分隔的檔案}
+import csv
+
+with open("scores.tsv", encoding="utf-8") as f:
+    reader = csv.reader(f, delimiter="\t")
+    for row in reader:
+        print(row)
+\end{example}
+
+\iosample{}{['name', 'score'] \\{} ['Alice', '88'] \\{} ['Bob', '76'] \\}
+
+\texttt{delimiter="\textbackslash t"} 裡的 \texttt{\textbackslash t}，用法跟第
+~\ref{sec:csv-module-write}~節看過的 \texttt{\textbackslash n}、\texttt{\textbackslash r}
+是同一套規則：用一個反斜線加一個字母，代表一個打字打不出來的特殊符號，
+\texttt{\textbackslash t} 代表的就是一個 Tab 字元。\texttt{csv.writer()} 也接受同樣的
+\texttt{delimiter}
+參數，用法完全對稱：建立 \texttt{writer} 的時候多給這個參數，之後每次 \texttt{writerow()}
+寫出來的每一列，欄位之間用的就會是你指定的分隔符號，而不是預設的逗號。
+
+\stylepoint{不管分隔符號是逗號、Tab，還是其他符號，只要交給 \texttt{csv} 模組並用
+\texttt{delimiter} 參數說清楚，前面學過的 \texttt{DictReader}、\texttt{DictWriter}、
+\texttt{fieldnames}、\texttt{encoding} 這些技巧全部都還是同一套，不需要為了「分隔符號
+不是逗號」重新學一遍。「表格式純文字檔案」的核心概念不會因為分隔符號改變，只有那一個
+參數需要換。}
+
+\section{沒有標題列的 CSV：用 fieldnames 自己指定欄位名稱}
+\label{sec:csv-no-header}
+
+前面幾節看到的 CSV 檔案，第一行永遠是欄位標題，\texttt{csv.DictReader} 也理所當然地把
+第一行當成標題來用。但不是所有 CSV 檔案都長這樣：很多系統匯出的資料（例如感測器記錄、
+交易紀錄）為了節省空間，直接省略標題行，每一行從頭到尾都是純資料。假設有一份溫度紀錄
+\texttt{temp\_log.csv}，內容如下：
+
+\begin{verbatim}
+2024-01-01,Springfield,18.5
+2024-01-02,Springfield,17.2
+2024-01-03,Lakeside,22.0
+\end{verbatim}
+
+這份檔案完全沒有標題行，三個欄位分別是日期、城市、氣溫，但這件事只有你自己知道，
+Python 不會幫你猜。如果你直接用上一節學到的 \texttt{csv.DictReader(f)}，它還是會照
+原本的規矩，把第一行（也就是這裡的第一筆真正資料 \texttt{2024-01-01,Springfield,18.5}）當成
+標題列，這樣一來，第一筆資料就白白被當成欄位名稱用掉了，實際的資料反而少了一筆。
+
+要避免這個問題，\texttt{csv.DictReader} 提供了一個 \texttt{fieldnames} 參數，讓你自己
+把欄位名稱列出來，告訴它「這份檔案沒有標題行，全部都是資料，欄位名稱由我來決定」：
+\index{fieldnames 參數}
+
+\begin{code}{python}{用 fieldnames 參數自己指定欄位名稱}
+import csv
+
+with open("filename.csv") as f:
+    reader = csv.DictReader(f, fieldnames=[field1, field2, ...])
+    for row in reader:
+        # 每一列（包含原本的第一列）都當成資料處理，不會有任何一列被當成標題吃掉
+        ...
+\end{code}
+
+\begin{example}{python}{(read-temp-log.py) 讀取一份沒有標題列的 CSV}
+import csv
+
+with open("temp_log.csv") as f:
+    reader = csv.DictReader(f, fieldnames=["date", "city", "temperature"])
+    for row in reader:
+        print(row)
+\end{example}
+
+\iosample{}{\{'date': '2024-01-01', 'city': 'Springfield', 'temperature': '18.5'\} \\{} \{'date': '2024-01-02', 'city': 'Springfield', 'temperature': '17.2'\} \\{} \{'date': '2024-01-03', 'city': 'Lakeside', 'temperature': '22.0'\} \\}
+
+三筆資料一筆都沒少，每一列都乖乖對應到 \texttt{fieldnames} 裡指定的欄位名稱。反過來，
+如果這份檔案明明沒有標題列，你卻忘記傳 \texttt{fieldnames}，會發生什麼事？
+
+\begin{example}{python}{(read-temp-log-buggy.py) 忘記傳 fieldnames 的後果}
+import csv
+
+with open("temp_log.csv") as f:
+    reader = csv.DictReader(f)                # 忘記傳入 fieldnames
+    rows = list(reader)
+    print("Read", len(rows), "rows")
+    for row in rows:
+        print(row)
+\end{example}
+
+\iosample{}{Read 2 rows \\{} \{'2024-01-01': '2024-01-02', 'Springfield': 'Springfield', '18.5': '17.2'\} \\{} \{'2024-01-01': '2024-01-03', 'Springfield': 'Lakeside', '18.5': '22.0'\} \\}
+
+這個結果比手動 \texttt{split()} 錯位還更難察覺：程式沒有報任何錯誤，執行起來一切正常，
+但實際上只讀到 2 筆資料，不是原本的 3 筆，而且每一筆的 key 都變成第一筆資料裡的值
+（\texttt{'2024-01-01'}、\texttt{'Springfield'}、\texttt{'18.5'}），完全不是想要的欄位名稱。
+原因跟猜的一樣：\texttt{csv.DictReader} 沒有拿到 \texttt{fieldnames}，只好按照它原本
+的規矩，把它看到的第一列資料當成標題列，這一列資料也就從「資料」變成「欄位名稱」，從此
+消失在輸出結果裡。
+
+\keypoint{\texttt{csv.DictReader} 預設一定會把讀到的第一列當成標題列，這件事不會因為
+「這份檔案其實沒有標題列」而自動改變，你必須自己知道手上這份檔案有沒有標題行。有標題行
+就直接用 \texttt{csv.DictReader(f)}；沒有標題行，一定要透過 \texttt{fieldnames} 參數
+自己把欄位名稱列出來，否則第一筆真正的資料會被誤當成標題列，悄悄消失不見。}
+
+\stylepoint{同樣是讀 CSV，普通的 \texttt{csv.reader()} 完全不會有這個問題，因為它從
+頭到尾都只回傳一份份 list，不會特別把任何一列當成標題來對待，「這一列是不是標題」永遠
+是程式設計者自己要處理的事。只有 \texttt{DictReader} 因為要幫你把每一列包成 dict、需要
+key 的名稱，才會預設借用第一列當標題，這也是它比 \texttt{csv.reader()} 好用、卻也多一
+個地方要留意的原因。}
+
+反過來，如果你要用 \texttt{csv.DictWriter} 寫出一份「不要標題列」的檔案（例如要接在
+既有的無標題檔案後面），只要不呼叫 \texttt{writeheader()} 就好，\texttt{DictWriter}
+本身不會強迫你一定要寫標題列。
+
+\begin{drills}[label=drills:csv-no-header]
+\item 預測輸出：如果 \texttt{temp\_log.csv} 多加一行 \texttt{2024-01-04,Springfield,19.0}，
+用範例 \texttt{read-temp-log.py} 正確傳入 \texttt{fieldnames} 的寫法重新執行，會印出
+幾筆資料？最後一筆的內容是什麼？
+\item 填空：一份沒有標題列的 CSV 檔案有「name」「phone」兩個欄位，想用 \texttt{DictReader}
+讀取，請把下面的空格填上正確內容：
+\begin{verbatim}
+reader = csv.DictReader(f, fieldnames=______)
+\end{verbatim}
+\item 抓蟲：如果對第~\ref{sec:csv-module-read}~節的 \texttt{quiz\_scores.csv}（有標題
+列「name,score」）誤用 \texttt{csv.DictReader(f, fieldnames=["a", "b"])}，讀出來的第一
+筆資料會是什麼？
+\end{drills}
+
+\section{開檔案時的編碼問題：encoding="utf-8"}
+\label{sec:csv-encoding}
+
+除了「有沒有標題列」，另一個處理 CSV（或任何純文字檔案）時常踩到的坑是編碼。你的電腦
+儲存文字檔案時，實際上存的是一串串數字（位元組），「編碼」就是這串數字跟螢幕上看到的
+文字之間的對應規則。
+
+UTF-8 是目前最通用的編碼方式，幾乎所有現代系統都看得懂；但有些軟體
+（尤其是舊版 Windows 上的部分程式）預設會用其他編碼存檔，例如 Big5（台灣早期常見的中文
+編碼）。如果打開檔案時使用的編碼，跟這份檔案實際存檔時用的編碼不一樣，輕則看到一堆亂
+碼，重則程式直接報錯中斷。
+\index{encoding 參數}
+
+\begin{code}{python}{開檔案時明確指定編碼}
+with open("filename.csv", encoding="utf-8") as f:
+    ...
+\end{code}
+
+\begin{example}{python}{(write-utf8-scores.py) 先寫一份 UTF-8 編碼的 CSV 檔案}
+with open("utf8_scores.csv", "w", encoding="utf-8") as f:
+    f.write("name,score\n")
+    f.write("Alice Ångström,88\n")
+
+print("Wrote utf8_scores.csv")
+\end{example}
+
+\iosample{}{Wrote utf8\_scores.csv \\}
+
+這份檔案本身完全沒有問題，寫入時明確用了 \texttt{encoding="utf-8"}。麻煩出在讀取的
+那一端：如果之後打開它的人（可能是你自己換了一台電腦，也可能是別人）不小心指定了另一
+種編碼，會發生什麼事？為了讓這個示範不管在哪台電腦上執行結果都一樣，這裡故意用
+\texttt{encoding="big5"}（一種較舊的中文編碼）打開這份用 UTF-8 存的檔案，模擬編碼不
+一致的情況：
+
+\begin{example}{python}{(read-wrong-encoding.py) 用錯誤的編碼打開檔案}
+with open("utf8_scores.csv", encoding="big5") as f:
+    content = f.read()
+print(content)
+\end{example}
+
+執行後程式並不會印出檔案內容，而是直接當掉：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "read-wrong-encoding.py", line 2, in <module>
+    content = f.read()
+UnicodeDecodeError: 'big5' codec can't decode byte 0xc3 in position 17:
+illegal multibyte sequence
+\end{verbatim}
+
+\texttt{UnicodeDecodeError} 是「用來解碼這些位元組的編碼方式不對」時噴出的例外類型。
+\index{UnicodeDecodeError}
+訊息裡的 \texttt{position 17} 是說，從第 17 個位元組（從 0 算起）開始，Big5 這套規則沒
+辦法把接下來的位元組拼回一個合法的字元（就是姓名裡 \texttt{Å} 這個字母編碼出來的位元組），
+程式因此直接停下來。
+
+\keypoint{每次用 \texttt{open()} 打開文字檔案，都應該明確寫上 \texttt{encoding="utf-8"}，
+不要依賴電腦的「預設編碼」。道理跟第~\ref{sec:csv-module-write}~節 \texttt{newline=""}
+的坑一模一樣：預設編碼在不同作業系統、不同地區設定的電腦上可能不一樣，自己的電腦能正常
+打開檔案，不代表換一台電腦、換一個人的電腦也一樣行得通。}
+
+還有一種更難抓的編碼陷阱，即使兩邊都乖乖寫著 \texttt{encoding="utf-8"} 也可能中招。
+假設同事用 Excel「另存新檔」成「CSV UTF-8（逗號分隔）」格式匯出一份成績單
+\texttt{excel\_export.csv}，內容看起來完全正常：
+
+\begin{verbatim}
+name,score
+Alice,88
+Bob,76
+\end{verbatim}
+
+用 \texttt{encoding="utf-8"} 打開、讀出來看看：
+
+\begin{example}{python}{(read-excel-export.py) 讀取 Excel 匯出的 CSV UTF-8 檔案}
+import csv
+
+with open("excel_export.csv", encoding="utf-8") as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        print(row)
+        print(row["name"])
+\end{example}
+
+執行後會發現，印出來的第一個欄位名稱竟然多了一段看不懂的字元，緊接著就報錯：
+
+\begin{verbatim}
+{'\ufeffname': 'Alice', 'score': '88'}
+Traceback (most recent call last):
+  File "read-excel-export.py", line 7, in <module>
+    print(row["name"])
+          ~~~^^^^^^^^
+KeyError: 'name'
+\end{verbatim}
+
+明明檔案內容看起來就是「name」四個字母，字典的 key 卻變成
+\texttt{'\textbackslash ufeffname'}，多了一段看不見的 \texttt{\textbackslash ufeff}。
+這並非檔案本身打錯字，原因是 Excel 存成「CSV UTF-8」格式時，習慣在檔案最開頭偷偷加上一個
+特殊、完全看不見的隱藏字元，用來告訴其他軟體「這份檔案是用 UTF-8 編碼寫的」。這個隱藏
+字元有個名稱，叫 BOM（byte order mark，位元組順序記號）。
+\index{BOM／utf-8-sig}
+
+單純的 \texttt{encoding="utf-8"}
+不會主動幫你把這個記號拿掉，它會被當成資料的一部分，黏在第一個欄位名稱前面，讓
+\texttt{"name"} 跟 \texttt{"\textbackslash ufeffname"} 變成兩個不一樣的字串，難怪
+\texttt{row["name"]} 找不到。
+
+要正確處理這種檔案，把 \texttt{encoding} 從 \texttt{"utf-8"} 換成 \texttt{"utf-8-sig"}
+即可，這個變體版本會自動辨認並拿掉開頭的 BOM：
+
+\begin{example}{python}{(read-excel-export-fixed.py) 用 utf-8-sig 正確處理 BOM}
+import csv
+
+with open("excel_export.csv", encoding="utf-8-sig") as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        print(row["name"], "score:", row["score"])
+\end{example}
+
+\iosample{}{Alice score: 88 \\{} Bob score: 76 \\}
+
+\stylepoint{如果打開的 CSV 檔案欄位名稱看起來一模一樣，用 \texttt{row["name"]} 卻查
+不到、甚至丟出 \texttt{KeyError}，第一個該懷疑的對象就是檔案開頭那個看不見的 BOM，
+尤其是這份檔案來自 Excel「另存新檔」匯出的時候。把 \texttt{encoding} 從
+\texttt{"utf-8"} 換成 \texttt{"utf-8-sig"} 通常就能解決。}
+
+\begin{drills}[label=drills:csv-encoding]
+\item 預測輸出：如果把 \texttt{read-wrong-encoding.py} 裡的 \texttt{encoding="big5"}
+改成跟寫入時一致的 \texttt{encoding="utf-8"}，這段程式還會出現 \texttt{UnicodeDecodeError}
+嗎？
+\item 填空：想明確指定用 UTF-8 編碼開啟一份純文字檔案，請把下面的空格填上正確內容：
+\begin{verbatim}
+f = open(filename, encoding=______)
+\end{verbatim}
+\item 抓蟲：一份從 Excel 存成「CSV UTF-8」格式匯出的檔案，用 \texttt{encoding="utf-8"}
+打開，\texttt{DictReader} 讀出來的第一個欄位名稱卻多了一段看不懂的字元，導致
+\texttt{row["name"]} 查不到。這是什麼問題？該怎麼解決？
+\end{drills}
+
+\section{JSON：有層次的純文字資料}
+\label{sec:json-basics}
+
+CSV 很適合「每一列長得都一樣、欄位固定」的表格資料，但如果資料本身有層次呢？比如一筆
+個人資料裡，「hobbies」這個欄位本身就是好幾項興趣的清單，「contact」底下又還有電話、地址
+好幾個子欄位，這種「一層包一層」的資料，硬要塞進扁平的表格會很彆扭。
+
+JSON（JavaScript
+Object Notation）就是為了這種情況設計的純文字格式：
+\index{JSON（JavaScript Object Notation）}
+每個值都有名字標籤，而且可以巢狀，
+dict 裡面可以包 list、list 裡面可以包 dict，層層疊起來都沒問題。
+\index{巢狀（nested）}
+跟 CSV 一樣，JSON 也是
+純文字，不管換到哪一種程式語言、哪一個系統都讀得懂，這也是它常常被用來在不同程式之間
+交換資料的原因。
+
+Python 標準函式庫的 \texttt{json} 模組負責在「JSON 格式的字串」跟「Python 的值」之間
+互相轉換。
+\index{json 模組／json.loads()／json.dumps()}
+
+\begin{code}{python}{JSON 字串與 Python 值互轉}
+import json
+
+data = json.loads(json_text)      # 把 JSON 格式的字串解析成 Python 的值
+json_text2 = json.dumps(data)     # 把 Python 的值轉換成 JSON 格式的字串
+\end{code}
+
+\begin{example}{python}{(parse-student-profile.py) 讀出一筆巢狀的個人資料}
+import json
+
+text = '''
+{
+    "name": "Alice",
+    "grade": 8,
+    "hobbies": ["basketball", "coding", "music"],
+    "contact": {"phone": "0912345678", "address": "São Paulo"}
+}
+'''
+
+student = json.loads(text)
+
+print(student)
+print(student["name"])
+print(student["hobbies"])
+print(student["contact"]["phone"])
+print(json.dumps(student, ensure_ascii=False))
+\end{example}
+
+\iosample{}{\{'name': 'Alice', 'grade': 8, 'hobbies': ['basketball', 'coding', 'music'], 'contact': \{'phone': '0912345678', 'address': 'São Paulo'\}\} \\{} Alice \\{} ['basketball', 'coding', 'music'] \\{} 0912345678 \\{} \{"name": "Alice", "grade": 8, "hobbies": ["basketball", "coding", "music"], "contact": \{"phone": "0912345678", "address": "São Paulo"\}\} \\}
+
+\texttt{json.loads()} 把整段 JSON 文字讀進來之後，變成一個很普通的 Python dict。
+\texttt{"hobbies"} 這個 key 對應到的值是一份 list，\texttt{"contact"} 對應到的值又是另一
+個 dict，你可以像平常操作 dict、list 一樣，用 \texttt{student["contact"]["phone"]}
+這樣一路串下去取值。跟 CSV 讀出來的東西不一樣的地方是：JSON 裡的數字（例如
+\texttt{"grade": 8}）讀進來之後就是真正的整數，不是字串，因為 JSON 格式本身就有分
+字串、數字、布林值等不同型別，不像 CSV 全部都是純文字。
+
+\keypoint{\texttt{json.dumps()} 如果不加 \texttt{ensure\_ascii=False}，非 ASCII
+字元（例如帶重音符號的字母 \texttt{ã}）會被轉成像 \texttt{\textbackslash u00e3} 這樣的
+跳脫序列。這不是壞掉，Python 只是預設用任何系統都看得懂的純 ASCII 方式表示字串。但如果
+你的輸出是要給人看的（例如存成檔案、印在畫面上），幾乎都會想加上
+\texttt{ensure\_ascii=False}，讓這些字元照原樣顯示。}
+
+\section{把 JSON 資料直接讀寫成檔案：json.dump() 與 json.load()}
+\label{sec:json-dump-load}
+
+剛剛的 \texttt{json.loads()} 和 \texttt{json.dumps()} 操作的對象都是字串：先準備好
+一段 JSON 格式的文字，或是先把 Python 的值轉成一段 JSON 格式的文字。但實務上更常見的
+情境是直接把資料存成一份 \texttt{.json} 檔案，或是直接從一份 \texttt{.json} 檔案讀出
+資料，不需要自己先手動讀出字串、再轉換。\texttt{json} 模組另外提供了 \texttt{json.dump()}
+和 \texttt{json.load()} 這一對函式，可以直接對著一個已經打開的檔案物件操作。
+\index{json.dump()／json.load()}
+
+\keypoint{\texttt{json.dump()}（沒有 s）跟 \texttt{json.dumps()}（有 s）只差一個字母，
+功能卻不一樣：\texttt{json.dump(值, 檔案物件)} 直接把值寫進「檔案」；
+\texttt{json.dumps(值)} 是把值轉成一段 JSON「字串」讓你自己處理。\texttt{load()} 跟
+\texttt{loads()} 也是同樣的分工：\texttt{load(檔案物件)} 直接從檔案讀，
+\texttt{loads(字串)} 是從一段已經準備好的字串讀。這兩組函式名稱只差一個字母，卻是完全
+不同的用法，第一次用的時候務必看清楚自己到底要對「檔案」還是「字串」操作。}
+
+\begin{code}{python}{直接對檔案讀寫 JSON}
+import json
+
+with open("filename.json", "w", encoding="utf-8") as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
+
+with open("filename.json", encoding="utf-8") as f:
+    data = json.load(f)
+\end{code}
+
+跟第~\ref{sec:csv-encoding}~節學到的習慣一樣，開啟 \texttt{.json} 檔案時也建議明確加
+上 \texttt{encoding="utf-8"}，理由完全相同：不要依賴電腦的預設編碼。用
+第~\ref{sec:json-basics}~節的班級興趣資料，示範怎麼把一份巢狀資料直接寫成一份排版整齊
+的 JSON 檔案：
+
+\begin{example}{python}{(write-members-json.py) 把巢狀資料寫成 JSON 檔案}
+import json
+
+members = [
+    {"name": "Alice", "grade": 8, "hobbies": ["basketball", "coding"]},
+    {"name": "Bob", "grade": 7, "hobbies": ["music"]},
+]
+
+with open("members.json", "w", encoding="utf-8") as f:
+    json.dump(members, f, ensure_ascii=False, indent=2)
+
+print("Wrote members.json")
+\end{example}
+
+\iosample{}{Wrote members.json \\}
+
+程式執行完之後，\texttt{members.json} 這個檔案的內容會是：
+
+\begin{verbatim}
+[
+  {
+    "name": "Alice",
+    "grade": 8,
+    "hobbies": [
+      "basketball",
+      "coding"
+    ]
+  },
+  {
+    "name": "Bob",
+    "grade": 7,
+    "hobbies": [
+      "music"
+    ]
+  }
+]
+\end{verbatim}
+
+留意 \texttt{indent=2} 這個參數：它讓 \texttt{json.dump()} 自動幫巢狀結構加上縮排、
+換行，檔案打開來一眼就看得出層次，跟前面 \texttt{json.dumps()} 預設擠成一整行的樣子
+差很多。\texttt{indent} 不是必要參數，純粹是為了讓存出來的檔案給人看的時候更好讀；如果
+這份檔案只是要給另一支程式讀，不加 \texttt{indent} 完全沒問題，甚至檔案還會更小。
+
+再用 \texttt{json.load()} 把這份檔案讀回來，確認資料真的原封不動：
+
+\begin{example}{python}{(read-members-json.py) 從 JSON 檔案讀回巢狀資料}
+import json
+
+with open("members.json", encoding="utf-8") as f:
+    data = json.load(f)
+
+print(data)
+print(data[0]["hobbies"])
+\end{example}
+
+\iosample{}{[\{'name': 'Alice', 'grade': 8, 'hobbies': ['basketball', 'coding']\}, \{'name': 'Bob', 'grade': 7, 'hobbies': ['music']\}] \\{} ['basketball', 'coding'] \\}
+
+讀回來的 \texttt{data} 是一份 list，裡面每個元素都是 dict，跟寫入前的 \texttt{members}
+結構一模一樣，\texttt{indent=2} 只影響檔案存起來給人看的排版，不會改變讀回 Python 之後
+的資料內容。
+
+\begin{drills}[label=drills:json-dump-load]
+\item 填空：下面這行呼叫少了第二個引數，請把空格填上正確內容：
+\begin{verbatim}
+json.dump(data, ______)
+\end{verbatim}
+\item 概念題：\texttt{json.dump()} 和 \texttt{json.dumps()} 這兩個名稱只差一個字母
+\texttt{s}，功能卻不一樣，差別是什麼？
+\end{drills}
+
+\section{從巢狀 JSON 資料裡安全取值}
+\label{sec:json-nested}
+
+實際拿到的 JSON 資料常常不是每一筆都長得一模一樣，有些成員填了「hobbies」欄位，有些人沒
+填。如果直接用 \texttt{member["hobbies"]} 取值，遇到沒有這個欄位的成員就會出錯。這裡剛好
+呼應第 \ref{ch:files-exceptions} 章的 EAFP 心智模型，也呼應第 \ref{ch:dict-set} 章學過的 \texttt{dict.get()}：與其一路寫
+\texttt{if "hobbies" in member} 這種先檢查再取值的寫法，不如直接嘗試取值，用
+\texttt{.get()} 或 \texttt{try/except KeyError} 接住「查不到」的情況。
+
+\begin{example}{python}{(get-nested-hobbies.py) 安全地取出可能不存在的欄位}
+import json
+
+text = '''
+[
+    {"name": "Alice", "grade": 8, "hobbies": ["basketball", "coding"]},
+    {"name": "Bob", "grade": 7},
+    {"name": "Taylor", "grade": 9, "hobbies": ["music"]}
+]
+'''
+
+members = json.loads(text)
+
+for member in members:
+    hobbies = member.get("hobbies", [])
+    print(member["name"], "hobbies:", hobbies)
+
+print("---")
+
+for member in members:
+    try:
+        hobbies = member["hobbies"]
+    except KeyError:
+        hobbies = []
+    print(member["name"], "hobbies:", hobbies)
+\end{example}
+
+\iosample{}{Alice hobbies: ['basketball', 'coding'] \\{} Bob hobbies: [] \\{} Taylor hobbies: ['music'] \\{} --- \\{} Alice hobbies: ['basketball', 'coding'] \\{} Bob hobbies: [] \\{} Taylor hobbies: ['music'] \\}
+
+這份 JSON 資料裡，Bob 沒有「hobbies」這個欄位。第一段用 \texttt{member.get("hobbies", [])}，
+查不到就直接拿到預設值 \texttt{[]}（一份空清單），完全不用寫任何 \texttt{if} 判斷；第
+二段改用 \texttt{try/except KeyError}，做的事情一樣，只是換一種寫法。
+
+兩段程式印出來的
+結果完全相同，因為 \texttt{.get(key, 預設值)} 本質上就是「查得到就回傳值、查不到就回傳
+預設值」這件事的一個現成寫法，不用自己寫 \texttt{try/except} 就能達到一樣的效果。這正
+是 EAFP 精神的具體展現：不要先小題大作去確認資料存不存在，直接嘗試取值，讓語言本身的行
+為替你簡化判斷。
+
+巢狀資料底下的值，一樣可以用已經很熟悉的迴圈邏輯處理，不會因為多包了一層字典就變得特別
+困難。假設每個成員的資料除了姓名，還多了一個「scores」欄位，本身又是一個 dict（科目對應
+到分數）：
+
+\begin{example}{python}{(average-nested-scores.py) 從巢狀資料算出平均分數}
+import json
+
+text = '''
+[
+    {"name": "Alice", "scores": {"Literature": 85, "Math": 92, "English": 78}},
+    {"name": "Bob", "scores": {"Literature": 70, "Math": 65, "English": 80}}
+]
+'''
+
+members = json.loads(text)
+
+for member in members:
+    name = member["name"]
+    scores = member["scores"]
+
+    total = 0
+    for subject in scores:
+        total += scores[subject]
+    average = total / len(scores)
+
+    print(f"{name}'s average score is {average:.1f}")
+\end{example}
+
+\iosample{}{Alice's average score is 85.0 \\{} Bob's average score is 71.7 \\}
+
+拆開來看，外層的 \texttt{for member in members} 跟前面的寫法一樣，走訪清單裡每一個
+成員；內層的 \texttt{scores = member["scores"]} 先把這個成員的成績字典整個取出來，接著
+\texttt{for subject in scores} 走訪這個字典的每一個 key（也就是每個科目），把對應的
+分數累加起來，這正是第~\ref{sec:csv-manual-average}~節學過的「累加器」樣板，只是這次
+累加的數字是從巢狀字典裡一層層取出來的，不是直接從 CSV 欄位讀到的。
+
+JSON 的巢狀結構乍看
+複雜，但只要一層一層拆開來看，每一層用到的其實都是已經會的工具：走訪 list 用
+\texttt{for}，走訪 dict 用 \texttt{for}，取值用中括號，全部都不是新東西。
+
+到這裡，你已經認識了兩種最常見的純文字資料格式，也知道每一種都可以直接對著檔案讀寫，
+不用先手動處理字串。該用哪一種，其實看資料本身的形狀：資料是一張表格、每一筆記錄的欄位
+都固定的時候，用 CSV；資料有層次、欄位可能不是每筆都有的時候，用 JSON。兩者都是純文字，
+這也是它們能在不同系統、不同程式語言之間暢行無阻的原因。
+
+\begin{drills}[label=drills:json-nested]
+\item 預測輸出：如果有一個 \texttt{member = \{"name": "Charlie"\}}（沒有 "grade" 欄位），
+程式寫 \texttt{member.get("grade", "Unknown")}，印出來的結果會是什麼？
+\item 填空：完成下面用 \texttt{try/except} 取代 \texttt{.get()} 的寫法：
+\begin{verbatim}
+try:
+    grade = member["grade"]
+except ______:
+    grade = "Unknown"
+\end{verbatim}
+\item 抓蟲：如果直接寫 \texttt{member["grade"]}（沒有用 \texttt{.get()}，也沒有包
+\texttt{try/except}），而 \texttt{member} 剛好沒有這個欄位，會發生什麼事？
+\end{drills}
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:csv-manual-average}~節}
+\begin{enumerate}
+\item 總分是 150，平均分數是 30.0（\texttt{10+20+30+40+50=150}，\texttt{150/5=30.0}）。
+\item 依序是 \texttt{0}、\texttt{+=}、\texttt{len(numbers)}。
+\item 因為第一行標題「name,score」的 \texttt{fields[1]} 是字串 \texttt{"score"}，
+\texttt{int("score")} 會丟出 \texttt{ValueError: invalid literal for int() with base
+10: 'score'}，程式在還沒印出任何總分或平均之前就直接中斷。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:csv-module-write}~節}
+\begin{enumerate}
+\item 不會報錯。\texttt{csv.writer} 不會檢查你給的值的數量跟標題列是否一致，它就是照你
+給的清單原封不動寫成一行。所以檔案裡會出現一行只有兩個欄位、一行有四個欄位，跟標題的三
+欄對不上，之後如果用 \texttt{csv.DictReader} 或依照固定欄位數取值就會出錯或錯位。
+\item 因為這個坑的根源是「作業系統本身的換行慣例」跟「\texttt{csv} 模組自己輸出的換行
+符號」重複翻譯造成的，macOS／Linux 的換行字元本來就只有 \texttt{\textbackslash n}，不
+會被文字模式的換行轉換再多加一個 \texttt{\textbackslash r}；但 Windows 的換行慣例是
+\texttt{\textbackslash r\textbackslash n}，同一段程式在 Windows 上執行仍然會出現每列
+資料間多一行空白。因為程式不一定只在自己的電腦上執行，還是要養成永遠加上
+\texttt{newline=""} 的習慣。
+\item 把 \texttt{open(filename, "w", newline="")} 改成 \texttt{open(filename, "a",
+newline="")}。\texttt{'a'} 是附加模式，不會清空舊資料，這是第 \ref{ch:files-exceptions} 章教過的
+\texttt{'w'} 跟 \texttt{'a'} 差異，在 csv 檔案上一樣適用。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:csv-no-header}~節}
+\begin{enumerate}
+\item 會印出 4 筆資料，最後一筆是
+\texttt{\{'date': '2024-01-04', 'city': 'Springfield', 'temperature': '19.0'\}}。
+\item \texttt{["name", "phone"]}。
+\item \texttt{\{'a': 'name', 'b': 'score'\}}，也就是把標題列本身當成一筆普通資料，欄位
+名稱變成自己指定的 \texttt{'a'}、\texttt{'b'}，跟檔案裡真正的欄位「name」「score」完全
+對不上，但程式不會有任何錯誤訊息提醒你。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:csv-encoding}~節}
+\begin{enumerate}
+\item 不會。讀取跟寫入用的是同一種編碼，位元組能正確還原成原本的文字，不會出現
+\texttt{UnicodeDecodeError}。
+\item \texttt{"utf-8"}。
+\item 檔案開頭藏了一個看不見的 BOM（Excel 存成「CSV UTF-8」格式時會自動加上），黏在
+\texttt{"name"} 這個欄位名稱前面。解法是把 \texttt{encoding} 從 \texttt{"utf-8"} 換成
+\texttt{"utf-8-sig"}，讓 Python 自動辨認並拿掉這個記號。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:json-dump-load}~節}
+\begin{enumerate}
+\item 已經用 \texttt{open()} 打開的檔案物件（也就是 \texttt{open()} 的回傳值）。
+\item \texttt{json.dump()}（沒有 s）直接把資料寫進一個已經打開的檔案物件；
+\texttt{json.dumps()}（有 s）是把資料轉成一段 JSON 字串，回傳給你自己處理，不會碰任何
+檔案。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:json-nested}~節}
+\begin{enumerate}
+\item Unknown，因為 \texttt{member} 沒有 \texttt{"grade"} 這個 key，\texttt{.get()} 會
+回傳你給的預設值。
+\item \texttt{KeyError}。
+\item 會丟出 \texttt{KeyError: 'grade'}，程式直接中斷（除非外層有 \texttt{try/except}
+接住這個錯誤）。
+\end{enumerate}

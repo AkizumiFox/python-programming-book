@@ -1,0 +1,841 @@
+\chapter{資料工具一瞥（numpy／pandas／matplotlib）}
+\label{ch:data-tools}
+
+到目前為止，處理資料靠的都是你自己一行一行寫迴圈：讀進一份 CSV、一筆一筆把數字挑出來、
+自己維護一個總和變數慢慢加、自己數共有幾筆才能算平均。
+
+上一章你就是這樣算出一整班的平均
+分數的，先用 \texttt{open()} 開檔、用 \texttt{.strip().split(",")} 把每一行拆成欄位、
+把字串轉成數字，再用一個 \texttt{total} 變數、一個計數器，一步一步把平均值湊出來。這套
+辦法沒有錯，資料筆數不多的時候也夠用，但這一章想讓你先體會一次它的極限：如果那份 CSV
+一口氣多到全校三十個班、一千個學生呢？如果不只要算平均，還要挑出某個班級、某個分數區間
+的資料呢？
+
+自己手寫的迴圈會愈寫愈長、愈寫愈容易出錯，你花的力氣其實大半耗在跟語法奮鬥，
+離真正想解決的問題反而愈來愈遠。這一章要告訴你一件事：這種需求太常見了，早就有別人把
+常用的做法寫成現成的工具，你可以直接拿來用。而「拿別人寫好的工具來用」這件事本身，也是
+寫程式的人每天都在做的事，值得專門認識一下它是怎麼運作的。
+
+所以這一章分成八段推進，比起單純學三個新套件，更像是帶你重新走一次上一章的旅程，只是
+這次手上多了工具可以用：
+
+\begin{itemize}
+\item 先搞懂「套件」是什麼、\texttt{pip} 這個工具在做什麼、怎麼把別人
+寫好的套件裝進你的電腦（\ref{sec:packages-and-pip}、\ref{sec:install-and-pip} 節）。
+\item 接著從最小的痛點下手，用 numpy 解決「一次對一
+整批數字做運算」這件事，不用再自己寫迴圈一個一個算，也順便看看「比較運算」套用在整批
+數字上會發生什麼事（\ref{sec:numpy-vectorize}、\ref{sec:numpy-boolean} 節）。
+\item 再來是這一章份量最重的一段，用 pandas 重做一次你
+在上一章已經很熟悉的事，讀 CSV、挑欄位、篩資料、算平均，甚至進一步學會同時套用好幾個
+篩選條件、簡單處理缺漏的資料（\ref{sec:pandas-read-select} 到 \ref{sec:pandas-multi-filter} 節），你會發現同一件事現在只要幾行就做完，
+直接對照出「工具」到底幫你省了什麼。
+\item 最後，用 matplotlib 把整理好的資料畫成長條圖和折線
+圖各一張，作為這一章、也是這三個套件的一個小小成就感收束（\ref{sec:matplotlib-basic} 節）。
+\end{itemize}
+
+這一整章會延續同
+一份資料，上一章那份「全班小考成績」的 CSV，讓你清楚感受到「同一份資料，換了工具再做
+一次」的對照感。
+
+先說在前面：這一章的目標不是把你訓練成資料科學家，這三個套件各自都還有
+大片你這裡碰不到的功能，這一章要的只是「認識、不精熟」：知道這些工具存在、知道它們大概
+能幫你做什麼、真的動手用過幾次，之後如果工作或生活中遇到類似的大量資料需求，你會想到
+「這個好像可以用 pandas 處理」，這樣就達到目的了。
+
+\section{你已經知道的極限，以及套件是什麼}
+\label{sec:packages-and-pip}
+
+先問你一個問題：如果上一章那份成績單一口氣多到一千筆，你打算怎麼辦？答案大概是，還是
+可以用一樣的迴圈邏輯硬做，只是程式會愈跑愈久，而且只要你多想要一個功能（例如「只看某個
+班級」「只看超過某個分數的人」），就要多寫一段新的迴圈跟新的變數。這種「每多一個需求就
+多寫一段迴圈」的做法，遲早會把你自己繞暈。
+
+到目前為止，你 \texttt{import} 過的 \texttt{csv}、\texttt{math}、\texttt{json} 這些，
+都是 Python「內建」就有的東西，只要裝好 Python，它們就已經在你的電腦上了，不用另外
+安裝，這種東西有個統稱，叫「標準函式庫」。
+
+世界上還有更多好用的工具，是\textbf{別人
+額外寫好、放到網路上讓大家下載}的東西，跟 Python 官方原廠附帶的內建工具是兩回事，這種
+東西叫「套件」（package）。\index{套件}numpy、pandas、matplotlib 就是三個非常有名的套件，分別擅長
+「對整批數字做運算」「把表格式資料讀進來、整理、篩選」「把資料畫成圖表」，剛好對應到你
+在上一章手動處理資料時會卡關的地方。
+
+要拿到這些套件，你需要 Python 內建的一個小工具，叫 \texttt{pip}。\index{pip}你可以把 \texttt{pip}
+想成一個「套件的搬運工」：你告訴它套件的名字，它就去網路上把套件抓下來、安裝進你的電腦，
+之後你才能在程式裡 \texttt{import} 它。這些套件實際上放在一個叫 PyPI（Python Package
+Index）\index{PyPI}的公開套件倉庫裡，全世界任何人都可以把自己寫的套件上傳到那裡，也可以透過
+\texttt{pip} 免費把別人上傳的套件下載下來用，numpy、pandas、matplotlib 都是放在 PyPI
+上的套件。裝 Python 的時候，\texttt{pip} 通常已經跟著一起裝好了，不用你另外安裝這個
+工具本身。下一節就會實際動手，把三個套件裝進你的電腦。
+
+\texttt{pip} 除了「裝」套件之外，也能「拆」套件：如果哪天不想再用某個套件了，可以打
+\texttt{pip uninstall 套件名稱} 把它移除；套件本身也會不時推出新版本，修掉舊版的
+bug、加上新功能，這時候可以打 \texttt{pip install --upgrade 套件名稱} 把已經裝好的
+套件升級到最新版。\index{pip uninstall／pip install --upgrade}這幾個指令用法都差不多，記得「\texttt{pip} 加一個動作、加套件名稱」
+這個固定格式，之後真的需要拆套件、升級套件時，回頭查一下指令名稱就好，不用死背。
+
+\section{安裝套件，第一次見到 \texttt{pip}}
+\label{sec:install-and-pip}
+
+\begin{code}{bash}{用 pip 安裝套件的固定寫法}
+pip install package1 package2 package3
+\end{code}
+
+打開終端機（第 \ref{ch:introduction} 章已經用過的那個視窗），輸入以下指令，一次裝好這一章要用的三個套件：
+
+\begin{verbatim}
+$ pip install numpy pandas matplotlib
+Collecting numpy
+  Downloading numpy-2.5.2-...whl (5.3 MB)
+Collecting pandas
+  Downloading pandas-3.0.5-...whl (9.9 MB)
+Collecting matplotlib
+  Downloading matplotlib-3.11.1-...whl (9.3 MB)
+（中間還會看到一串安裝相依套件的訊息捲過去，這裡省略）
+Successfully installed matplotlib-3.11.1 numpy-2.5.2 pandas-3.0.5 ...
+\end{verbatim}
+
+實際畫面上看到的版本號、檔案大小、捲動的訊息內容，會因為你安裝的當下套件釋出到第幾版
+而略有不同，不用擔心跟這裡不完全一樣，只要最後看到類似 \texttt{Successfully installed}
+這樣的字樣，就代表三個套件都裝好了。
+
+裝好之後，如果你在程式裡寫 \texttt{import numpy}，Python 就能正常找到它。但如果你剛剛
+跳過了安裝這一步，直接寫下面這支程式會發生什麼事？
+
+\begin{example}{python}{(try-numpy.py) 還沒安裝套件就 import}
+import numpy
+\end{example}
+
+在一台還沒裝過 numpy 的電腦上執行，畫面上會出現：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "try-numpy.py", line 1, in <module>
+    import numpy
+ModuleNotFoundError: No module named 'numpy'
+\end{verbatim}
+
+\texttt{ModuleNotFoundError}\index{ModuleNotFoundError} 意思很直白，就是「找不到一個叫這個名字的模組」。Python
+到你電腦上該找套件的地方翻了一圈，沒看到 numpy，因為你還沒有用 \texttt{pip} 把它搬過來。
+修法也很直接：回頭執行 \texttt{pip install numpy}，裝好之後同一支程式就能正常執行。
+
+\keypoint{你不需要在 \texttt{import} 之前先確認某個套件到底裝了沒，直接寫下去就好，
+Python 會用 \texttt{ModuleNotFoundError} 這個錯誤訊息老實告訴你答案，缺什麼就補什麼。
+這跟這本書前面提過的「先做、錯了再處理」是同一種精神，只是這次犯錯的地方換成了套件
+安裝，程式邏輯本身反而沒有問題。}
+
+如果哪天你想確認某個套件到底裝好了沒，或是想知道自己裝的是第幾版，可以在終端機打
+\texttt{pip show 套件名稱}：
+
+\begin{verbatim}
+$ pip show numpy
+Name: numpy
+Version: 2.5.2
+Summary: Fundamental package for array computing in Python
+Home-page: https://numpy.org
+...
+\end{verbatim}
+
+如果那個套件根本沒裝過，畫面上會出現一行 \texttt{WARNING: Package(s) not found:
+numpy} 提醒你。這個指令平常不會天天用到，但排查問題、確認環境的時候很方便，知道有這麼
+一個工具就夠了。
+
+\section{numpy：一次對整批數字做運算}
+\label{sec:numpy-vectorize}
+
+先從最小的痛點下手。假設老師覺得這次小考題目偏難，決定幫全班的分數統一套用一個調分
+公式：\texttt{調整後分數 = 原始分數 * 0.9 + 10}（分數愈高，乘以 0.9 扣的愈多；分數愈
+低，加上 10 分墊高的比例愈高，是一種常見的拉近高低分距的調分方式）。
+
+如果全班只有幾個
+人，你當然可以像上一章那樣寫個迴圈，一個一個算；但如果要調的是全校好幾百個人的分數，
+每次都要重新寫、重新想這段迴圈，未免太累。numpy 就是為了解決「對一整批數字做同一種
+運算」這件事而生的套件。
+
+\begin{code}{python}{numpy 建立 array 與四則運算的固定寫法}
+import numpy as np
+
+array_name = np.array(regular_list)
+result = array_name * constant + constant
+\end{code}
+
+慣例上，大家都把 numpy 用 \texttt{as np} 縮寫成 \texttt{np}，之後每次呼叫 numpy 的
+功能就少打幾個字。\texttt{np.array()}\index{numpy array} 可以把一般的 list 包成 numpy 專屬的「array」，
+包好之後，對這個 array 做加、減、乘、除，會\textbf{自動對裡面每一個元素分別做同一次
+運算}，不用你自己寫迴圈一個一個算。
+
+先看看用你已經很熟悉的迴圈寫法，怎麼幫全班調分：
+
+\begin{example}{python}{(adjust-scores-loop.py) 用迴圈幫全班調分}
+scores = [88, 72, 95, 60, 78, 85, 91, 55, 68]
+
+# 用迴圈一個一個調分：老師決定套用「乘以 0.9 再加 10」的公式
+adjusted_scores = []
+for score in scores:
+    adjusted_scores.append(score * 0.9 + 10)
+
+print(adjusted_scores)
+\end{example}
+
+\iosample{}{[89.2, 74.8, 95.5, 64.0, 80.2, 86.5, 91.9, 59.5, 71.2] \\}
+
+再看看同一件事，換成 numpy 怎麼做：
+
+\begin{example}{python}{(adjust-scores-numpy.py) 用 numpy 幫全班調分}
+import numpy as np
+
+scores = [88, 72, 95, 60, 78, 85, 91, 55, 68]
+scores_array = np.array(scores)
+
+# 同樣的調分公式：array 之間的運算會自動套用到每一個元素
+adjusted_scores_array = scores_array * 0.9 + 10
+
+print(adjusted_scores_array)
+\end{example}
+
+\iosample{}{[89.2 74.8 95.5 64.  80.2 86.5 91.9 59.5 71.2] \\}
+
+兩段程式算出來的數字完全一樣，但這就是「向量化運算」\index{向量化運算}帶來的差別：迴圈版要開一個空
+list、寫一行 \texttt{for}、呼叫一次 \texttt{.append()}，三個步驟才能湊出結果；numpy
+版一行 \texttt{scores\_array * 0.9 + 10} 就做完，等於把三行邏輯濃縮成一行，行數少了
+三分之二，好處不只是概念上比較方便，寫程式碼的份量也真的少了一大截。
+
+你可能注意到
+numpy 印出來的那個 \texttt{64.} 後面多了一個空格，這其實是 numpy 自動幫忙對齊小數點
+位置的結果，不是排版出了錯，方便你一眼看出每個數字對得整不整齊。
+
+這裡要特別提醒一件事：array 的 \texttt{*}、\texttt{+} 跟你在第 \ref{ch:lists} 章學過的 list 的
+\texttt{*}（例如 \texttt{[0] * 5} 是把清單內容重複 5 次）、\texttt{+}（把兩個清單接
+在一起）意思完全不同：array 的 \texttt{*}、\texttt{+} 是逐一元素做數學運算，list 的
+\texttt{*}、\texttt{+} 是重複或接合整份清單。這正是 numpy array 跟一般 list 最大的
+差別之一，看到同樣的符號，要記得先確認自己手上的是 array 還是 list。
+
+numpy 能做的事情遠不只這裡示範的一維、逐一運算，它還有更多維度陣列（例如把資料排成
+像棋盤一樣有列有欄的表格）、矩陣運算，甚至「broadcasting」（讓不同形狀的 array 也能
+互相運算的規則）這些功能，但那些屬於更進階的數學／科學運算範疇，這本書不會用到，這裡
+認識「把 list 包成 array、直接做四則運算和比較運算」這個小角落就夠用了，比較運算的
+部分下一節馬上會看到。
+
+\begin{drills}[label=drills:numpy-vectorize]
+\item 這段程式執行後，會印出什麼？
+\begin{verbatim}
+import numpy as np
+
+values = np.array([2, 4, 6])
+print(values * 3)
+\end{verbatim}
+\item 這段程式執行後，會印出什麼？
+\begin{verbatim}
+import numpy as np
+
+a = np.array([10, 20, 30])
+b = np.array([1, 2, 3])
+print(a - b)
+\end{verbatim}
+\end{drills}
+
+\section{numpy：比較運算與布林陣列}
+\label{sec:numpy-boolean}
+
+上一節示範的是四則運算，其實 numpy 的向量化不只適用在加減乘除上，第 \ref{ch:conditionals} 章學過的比較
+運算子（\texttt{==}、\texttt{>}、\texttt{>=} 這些）套用在 array 上，一樣會自動對每一
+個元素分別做比較，得到一整個由 \texttt{True}／\texttt{False} 組成的新 array。
+
+\begin{code}{python}{numpy 比較運算的固定寫法}
+import numpy as np
+
+array_name = np.array(regular_list)
+result = array_name comparison_operator constant
+\end{code}
+
+還是拿全班的分數當例子：老師想知道這次考試哪些人拿到 80 分以上，一次看清楚全班每個人
+「有沒有」達標，而不是一個一個分數自己比對。
+
+\begin{example}{python}{(high-score-mask.py) 一次比較全班分數是否達標}
+import numpy as np
+
+scores = [88, 72, 95, 60, 78, 85, 91, 55, 68]
+scores_array = np.array(scores)
+
+# 比較運算子套用在 array 上，一樣會逐一元素做比較
+is_high = scores_array >= 80
+print(is_high)
+\end{example}
+
+\iosample{}{[ True False  True False False  True  True False False] \\}
+
+印出來的結果是一整條由 \texttt{True}、\texttt{False} 組成的 array，每個位置對應原本
+分數 array 同一個位置的人：第一個人 88 分，達標，對應 \texttt{True}；第二個人 72 分，
+沒達標，對應 \texttt{False}，以此類推。這種由比較運算得出的布林 array，很適合拿來當
+「這批資料裡有哪些符合條件」的一次性總覽。
+
+如果你只想知道「總共有幾個人達標」，不需要自己一個一個數 \texttt{True} 有幾個，
+可以直接呼叫 \texttt{.sum()}：
+
+\begin{example}{python}{(count-high-scores.py) 算出達標人數}
+import numpy as np
+
+scores_array = np.array([88, 72, 95, 60, 78, 85, 91, 55, 68])
+is_high = scores_array >= 80
+
+count_high = is_high.sum()
+print(count_high)
+\end{example}
+
+\iosample{}{4 \\}
+
+\keypoint{在 Python 裡，\texttt{True} 其實可以被當成數字 \texttt{1} 使用，
+\texttt{False} 可以被當成 \texttt{0}，這一點跟你在數學課學到的「布林值就是布林值、
+數字就是數字」不太一樣。把一整條布林 array 丟進 \texttt{.sum()}，效果就等於把每個
+\texttt{True} 當 1、每個 \texttt{False} 當 0 全部加起來，加總的結果剛好就是符合條件
+的元素個數，不用另外寫迴圈自己數。}
+
+你可能已經注意到，\texttt{.sum()} 這個方法名稱看起來有點眼熟。下一節認識 pandas 的
+時候，你會看到 DataFrame 的某一欄也有一模一樣叫 \texttt{.sum()}、\texttt{.mean()}
+的方法，這不是巧合，pandas 實際上是建立在 numpy 之上的套件，兩者共用很多類似的操作
+方式，先在這裡認識過一次，等一下在 pandas 那邊看到同樣的名字會覺得眼熟，不是全新的
+東西。
+
+\begin{drills}[label=drills:numpy-boolean]
+\item 這段程式執行後，會印出什麼？
+\begin{verbatim}
+import numpy as np
+
+values = np.array([50, 85, 62, 90, 40])
+print(values >= 60)
+\end{verbatim}
+\item 這段程式執行後，會印出什麼？
+\begin{verbatim}
+import numpy as np
+
+passed = np.array([True, True, False, True, False])
+print(passed.sum())
+\end{verbatim}
+\end{drills}
+
+\section{pandas：把 CSV 讀成一張表}
+\label{sec:pandas-read-select}
+
+份量最重的一段來了。還記得上一章你怎麼把一份 CSV 讀進 Python 的嗎？要先 \texttt{open()}
+開檔、用 \texttt{csv.reader()} 或 \texttt{csv.DictReader} 逐行讀、自己判斷每一欄代表
+什麼、自己決定要不要把字串轉成數字。pandas 是專門用來處理「表格式資料」的套件，讀 CSV
+這件事，它一行就能做完，而且連型別都幫你猜好了。
+
+先看看這一章要用的資料檔長什麼樣子，沿用上一章那份「全班小考成績」，每一列記錄一個
+學生的姓名、班級、分數：
+
+\begin{example}{text}{(quiz\_scores.csv) 全班小考成績原始資料}
+Name,Class,Score
+Alice,501,88
+Bob,501,72
+Chloe,501,95
+David,502,60
+Emma,502,78
+Frank,502,85
+Grace,503,91
+Henry,503,55
+Ivy,503,68
+\end{example}
+
+\begin{code}{python}{pandas 讀取 CSV 與選欄的固定寫法}
+import pandas as pd
+
+df = pd.read_csv("filename.csv")
+df["column_name"]
+\end{code}
+
+慣例上，pandas 用 \texttt{as pd} 縮寫成 \texttt{pd}。讀進來的東西叫做「DataFrame」，\index{DataFrame}
+你可以把它想成一整張表格，用 \texttt{df["欄位名稱"]} 就能把某一欄整個選出來看。除了
+讀 CSV 之外，也可以不透過檔案，直接把一個 dict 包給 \texttt{pd.DataFrame()} 建立一個
+DataFrame，dict 的 key 會變成欄位名稱，value（一個 list）會變成那一欄的內容，例如
+\texttt{pd.DataFrame(\{"Score": [80, 95]\})}。
+
+\begin{example}{python}{(read-quiz-scores.py) 讀進小考成績、選出一欄}
+import pandas as pd
+
+df = pd.read_csv("quiz_scores.csv")
+
+print(df)
+print(df["Score"])
+\end{example}
+
+執行後會看到：
+
+\begin{verbatim}
+    Name  Class  Score
+0  Alice    501     88
+1    Bob    501     72
+2  Chloe    501     95
+3  David    502     60
+4   Emma    502     78
+5  Frank    502     85
+6  Grace    503     91
+7  Henry    503     55
+8    Ivy    503     68
+0    88
+1    72
+2    95
+3    60
+4    78
+5    85
+6    91
+7    55
+8    68
+Name: Score, dtype: int64
+\end{verbatim}
+
+比較一下：上一章要開檔、逐行讀、自己判斷欄位順序、自己把字串轉成數字，這裡一行
+\texttt{pd.read\_csv()} 全部做完。
+
+\keypoint{印出 DataFrame 時，最左邊那一欄由 0 開始遞增的數字是 pandas 自動幫每一列加上
+的「列索引」\index{列索引}，用來標記這一列在表格裡的位置，並不是你資料裡原本就有的內容。另外，
+\texttt{Score} 這一欄印出來的最後一行寫著 \texttt{dtype: int64}，這是 pandas 自動猜
+出來的型別（整數），代表它已經幫你把字串轉成數字了，不用像上一章那樣自己呼叫
+\texttt{int()} 轉型。}
+
+如果一份 CSV 有幾千、幾萬筆資料，你應該不會想把整張表格全部印出來，只是想很快看一眼
+資料長什麼樣子。這時候可以用 \texttt{df.head()}\index{df.head()}，預設印出最前面 5 筆，也可以自己指定
+筆數，例如 \texttt{df.head(3)} 只印前 3 筆：
+
+\begin{example}{python}{(peek-quiz-scores.py) 只看前幾筆資料}
+import pandas as pd
+
+df = pd.read_csv("quiz_scores.csv")
+print(df.head(3))
+\end{example}
+
+執行後會看到：
+
+\begin{verbatim}
+    Name  Class  Score
+0  Alice    501     88
+1    Bob    501     72
+2  Chloe    501     95
+\end{verbatim}
+
+再來看看選欄的另一個變化：如果一次想選不只一欄，把好幾個欄位名稱裝進一個 list，再放進
+中括號裡就好，例如 \texttt{df[["Name", "Score"]]}\index{df[[...]] 多欄選取}：
+
+\begin{example}{python}{(select-two-columns.py) 一次選出兩欄}
+import pandas as pd
+
+df = pd.read_csv("quiz_scores.csv")
+print(df[["Name", "Score"]])
+\end{example}
+
+\begin{verbatim}
+    Name  Score
+0  Alice     88
+1    Bob     72
+2  Chloe     95
+3  David     60
+4   Emma     78
+5  Frank     85
+6  Grace     91
+7  Henry     55
+8    Ivy     68
+\end{verbatim}
+
+\keypoint{選一欄用單層中括號（\texttt{df["Score"]}），選好幾欄要把欄位名稱先包成一個
+list，再整份放進中括號（\texttt{df[["Name", "Score"]]}），兩層括號一層都不能少。這兩
+種寫法拿到的東西也不一樣：選單一欄拿到的是 pandas 另一種資料結構，叫 Series，可以想成
+表格裡「一整條」資料；選好幾欄拿到的還是一張表格（DataFrame），只是欄位變少了。這本書
+不會深入 Series 本身的操作，這裡只要記得「一層中括號選一欄、兩層中括號選好幾欄」就夠
+用了。}
+
+\begin{drills}[label=drills:pandas-read-select]
+\item 這段程式執行後，會印出什麼？
+\begin{verbatim}
+import pandas as pd
+
+data = pd.DataFrame({"Subject": ["Chinese", "Math"], "Score": [80, 95]})
+print(data["Score"])
+\end{verbatim}
+\item 承接本節範例的 \texttt{quiz\_scores.csv}：如果你執行 \texttt{print(df["Name"])}，
+印出來的每一行前面除了姓名之外，還會多出一欄由 0 開始遞增的數字，這欄數字代表什麼？
+\item 如果你想同時選出 \texttt{quiz\_scores.csv} 的「Name」和「Score」兩欄，不要
+「Class」，程式碼該怎麼寫？
+\end{drills}
+
+\section{pandas：篩選與聚合，一行做完平均}
+\label{sec:pandas-filter-agg}
+
+讀進 DataFrame 之後，接下來要做的事跟上一章一模一樣：篩出某個班級的記錄、算出那個
+班級的平均分數。上一章要自己寫 \texttt{if} 判斷符不符合條件、自己維護一個總和變數和
+一個計數器變數才能算平均；pandas 把這整套動作濃縮成「篩選」加「聚合」兩步。
+
+\begin{code}{python}{pandas 篩選與聚合的固定寫法}
+df[df["column_name"] condition]
+df["column_name"].mean()
+\end{code}
+
+\texttt{df[條件]} 會篩出符合條件的所有列，回傳一個新的、比較小的 DataFrame；\index{df[條件] 篩選}接在欄位
+選取後面的 \texttt{.mean()}、\texttt{.sum()} 則是直接算出那一欄的平均值、總和，不用
+自己開變數手動累加。\index{.mean()／.sum()}等一下的範例裡還會用到 \texttt{round()}，這是 Python 內建的函式，
+跟 pandas 沒有關係：\texttt{round(數字, 小數位數)} 會把數字四捨五入到指定的小數位數，
+例如 \texttt{round(85.333, 1)} 會得到 \texttt{85.3}。\index{round()}
+
+\begin{example}{python}{(filter-quiz-scores.py) 篩出 501 班、算平均分數}
+import pandas as pd
+
+df = pd.read_csv("quiz_scores.csv")
+
+# 篩出 501 班的所有記錄
+class_501 = df[df["Class"] == 501]
+print(class_501)
+
+# 算出 501 班的平均分數
+average_501 = class_501["Score"].mean()
+print(round(average_501, 1))
+
+# 篩出分數 80 分以上的記錄，並算出筆數
+high_scores = df[df["Score"] >= 80]
+print(len(high_scores))
+\end{example}
+
+執行後會看到：
+
+\begin{verbatim}
+    Name  Class  Score
+0  Alice    501     88
+1    Bob    501     72
+2  Chloe    501     95
+85.0
+4
+\end{verbatim}
+
+留意一件事：篩出 80 分以上總共 4 筆，跟你在上一節用 numpy 布林 array 算出來的
+\texttt{is\_high.sum()} 結果完全一樣，因為兩邊做的其實是同一件事，只是一個套用在
+list 包出來的 array 上，一個套用在 DataFrame 的某一欄上。
+
+\stylepoint{\texttt{df[df["Score"] >= 80]} 篩完直接接 \texttt{.mean()} 或用
+\texttt{len()} 算筆數，可以串成一行；上一章的手寫版本要先開一個 \texttt{if} 判斷，
+再開一個累加變數、一個計數器變數，跑完迴圈才能算出同樣的結果。實際比較一下行數：上
+一章 \texttt{average-quiz-score.py} 光是讀檔案、拆欄位、轉型別、累加、算平均，就用掉
+十一行程式邏輯；這裡讀檔、篩選、呼叫 \texttt{.mean()} 三行就做完同樣的事，行數少了
+將近四分之三。同一件事，pandas 幫你把好幾行邏輯收進一行呼叫裡。}
+
+\begin{drills}[label=drills:pandas-filter-agg]
+\item 這段程式執行後，會印出什麼？
+\begin{verbatim}
+import pandas as pd
+
+data = pd.DataFrame({"Class": [601, 601, 602], "Score": [70, 90, 100]})
+print(data[data["Class"] == 601]["Score"].mean())
+\end{verbatim}
+\item 要篩出 \texttt{df} 裡 \texttt{"Score"} 欄位大於等於 90 分的所有記錄，程式碼該怎麼寫？
+\item 這段程式執行後，會印出什麼？
+\begin{verbatim}
+import pandas as pd
+
+data = pd.DataFrame({"Score": [55, 62, 78, 91]})
+print(len(data[data["Score"] < 60]))
+\end{verbatim}
+\end{drills}
+
+\section{pandas：多重條件篩選與簡單資料清理}
+\label{sec:pandas-multi-filter}
+
+上一節只用了一個條件去篩選，實務上常常需要「同時」符合好幾個條件，例如「501 班而且
+分數在 80 分以上」。pandas 支援把好幾個條件串在一起，但寫法跟第 \ref{ch:conditionals} 章教過的
+\texttt{and} 不太一樣，這裡要特別小心。
+
+\begin{code}{python}{pandas 多重條件篩選的固定寫法}
+df[(df["columnA"] conditionA) & (df["columnB"] conditionB)]
+\end{code}
+
+每個條件都要用小括號包起來，中間用 \texttt{\&} 串接，不是第 \ref{ch:conditionals} 章學過的 \texttt{and}：
+
+\begin{example}{python}{(filter-multi-condition.py) 篩出 501 班且分數 80 分以上}
+import pandas as pd
+
+df = pd.read_csv("quiz_scores.csv")
+
+result = df[(df["Class"] == 501) & (df["Score"] >= 80)]
+print(result)
+\end{example}
+
+執行後會看到：
+
+\begin{verbatim}
+    Name  Class  Score
+0  Alice    501     88
+2  Chloe    501     95
+\end{verbatim}
+
+還記得第 \ref{ch:conditionals} 章教的 \texttt{and} 嗎？如果你在這裡把 \texttt{\&} 換成 \texttt{and}，一樣
+會出錯，因為 \texttt{and} 期待兩邊各自是單一個 \texttt{True}／\texttt{False}，但
+\texttt{df["Class"] == 501} 產生的其實是一整欄由好幾個 \texttt{True}／\texttt{False}
+組成的資料，不是單一個值。pandas 因此改用 \texttt{\&} 這個逐一元素比對的運算子，效果
+類似 \texttt{and}，但套用在整欄資料上。
+
+如果你偷懶把括號省略掉，會發生什麼事？
+
+\begin{example}{python}{(wrong-filter.py) 忘記加括號的多重條件篩選}
+import pandas as pd
+
+df = pd.read_csv("quiz_scores.csv")
+
+result = df[df["Class"] == 501 & df["Score"] >= 80]
+print(result)
+\end{example}
+
+執行後會看到：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "wrong-filter.py", line 5, in <module>
+    result = df[df["Class"] == 501 & df["Score"] >= 80]
+ValueError: The truth value of a Series is ambiguous. Use a.empty,
+a.bool(), a.item(), a.any() or a.all().
+\end{verbatim}
+
+這是因為 \texttt{\&} 在 Python 裡的運算順序比 \texttt{==}、\texttt{>=} 這些比較符號
+更優先，如果沒有括號，Python 會先算 \texttt{\&} 兩側，跟你原本想要的「先個別完成兩個
+比較、再把兩個結果放在一起看」完全不同，才會冒出這個一時看起來莫名其妙的錯誤。
+
+同樣的規則也適用在「符合其中一個條件就好」的情況，只是把 \texttt{\&} 換成
+\texttt{|}（或），例如 \texttt{df[(df["Class"] == 501) | (df["Class"] == 502)]} 會篩出
+501 班或 502 班的所有記錄，括號一樣不能省略。
+
+\keypoint{pandas 篩選多重條件時，每個條件務必用小括號個別包起來，中間用 \texttt{\&}
+（且）或 \texttt{|}（或）串接，不能直接寫 \texttt{and}／\texttt{or}，也不能省略括號。\index{pandas 條件組合（\&／\textbar{}）}
+記不住細節沒關係，只要記得「多重條件、pandas、括號」這三件事會一起出現，遇到類似的
+\texttt{ValueError} 就知道該回頭檢查括號了。}
+
+除了篩選，資料收集回來的表格常常會有「缺考」「沒填答案」這種缺漏的情況，pandas 讀進來
+的時候，這種缺漏值會顯示成 \texttt{NaN}（Not a Number 的縮寫，意思是「這裡沒有一個
+正常的數值」）。這裡只做最簡單的認識，示範怎麼把整份表格裡有缺漏的那幾列直接濾掉：
+
+\begin{code}{python}{pandas 濾掉缺漏資料的固定寫法}
+df.dropna()
+\end{code}
+
+\begin{example}{python}{(dropna-example.py) 濾掉有缺考記錄的資料}
+import pandas as pd
+
+makeup_scores = pd.DataFrame({
+    "Name": ["Alice", "Bob", "Chloe"],
+    "Score": [88, None, 95],
+})
+print(makeup_scores)
+
+cleaned = makeup_scores.dropna()
+print(cleaned)
+\end{example}
+
+執行後會看到：
+
+\begin{verbatim}
+    Name  Score
+0  Alice   88.0
+1    Bob    NaN
+2  Chloe   95.0
+    Name  Score
+0  Alice   88.0
+2  Chloe   95.0
+\end{verbatim}
+
+Bob 那一列因為分數是 \texttt{None}（代表沒有值，第 \ref{ch:lists} 章學過的那個 \texttt{None}），
+pandas 把它顯示成 \texttt{NaN}，呼叫 \texttt{dropna()} 之後那一列就整列被拿掉了。\index{NaN／dropna()}你
+可能也注意到分數欄位變成 \texttt{88.0}、\texttt{95.0}，多了小數點，這是因為欄位裡只要
+出現一個 \texttt{NaN}，pandas 為了讓整欄型別維持一致，會把原本的整數欄位一起轉成
+帶小數點的型別，這是 pandas 內部的型別規則，不影響你後續用 \texttt{.mean()} 之類的
+方法計算。
+
+pandas 對缺漏值還有更細緻的處理方式，例如用平均值或某個固定值補上缺漏的格子，而不是
+整列刪掉，這裡不深入，只要知道 \texttt{dropna()} 能幫你先把明顯不完整的資料濾掉就好。
+
+pandas 還有更多沒碰到的進階功能，例如依類別分組聚合（\texttt{groupby}）、合併好幾張
+表格（\texttt{merge}），這裡也不深入探討，這一章你已經學會篩選、算平均、算筆數、同時
+套用多個條件、簡單濾掉缺漏資料，這些已經是資料整理最常用到的一批工具，之後真的遇到更
+複雜的資料操作需求，你會知道 pandas 也做得到，想深入可以再自己查文件學。
+
+\begin{drills}[label=drills:pandas-multi-filter]
+\item 這段程式執行後，會印出什麼？
+\begin{verbatim}
+import pandas as pd
+
+data = pd.DataFrame({"Class": [601, 601, 602], "Score": [70, 90, 55]})
+print(data[(data["Class"] == 601) & (data["Score"] >= 80)])
+\end{verbatim}
+\item 如果把上一題的條件拿掉括號，寫成
+\texttt{data[data["Class"] == 601 \& data["Score"] >= 80]}，會發生什麼事？
+\item 這段程式執行後，會印出什麼？
+\begin{verbatim}
+import pandas as pd
+
+data = pd.DataFrame({"Score": [80, None, 70]})
+print(len(data.dropna()))
+\end{verbatim}
+\end{drills}
+
+\section{matplotlib：畫兩張圖幫這章收尾}
+\label{sec:matplotlib-basic}
+
+最後這一段，要做的事很單純：把整理好的資料畫成看得懂的圖，當作這一章的成就感收束。你
+已經會用 pandas 篩選、算平均了，matplotlib 要做的事只有一件，把算出來的數字變成一張
+圖表。這裡會示範兩種最基本的圖：長條圖，適合比較不同類別之間的差異；折線圖，適合看
+數值隨著時間或順序推進的變化趨勢。
+
+\begin{code}{python}{matplotlib 畫長條圖的固定寫法}
+import matplotlib.pyplot as plt
+
+plt.bar(x_data, y_data)
+plt.show()
+\end{code}
+
+慣例上，matplotlib 的繪圖功能用 \texttt{as plt} 縮寫成 \texttt{plt}。
+\texttt{plt.bar()} 畫長條圖，把 x 軸、y 軸的資料傳進去；\texttt{plt.show()} 會跳出一個
+視窗把圖顯示出來。\index{plt.bar()／plt.show()}
+
+\begin{example}{python}{(class-average-bar-chart.py) 畫出各班平均分數長條圖}
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df = pd.read_csv("quiz_scores.csv")
+
+# 沿用上一節的篩選＋平均邏輯，分別算出三個班級
+avg_501 = df[df["Class"] == 501]["Score"].mean()
+avg_502 = df[df["Class"] == 502]["Score"].mean()
+avg_503 = df[df["Class"] == 503]["Score"].mean()
+
+classes = ["501", "502", "503"]
+averages = [avg_501, avg_502, avg_503]
+
+plt.bar(classes, averages)
+plt.xlabel("Class")
+plt.ylabel("Average Score")
+plt.title("Average Quiz Score by Class")
+plt.show()
+\end{example}
+
+執行完你會看到一個彈出的視窗，裡面是三根長條，分別代表 501、502、503 班的平均分數
+（依照這份資料算出來，大約是 85 分、74 分、71 分），長條愈高代表那個班的平均分數愈高，
+一眼就能比較出三個班的差異，不用像前面那樣還得自己讀數字才能比較。
+
+長條圖適合「比較不同類別」，例如剛剛的三個班級；如果你想看的是同一個對象的數值隨著
+時間、或某種順序推進的變化趨勢，比較合適的圖表是折線圖。假設 501 班連續考了三次小考，
+你想看看整體是進步還是退步：
+
+\begin{code}{python}{matplotlib 畫折線圖的固定寫法}
+import matplotlib.pyplot as plt
+
+plt.plot(x_data, y_data)
+plt.show()
+\end{code}
+
+\begin{example}{python}{(class-501-trend-line-chart.py) 畫出 501 班三次小考的平均分數趨勢}
+import matplotlib.pyplot as plt
+
+quiz_numbers = ["Quiz 1", "Quiz 2", "Quiz 3"]
+class_501_averages = [78.5, 82.0, 85.0]
+
+plt.plot(quiz_numbers, class_501_averages)
+plt.xlabel("Quiz")
+plt.ylabel("Average Score")
+plt.title("Class 501 Average Score Over Three Quizzes")
+plt.show()
+\end{example}
+
+執行完你會看到一個彈出的視窗，裡面是一條從左到右往上爬的折線，代表 501 班的平均分數從
+第一次小考的 78.5 分，進步到第二次的 82.0 分，再進步到第三次的 85.0 分，整體呈現一路
+上升的走勢，一眼就能看出這個趨勢，不用像列表那樣一個一個數字比對。\index{plt.plot()}
+
+\stylepoint{長條圖跟折線圖都是「把一串數字畫成圖」，差別在於資料的性質：長條圖裡的
+x 軸通常是彼此獨立、沒有順序關係的類別（像「501 班」「502 班」，換個順序排列也不影響
+解讀）；折線圖裡的 x 軸通常本身就有順序或時間關係（像「第一次、第二次、第三次小考」，
+順序亂掉整張圖就沒意義了）。選圖表類型之前，先想清楚你的資料是「比較類別」還是「看
+變化趨勢」，就知道該用哪一種。}
+
+這裡的座標軸標籤跟標題刻意用英文寫（\texttt{"Class"}、\texttt{"Average Score"}）而
+不是中文。實際測試時如果把這幾個字串換成中文，圖上會看到一格一格的方框，那並不是真的
+顯示不出中文，是 matplotlib 預設字型沒有包含中文字集的關係，跟程式碼寫得對不對無關。
+
+要讓圖表正常顯示中文，需要額外設定一個支援中文的字型，已經超出這一章「畫一張看得懂的
+圖」的範圍，這裡選擇直接用英文標籤，你之後如果真的需要中文圖表，可以再自行查怎麼設定
+中文字型。
+
+matplotlib 能客製化的東西非常多，顏色、線型、圖例位置、多張子圖排版都還沒碰到，這裡
+只示範最基本的兩種畫圖方式，能滿足「我想很快看一眼資料長什麼樣子」的需求就夠了。
+
+\begin{drills}[label=drills:matplotlib-basic]
+\item 如果你想畫「長條圖」，該呼叫 \texttt{plt.} 底下的哪個函式？
+\item 下面這行程式碼想畫的是哪一種圖：\texttt{plt.plot(months, sales)}？
+\item 如果你想比較五個不同班級的平均分數，比較適合用長條圖還是折線圖？
+\end{drills}
+
+回頭看看這一章走過的路：一開始你手上只有第 \ref{ch:csv} 章那套手寫迴圈，讀 CSV、拆欄位、轉型別、
+自己維護總和跟計數器，資料一多就顯得又長又容易出錯。
+
+這一章帶你認識了三個現成的套件：
+numpy 把「對整批數字做運算」濃縮成一行 array 運算；pandas 把「讀表格、篩資料、算平均」
+濃縮成幾行 DataFrame 操作，甚至能同時套用好幾個條件、簡單濾掉缺漏值；matplotlib 則把
+整理好的數字變成一眼就看得懂的圖表。這三個套件合起來，把上一章要十幾行才能做完的事，
+壓縮成幾行就能做完，這正是「拿別人寫好的工具來用」的價值所在。
+
+再次提醒：這一章的目標
+是「認識、不精熟」，你還沒有真的成為資料科學家，這三個套件各自都還有大片沒碰到的功能
+（numpy 的多維陣列、pandas 的 \texttt{groupby}／\texttt{merge}、matplotlib 的各種
+客製化樣式），但下次工作或生活中遇到「一堆資料要整理」的場合，你會知道有這些工具存在、
+大概能幫上什麼忙，這樣就足夠了。
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:numpy-vectorize}~節}
+\begin{enumerate}
+\item \texttt{[ 6 12 18]}：array 裡每個元素分別乘以 3。
+\item \texttt{[ 9 18 27]}：兩個 array 對應位置的元素分別相減。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:numpy-boolean}~節}
+\begin{enumerate}
+\item \texttt{[False  True  True  True False]}：分別比較 50、85、62、90、40 是否
+大於等於 60。
+\item \texttt{3}：把 \texttt{True} 當 1、\texttt{False} 當 0 加總，陣列裡有三個
+\texttt{True}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:pandas-read-select}~節}
+\begin{enumerate}
+\item
+\begin{verbatim}
+0    80
+1    95
+Name: Score, dtype: int64
+\end{verbatim}
+\item 那是 pandas 自動加上的「列索引」（row index），不是資料本身的一部分，只是用來
+標記每一列在 DataFrame 裡的位置，方便之後用來定位或參照某一列。
+\item \texttt{df[["Name", "Score"]]}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:pandas-filter-agg}~節}
+\begin{enumerate}
+\item \texttt{80.0}：601 班的兩筆分數是 70 和 90，平均是 80.0。
+\item \texttt{df[df["Score"] >= 90]}。
+\item \texttt{1}：四筆分數裡只有 55 小於 60。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:pandas-multi-filter}~節}
+\begin{enumerate}
+\item
+\begin{verbatim}
+   Class  Score
+1    601     90
+\end{verbatim}
+601 班裡只有分數 90 那一列同時符合兩個條件。
+\item 會出現 \texttt{ValueError: The truth value of a Series is
+ambiguous.}，因為 \texttt{\&} 的運算順序比 \texttt{==}、\texttt{>=} 更優先，沒有
+括號時 Python 不會照你原本想要的順序去比較。
+\item \texttt{2}：三筆資料裡有一筆分數是 \texttt{None}，\texttt{dropna()} 把那一列
+濾掉之後剩下兩筆。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:matplotlib-basic}~節}
+\begin{enumerate}
+\item \texttt{plt.bar()}。
+\item 折線圖：\texttt{plt.plot()} 是畫折線圖的函式。
+\item 長條圖：五個班級是彼此獨立的類別，適合用長條圖比較差異；折線圖比較適合有順序或
+時間關係的資料。
+\end{enumerate}

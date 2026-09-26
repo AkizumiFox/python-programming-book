@@ -1,0 +1,1093 @@
+\chapter{變數與運算}
+\label{ch:variables}
+
+上一章你已經讓電腦照你的話做了一件事：印出一行字。這一章要教的東西聽起來很基礎，但
+其實是接下來整本書都會反覆用到的地基，所以我們刻意放慢腳步。先不談任何原理，直接動手：
+建立一個變數、把值印出來、學會怎麼幫變數取名字，就跟上一章學 \texttt{print()} 一樣，
+先讓你的手熟悉這個動作。
+
+接著回頭拆解剛剛發生的事：當你寫下 \texttt{x = 5} 的時候，
+Python 到底做了什麼？很多人對「變數」的第一印象來自數學課或日常生活，習慣把它想成一個
+裝東西的盒子，把值放進去。這個直覺可以應付一部分情況，但它會在後面的章節害你踩坑，所以
+這一章要花完整篇幅，把更接近 Python 實際運作方式的圖像講清楚。
+
+指定這個動作，做的其實是
+把一張名字牌貼到一個值上，跟複製一份值放進盒子完全是兩回事。這是這本書會反覆呼應的兩個
+核心比喻之一，這裡是第一次完整登場，之後每一章只要遇到「這裡容易跟直覺打架」的地方，都
+會回頭喊一聲「還記得名字牌嗎」。
+
+再來把視角拉開一點：你目前看過的值，其實可以分成幾個
+固定的「種類」，包括整數、小數、文字，還有代表對錯的布林值，Python 把每個值歸到哪一類，
+可以直接問它。
+
+最後解決一個刻意留下的問題：如果你手上的值種類不對，該怎麼把它轉成你要的
+種類，以及轉不過去的時候 Python 會怎麼抗議。整章結束時，你不只會建立變數、分辨型別、
+轉換型別，更重要的是，你會多一個比盒子更準確的方式，去理解 Python 裡「賦值」這件事到底
+在做什麼，這個理解會在後面好幾章不斷派上用場。
+
+\section{建立你的第一個變數}
+\label{sec:first-variable}
+
+寫程式的時候，你常常需要把一個值先記下來，之後可以重複拿出來用，不用每次都重新打一次。
+Python 讓你做這件事的方法很直接：幫這個值取一個名字，之後只要打這個名字，就能把值
+取回來。這個名字叫做「變數」，取名字、存值的這個動作，叫做「賦值」。
+\index{變數}
+\index{賦值}
+
+\begin{code}{python}{Create a variable and assign a value}
+variable_name = value
+\end{code}
+
+等號左邊是你幫值取的名字，右邊是你想存的值。這一行執行完，Python 就會記得這個名字
+對應這個值，直到你改變主意為止。
+
+\begin{example}{python}{(today-note.py) Record today's weather}
+temperature = 28
+is_sunny = "sunny"
+print(temperature)
+print(is_sunny)
+
+temperature = 31
+print(temperature)
+\end{example}
+
+\iosample{}{28 \\ sunny \\ 31 \\}
+
+前兩行分別建立了兩個變數：\texttt{temperature} 存一個數字，\texttt{is\_sunny} 存一段
+文字（文字前後要用引號包起來，這件事上一章已經看過）。中間兩個 \texttt{print} 把它們
+的值印出來確認。
+
+接著第五行很關鍵：\texttt{temperature = 31} 又對同一個變數賦值一次。
+效果是把原本存的 \texttt{28} 蓋掉、換成 \texttt{31}，\texttt{temperature} 這個名字
+本身沒有變，變的只有它現在對應的值。最後一次 \texttt{print(temperature)} 印出的是
+\texttt{31}，因為舊的 \texttt{28} 已經沒有任何東西記得它了。
+
+你可能會好奇，變數重新賦值的時候，Python 到底做了什麼事？是把舊的 \texttt{28} 原地
+換成 \texttt{31}，還是有什麼別的事情發生？這個問題先放著，下一段主線就要正式回答它。
+
+\section{幫變數取名字}
+\label{sec:variable-naming}
+
+變數名不是隨便打幾個字都可以，Python 對「什麼樣的名字合法」有明確規則；就算合法，
+好的變數名跟隨便亂取的變數名，對「未來的你」跟其他要讀你程式碼的人，差別也很大。
+
+\begin{code}{python}{Legal and illegal variable names}
+score = 90          # 合法：全部小寫，有意義
+student_age = 15    # 合法：多個單字用底線連接
+_temp = 100          # 合法：可以用底線開頭，但沒有特別原因不建議這樣做
+2nd_place = "silver"   # 不合法：不能以數字開頭
+class = "trial"       # 不合法：class 是 Python 保留字
+\end{code}
+
+規則整理起來大致有三條：
+
+\begin{itemize}
+\item 變數名只能用英文字母、數字、底線這三種字元組成，而且\textbf{不能}以數字開頭。
+\item 不能拿 Python 已經保留給自己用的字（像 \texttt{class}、\texttt{for}、
+\texttt{if} 這些，統稱「保留字」）當變數名。
+\index{保留字}
+\item Python 對大小寫敏感，\texttt{score} 跟 \texttt{Score} 是兩個不同的變數。
+\end{itemize}
+
+慣例上，這本書接下來的變數名都會用全小寫加底線分隔
+多個詞的寫法（例如 \texttt{student\_age}），這只是 Python 社群公認的命名風格，語法上
+沒有強制要求，但照著寫會讓你的程式碼一眼就跟其他 Python 開發者的習慣接得上。
+
+寫程式的時候，比起搞不清楚規則，手滑打錯字才是更常見的失誤來源。看看下面這支程式：
+
+\begin{example}{python}{(score-typo.py) Print a student's score}
+student_score = 88
+print(studnet_score)
+\end{example}
+
+第二行的 \texttt{studnet\_score} 把 \texttt{student\_score} 的字母順序打亂了。存檔
+執行後，會看到這樣的錯誤：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "score-typo.py", line 2, in <module>
+    print(studnet_score)
+          ^^^^^^^^^^^^^
+NameError: name 'studnet_score' is not defined. Did you mean: 'student_score'?
+\end{verbatim}
+
+由下往上讀：最後一行 \texttt{NameError} 是說「Python 找不到一個叫這個名字的變數」。
+你在第一行明明建立了 \texttt{student\_score}，但第二行打的是完全不同拼法的
+\texttt{studnet\_score}，對 Python 來說這是兩個毫不相干的名字，它不會自動幫你猜你是不是
+打錯字（不過這裡它很貼心地猜對了一次）。
+
+中間那行告訴你問題出在第 2 行。修法就是把兩處
+拼法對齊，不管你選哪種拼法都行，重點是同一個變數從頭到尾要拼得一致。
+
+\keypoint{Python 不會幫你檢查「這個名字是不是你原本想打的那個」，它只在乎「這個名字有沒
+有被定義過」。變數名前後拼法只要有一個字不一樣，Python 就會當成完全不同的兩個東西。這
+跟人類讀者會自動腦補、猜你想講什麼，是完全不同的兩套邏輯。}
+
+那如果你取的名字本身就不合法呢？比如說，你想用一個以數字開頭的名字：
+
+\begin{example}{python}{(bad-name.py) An illegal variable name}
+1st_place = "Alice"
+print(1st_place)
+\end{example}
+
+這支程式甚至還沒開始執行就會被擋下來：
+
+\begin{verbatim}
+  File "bad-name.py", line 1
+    1st_place = "Alice"
+    ^
+SyntaxError: invalid decimal literal
+\end{verbatim}
+
+\texttt{SyntaxError} 代表 Python 光是「讀」你寫的程式碼這一步就卡住了。它看到
+\texttt{1st\_place} 開頭的 \texttt{1}，以為你要寫一個數字，結果後面又接了不是數字的
+字母，完全看不懂你想表達什麼，直接拒絕往下讀。
+
+同樣的道理，如果你把 \texttt{class} 這種
+保留字拿來當變數名（例如 \texttt{class = "初賽"}），也會得到 \texttt{SyntaxError:
+invalid syntax}，因為 Python 已經把 \texttt{class} 這個字保留給它自己內部的用途（後面
+第 \ref{ch:objects} 章會學到 \texttt{class} 是用來做什麼的），不允許你拿去當普通的變數名使用。這兩種
+情況修法都一樣：換一個合法的名字。
+
+\begin{drills}[label=drills:variable-naming]
+\item 下面哪些變數名合法？哪些不合法？如果不合法，說出原因。
+\texttt{my\_name}、\texttt{2apples}、\texttt{total\_price}、\texttt{if}、
+\texttt{User1}。
+\item 如果你先寫了 \texttt{favorite\_color = "blue"}，接著寫
+\texttt{print(favorite\_colour)}（拼法多了一個 \texttt{u}），執行後你覺得會出現什麼
+錯誤訊息？
+\item 如果你把 \texttt{total = 100} 寫成 \texttt{3total = 100}，執行後會出現的是
+\texttt{NameError} 還是 \texttt{SyntaxError}？為什麼？
+\end{drills}
+
+\section{取名字的實務眉角}
+\label{sec:naming-practices}
+
+上一節教的是「合法」的底線，這一節要往前一步，談「合法但很糟」的名字會怎麼害到你，以及
+幾個實務上值得養成的習慣。
+
+Python 內建了一批像 \texttt{print}、\texttt{type} 這樣隨時可以呼叫的函式，這些名字
+本身沒有被保護起來，並不會因為它們是內建的就禁止你拿來當變數名。問題是，一旦你把值賦給
+這個名字，Python 就會用你賦的新值蓋掉原本那個函式，之後整份檔案裡只要再用到這個名字，
+拿到的都是你賦的新值，跟原本的函式已經沒有關係了。
+
+\begin{example}{python}{(shadow-type.py) Shadowing a built-in function's name}
+type = "integer"
+print(type)
+
+x = 5
+print(type(x))
+\end{example}
+
+執行後，前兩行先正常印出，但第五行整個崩潰：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "shadow-type.py", line 5, in <module>
+    print(type(x))
+          ~~~~^^^
+TypeError: 'str' object is not callable
+\end{verbatim}
+
+\texttt{integer} 先印出來沒有問題，因為這時候 \texttt{type} 這個名字對應的正是你剛剛賦的
+字串。問題出在第五行：你想呼叫「查詢型別」的那個 \texttt{type()}，但 Python 手上的
+\texttt{type} 這時候對應的已經是你在第一行賦的字串 \texttt{"integer"}，原本的函式早就被
+蓋掉了。字串不能像函式一樣被呼叫（後面加括號），所以噴出 \texttt{TypeError: 'str'
+object is not callable}
+（「字串物件不能被呼叫」）。
+
+這支程式本身沒有任何一行語法寫錯，Python 也不會在你賦值給
+\texttt{type} 的當下警告你「這名字已經被用掉了」，等到你真的想用回原本的 \texttt{type()}
+才會出事，而且出事的地方往往離你打錯的地方隔了好幾行，抓起來比 \texttt{NameError}
+麻煩得多。
+
+\keypoint{變數名跟函式名共用同一套命名空間，Python 不會替 \texttt{print}、
+\texttt{type}、\texttt{int} 這些內建函式加任何保護。幫變數取名字之前，養成習慣避開這些
+常見的內建名稱，尤其是本章介紹過的 \texttt{type}、\texttt{int}、\texttt{float}、
+\texttt{str}、\texttt{bool}、\texttt{print} 這幾個，之後每一章學到新的內建函式時，也要
+記得同一件事。}
+
+除了不要蓋掉內建名稱，變數名本身的可讀性也值得多花幾秒鐘想。回頭看看本章第一個範例：
+\texttt{temperature}、\texttt{is\_sunny} 這兩個名字，就算不看任何註解，光看名字也大概
+猜得出裡面裝的是什麼。
+
+如果當初把它們取名叫 \texttt{t}、\texttt{x}，程式一樣能執行，但
+幾天後回頭看，你會完全忘記 \texttt{t} 到底是溫度、時間，還是別的東西。變數名不需要很長，
+但至少要能讓「未來的你」一眼看懂它裝的是什麼。
+
+\begin{code}{python}{Poor names vs. descriptive names}
+t = 28          # 看不出 t 裝的是什麼
+s = "sunny"       # 同樣看不出來
+
+temperature = 28       # 一看就知道裝的是溫度
+weather = "sunny"        # 一看就知道裝的是天氣
+\end{code}
+
+\stylepoint{布林值變數習慣用 \texttt{is\_} 或 \texttt{has\_} 開頭命名，像本章前面用過的
+\texttt{is\_sunny}、\texttt{is\_weekend}，光看名字就知道這是一個「對／錯」的答案，而不
+只是一段文字或一個數字。這屬於命名習慣，Python 語法本身並沒有強制規定，但幾乎所有
+Python 開發者都會這樣取名，照著做能讓你的程式碼更容易讓別人看懂。}
+
+最後補充一個大部分人沒想過的合法名字：Python 其實也允許用中文字當變數名。
+
+\begin{code}{python}{Non-English variable names are legal, but this book won't use them}
+café = 90  # 帶重音符號或其他非英文字元的名字也合法
+print(café)
+\end{code}
+
+上面這段程式執行起來完全沒有問題，Python 對變數名裡的重音符號、中文字等非英文字元都
+沒有意見。不過這本書接下來還是會統一用英文字命名，原因有兩個：
+
+\begin{itemize}
+\item 幾乎所有 Python 的官方文件、套件、其他人寫的
+程式碼都是英文命名，習慣英文命名會讓你將來讀別人的程式碼更順手。
+\item 中文字之間沒有
+空白，名字長一點的時候容易分不清楚是一個詞還是好幾個詞黏在一起，不像英文可以用底線清楚
+斷開每個詞。
+\end{itemize}
+
+知道「合法」跟「這本書會怎麼寫」是兩碼子事，之後遇到別人用中文命名的程式碼，
+至少不會看不懂發生了什麼事。
+
+\begin{drills}[label=drills:naming-practices]
+\item 如果你在程式最前面寫了 \texttt{print = 5}，接下來這一行 \texttt{print("hi")}
+會發生什麼事？錯誤類型是什麼？
+\item 下面兩個變數名，哪一個比較適合拿來存「這位學生是不是及格」這個答案：
+\texttt{result} 還是 \texttt{is\_passed}？為什麼？
+\item 承接 \texttt{shadow-type.py} 這個範例，如果把第一行 \texttt{type = "integer"} 拿掉，
+其他都不改，這支程式還會出錯嗎？
+\end{drills}
+
+\section{名字牌：\texttt{=} 到底在做什麼}
+\label{sec:name-tags}
+
+上一段你已經自己動手把 \texttt{temperature} 重新賦值過一次，也看過 Python 怎麼抱怨
+拼錯的變數名。現在該回頭問一個更根本的問題：\texttt{x = 5} 這一行執行的時候，Python
+到底做了什麼事？
+
+多數人對這個問題的第一直覺，來自數學課或日常生活，把變數想成一個「盒子」：\texttt{x = 5}
+就是「把 5 放進一個叫 x 的盒子裡」；如果之後又寫 \texttt{y = x}，直覺會覺得「把 x 盒子
+裡的東西複製一份，放進 y 盒子」。這個直覺能解釋你目前看過的大部分行為，可惜它跟 Python
+實際運作的方式對不上，而且會在後面的章節（尤其是第 \ref{ch:lists} 章的 list）讓你踩到一個解釋不通的
+坑。這一節要把更接近事實的圖像講清楚。
+
+Python 實際的運作方式是這樣：\texttt{x = 5} 的意思是「先造一個值是 5 的物件，再把一張
+寫著 \texttt{x} 的名字牌，貼到這個物件上」。把變數想成貼在物件上的名字牌，會比想成盒子
+更準確：名字牌本身不裝任何東西，它只是指向某個物件，告訴 Python「\texttt{x} 這個名字，
+現在對應到的是那個物件」。
+\index{名字牌模型}
+\index{物件}
+
+\begin{code}{python}{Attach a name tag to an object}
+name = value
+\end{code}
+
+這跟前面看到的賦值語法長得一模一樣，但現在你知道它背後真正在做的事了。那如果接著寫
+\texttt{y = x} 呢？意思是「把另一張名字牌 \texttt{y}，也貼到 \texttt{x} 現在指的那個
+物件上」，效果是兩張名字牌指著同一個東西，並沒有另外複製一份新的 5 出來。
+
+\begin{example}{python}{(nametag-demo.py) Two name tags pointing at the same value}
+x = 5
+y = x
+x = 6
+print(y)
+\end{example}
+
+\iosample{}{5 \\}
+
+如圖~\ref{fig:name-tags} 所示：第二行 \texttt{y = x} 執行完，\texttt{x} 跟 \texttt{y}
+這兩張名字牌，指的是同一個 5。接下來第三行 \texttt{x = 6} 執行的時候，Python 造了一個
+全新的、值是 6 的物件，然後把 \texttt{x} 這張名字牌\textbf{改貼}到這個新物件上，那個 5
+本身完全沒有被「原地改成」6。
+
+\texttt{y} 完全沒有被驚動，它從頭到尾指的都還是原本那個 5。
+所以最後 \texttt{print(y)} 印出來的是 \texttt{5}，維持在重新賦值之前的狀態，跟 \texttt{x}
+現在指的 \texttt{6} 是兩個不同的物件。
+
+\begin{center}
+\begin{tikzpicture}[node distance=8mm and 14mm]
+    \node[startend] (xtag1) {\texttt{x}};
+    \node[startend, right=20mm of xtag1] (ytag1) {\texttt{y}};
+    \node[process, fill=greenFill, draw=greenStroke, below=12mm of xtag1, xshift=10mm] (five1) {\texttt{5}};
+    \draw[diagarrow] (xtag1.south) -- (five1.north west);
+    \draw[diagarrow] (ytag1.south) -- (five1.north east);
+\end{tikzpicture}
+\hspace{1.2cm}
+\begin{tikzpicture}[node distance=8mm and 14mm]
+    \node[startend] (ytag2) {\texttt{y}};
+    \node[startend, right=20mm of ytag2] (xtag2) {\texttt{x}};
+    \node[process, fill=greenFill, draw=greenStroke, below=12mm of ytag2] (five2) {\texttt{5}};
+    \node[process, fill=memFill, draw=memStroke, below=12mm of xtag2] (six2) {\texttt{6}};
+    \draw[diagarrow] (ytag2.south) -- (five2.north);
+    \draw[diagarrow] (xtag2.south) -- (six2.north);
+\end{tikzpicture}
+\end{center}
+\diagcaption{左圖：\texttt{y = x} 執行完，兩張名字牌指向同一個物件。右圖：
+\texttt{x = 6} 執行完，\texttt{x} 改貼到一個全新的物件上，\texttt{y} 仍指著原本那個 5，
+兩者從此各自獨立。\label{fig:name-tags}}
+
+這裡要老實講一件事：因為數字這種值不能被「原地修改」，只能整個換掉，沒辦法把 5 直接
+改寫成 6，所以在這個例子裡，名字牌模型跟「複製盒子」模型剛好給出一模一樣的結果，你單靠
+這個例子分不出兩個模型的差別。這不代表兩個模型是等價的，只是這裡剛好看不出差異。
+\index{盒子模型}
+
+等你
+學到第 \ref{ch:lists} 章的 list，會看到一種可以「原地修改」的東西，到時候名字牌模型跟盒子模型會給出
+完全不同的答案，也是名字牌模型真正派上用場的時候。先把這個印象留著，之後回頭看這一段，
+你會更清楚為什麼現在要花這麼多篇幅講一個看起來沒差的東西。
+
+\keypoint{\texttt{x = 6} 執行的效果，是造一個新的物件 6，再把 \texttt{x} 這張名字牌改貼
+過去，\texttt{x} 原本指的那個物件並沒有被原地改掉。已經貼在原物件上的其他名字牌（像這裡
+的 \texttt{y}）完全不受影響，因為它們指的是另一個物件，跟 \texttt{x} 現在指哪裡無關。}
+
+名字牌模型還能解釋另一種寫法：一行裡同時幫好幾個名字賦同一個值。
+
+\begin{code}{python}{Assign multiple names in one line}
+name1 = name2 = name3 = value
+\end{code}
+
+\begin{example}{python}{(chained-assign.py) Three name tags attached to the same object}
+a = b = c = 0
+print(a, b, c)
+
+b = 5
+print(a, b, c)
+\end{example}
+
+\iosample{}{0 0 0 \\ 0 5 0}
+
+\texttt{a = b = c = 0} 這一行做的事，是先造一個值是 0 的物件，再一口氣把 \texttt{a}、
+\texttt{b}、\texttt{c} 三張名字牌全部貼到同一個物件上，效果等同於分開寫三行
+\texttt{a = 0}、\texttt{b = 0}、\texttt{c = 0}，只是更精簡。第一次 \texttt{print}
+印出 \texttt{0 0 0}，三個名字指的都是同一個 0。
+
+接著 \texttt{b = 5} 只是把 \texttt{b}
+這張名字牌改貼到一個新的物件 5 上，\texttt{a} 跟 \texttt{c} 完全不受影響，還是指著原本
+那個 0，所以第二次 \texttt{print} 印出 \texttt{0 5 0}。這跟前面 \texttt{y = x} 之後
+\texttt{x = 6} 的例子，用的是同一套邏輯：改貼一張名字牌，不會影響貼在同一個物件上的
+其他名字牌。
+
+\begin{drills}[label=drills:name-tags-chained]
+\item 執行下面這段程式，最後 \texttt{print(x, y, z)} 會印出什麼？
+\begin{verbatim}
+x = y = z = "start"
+x = "changed"
+print(x, y, z)
+\end{verbatim}
+\item 如果把上面這段程式的第二行改成 \texttt{y = "changed"}，其他都不變，
+\texttt{print(x, y, z)} 印出來的結果會不會不一樣？為什麼？
+\end{drills}
+
+\section{型別是物件的屬性}
+\label{sec:type-on-value}
+
+在往下講之前，先把一個詞講清楚：你目前看過的值，其實可以分成幾個固定的「種類」，包括
+整數、小數、文字，還有代表對錯的布林值。Python 把每一個值都歸到的這種固定類別，就叫
+「型別」。接下來這一節跟下一節都會用到這個詞。
+\index{型別}
+
+延續上一節的名字牌模型，還有一件事值得特別拿出來講：同一個變數，可以先後指向完全
+不同種類的值。
+
+\begin{example}{python}{(type-on-value.py) The same name tag re-attached to a different kind of value}
+x = 5
+print(type(x))
+x = "hi"
+print(type(x))
+\end{example}
+
+\iosample{}{<class 'int'> \\ <class 'str'>}
+
+這裡先小小用一下 \texttt{type()} 這個函式（函式：一個有名字、後面帶著括號、把東西
+放進括號裡就會做某件事或給你一個結果的積木，下一節會正式介紹它）。
+\index{函式}
+\index{type() 函式}
+這裡的
+\texttt{type()} 會告訴你括號裡的值屬於哪一種型別。第一次呼叫 \texttt{type(x)}，
+\texttt{x} 指的是數字 5，所以印出 \texttt{<class 'int'>}（\texttt{int} 是「整數」的
+意思）。
+
+第三行讓 \texttt{x} 改指向文字 \texttt{"hi"}，這完全合法，Python 不會有任何
+意見。第二次呼叫 \texttt{type(x)}，印出的變成 \texttt{<class 'str'>}（\texttt{str}
+是「字串」的意思，也就是一段文字）。
+
+這個結果如果套用「盒子」模型會很奇怪，好像同一個盒子，裝的東西的「類型」自己變了。但用
+名字牌模型看就完全合理：\texttt{x} 只是一張名字牌，一開始貼在數字 5 這個物件上，後來
+改貼到字串 \texttt{"hi"} 這個物件上。
+
+型別其實是每一個物件自己帶的屬性，5 這個物件永遠是
+\texttt{int}，\texttt{"hi"} 這個物件永遠是 \texttt{str}，只是 \texttt{x} 這張名字牌
+先後指過這兩個不同的物件而已。變數本身沒有型別可言，型別長在物件（也就是值）身上。
+
+\begin{drills}[label=drills:name-tags]
+\item 執行下面這段程式之前，先用眼睛預測：\texttt{b} 最後會印出什麼？
+\begin{verbatim}
+a = 10
+b = a
+a = 20
+print(b)
+\end{verbatim}
+\item 承上題，如果把最後一行改成 \texttt{print(a)}，答案會不會不一樣？為什麼？
+\item 下面這段程式執行完，\texttt{type(x)} 印出來的會是哪個型別？
+\begin{verbatim}
+x = "3"
+x = 3
+print(type(x))
+\end{verbatim}
+\end{drills}
+
+\section{型別家族：\texttt{int}／\texttt{float}／\texttt{str}／\texttt{bool}}
+\label{sec:type-family}
+
+你目前已經自然地用過數字（像 \texttt{28}、\texttt{5}）跟文字（像 \texttt{"sunny"}、
+\texttt{"hi"}）這兩種值，也隱約感覺到它們是「不一樣的東西」。上一節已經提過，這種
+固定的類別就叫「型別」。這一節要正式帶你認識四種最基本的型別。
+
+下面先看看這四種型別的「字面值」長什麼樣子。字面值指的是直接寫在程式碼裡的值本身，
+像 \texttt{100} 或 \texttt{"some text"}，跟變數名是不同的東西：
+\index{字面值}
+
+\begin{code}{python}{Literals of the four basic types}
+100          # int：整數
+3.14         # float：帶小數點的數字
+"some text"    # str：字串（文字）
+True         # bool：布林值（只有 True 或 False）
+
+type(value)     # 查詢一個值的型別
+\end{code}
+
+這四種型別分別是：
+
+\begin{itemize}
+\item \texttt{int} 是整數，像 \texttt{15}、\texttt{-3}、\texttt{0}，沒有小數點。
+\index{int}
+\item \texttt{float}
+是帶小數點的數字，像 \texttt{3.14}、\texttt{-0.5}，就算小數點後面是 0 也算
+\texttt{float}（例如 \texttt{2.0}）。
+\index{float}
+\item \texttt{str} 是字串，也就是一段文字，一定要用
+單引號或雙引號包起來，Python 才會把它讀成文字，跟變數名或程式碼的其他部分區分開來。
+\index{str}
+\item \texttt{bool} 是布林值，只有 \texttt{True}（真、對、是）跟 \texttt{False}（假、錯、否）
+兩個值可選，用來表示「二選一」的答案，注意 \texttt{True}／\texttt{False} 開頭要大寫，
+這是 Python 的固定寫法。
+\index{bool}
+\end{itemize}
+
+如果你不確定手上這個值是哪一種型別，直接問 Python 就好，這就是
+\texttt{type()} 函式的用途。
+
+值得一提的是，\texttt{int} 在 Python 裡沒有固定的位數上限，你可以放心存一個非常大的
+整數（例如 \texttt{99999999999999999999}），不會像某些程式語言那樣因為數字太大而算錯
+或直接出錯，這在後面章節處理大量資料或迴圈累加時，可以少擔心一件事。
+
+\stylepoint{如果數字本身很長，可以在數字中間插入底線讓人眼睛比較好讀，像
+\texttt{1\_000\_000}（一百萬），底線不會影響數值本身，Python 讀到的還是同一個數字。}
+
+另外，\texttt{float} 還有一種比較精簡的寫法，叫科學記號：\texttt{3.14e2} 代表
+\texttt{3.14} 乘以 \texttt{10} 的 \texttt{2} 次方，也就是 \texttt{314.0}；\texttt{e}
+後面的數字也可以是負的，例如 \texttt{5e-3} 代表 \texttt{0.005}。這種寫法平常不一定
+用得到，但遇到很大或很小的數字（像天文數字，或是很小的誤差值）時，會比一長串 0 好讀
+很多，日後處理科學或工程類的數據時可能會派上用場。
+
+\begin{example}{python}{(type-family.py) Query the four types}
+age = 15
+price = 39.9
+city = "Boston"
+is_weekend = True
+
+print(type(age))
+print(type(price))
+print(type(city))
+print(type(is_weekend))
+\end{example}
+
+\iosample{}{<class 'int'> \\ <class 'float'> \\ <class 'str'> \\ <class 'bool'>}
+
+四個變數各自存了一種型別的值，四次 \texttt{type()} 呼叫依序印出 \texttt{int}、
+\texttt{float}、\texttt{str}、\texttt{bool}，跟你一開始寫下這些字面值時的直覺一致。
+\texttt{bool} 這裡你只需要先認得它的存在、知道 \texttt{True}／\texttt{False} 是它的
+字面值就夠了，它在條件判斷（第 \ref{ch:conditionals} 章）裡還有更多學問，那時候再深入。
+
+\begin{drills}[label=drills:type-family-literals]
+\item \texttt{type(0)} 跟 \texttt{type(0.0)} 印出來的型別一樣嗎？為什麼？
+\item \texttt{type(True)} 會印出什麼？
+\item \texttt{print(1\_000\_000)} 印出來的內容看起來會是什麼樣子？底線符號會不會被一起
+印出來？
+\end{drills}
+
+\section{算術：讓數字真的算起來}
+\label{sec:arithmetic}
+
+到目前為止，變數只是「把值存起來、再拿出來」。但程式真正有用的地方，是它能替你算東西。
+這一節把 Python 的算術運算一次講清楚——其中有兩個運算子（\texttt{//} 跟 \texttt{\%}）
+在數學課上沒有專屬符號，卻是寫程式時最常用到的兩個，值得特別花時間。
+
+\begin{code}{python}{Python 的算術運算子}
+a + b       # 加
+a - b       # 減
+a * b       # 乘
+a / b       # 除
+a // b      # 除完只取整數部分（商）
+a % b       # 除完只取餘數
+a ** b      # a 的 b 次方
+\end{code}
+
+前四個跟數學課上的用法幾乎一樣，只有兩個符號要重新記：乘法是星號 \texttt{*}（不是
+\texttt{×}），除法是斜線 \texttt{/}（不是 \texttt{÷}），這兩個符號鍵盤上打得出來。
+
+\begin{example}{python}{(basic-arithmetic.py) 四則運算}
+print(7 + 3)
+print(7 - 3)
+print(7 * 3)
+print(7 / 3)
+print(6 / 3)
+\end{example}
+
+\iosample{}{10 \\ 4 \\ 21 \\ 2.3333333333333335 \\ 2.0 \\}
+
+前三行都符合直覺。第四行 \texttt{7 / 3} 除不盡，Python 給你一長串小數，這也不意外。
+真正值得停下來看的是最後一行：\texttt{6 / 3} 明明整整除得盡，答案卻印出
+\texttt{2.0}，帶著一個小數點。這不是 Python 算錯，是它的固定規則——用 \texttt{/} 做除法，
+結果一律帶小數點。為什麼會這樣，下一節查型別的時候你就會看到答案。
+
+\subsection*{商與餘數：\texttt{//} 跟 \texttt{\%}}
+
+有些時候你要的根本不是小數。假設一段影片長 100 分鐘，你想印出「幾小時又幾分鐘」，
+\texttt{100 / 60} 算出來的 \texttt{1.6666666666666667} 完全幫不上忙——你要的是
+「1 小時」跟「剩下 40 分鐘」這兩個數字。
+
+這正是 \texttt{//} 跟 \texttt{\%} 的用途：\texttt{//} 給你「除完整整有幾份」，
+\texttt{\%} 給你「分完之後剩多少」。
+\index{//（整數除法）}\index{\%（取餘數）}
+
+\begin{example}{python}{(minutes-to-hours.py) 把分鐘拆成小時與分鐘}
+total_minutes = 100
+
+hours = total_minutes // 60      # 100 分鐘裡面有幾個完整的 60 分鐘
+minutes = total_minutes % 60     # 分完之後還剩下幾分鐘
+
+print(hours)
+print(minutes)
+\end{example}
+
+\iosample{}{1 \\ 40 \\}
+
+\texttt{100 // 60} 得到 \texttt{1}（100 裡面裝得下一個完整的 60），
+\texttt{100 \% 60} 得到 \texttt{40}（裝完一個 60 之後剩下的）。這兩個運算子幾乎總是成對
+出現，因為它們回答的是同一個問題的兩半：「分成幾份」跟「剩多少」。
+
+\keypoint{\texttt{//} 取商、\texttt{\%} 取餘數，兩個合起來就能把一個數字拆成「幾個整份、
+剩下多少」。 只要你遇到「把總數換算成大小單位」的情境——秒換成分、分換成時、總價換成幾
+張鈔票——用的都是這一組，不是 \texttt{/}。}
+
+\texttt{\%} 還有一個用途，出現的頻率高到值得單獨記住：判斷一個數字能不能被整除。
+
+\begin{example}{python}{(even-or-odd.py) 判斷奇偶}
+number = 14
+
+print(number % 2)
+print(number % 2 == 0)
+\end{example}
+
+\iosample{}{0 \\ True \\}
+
+一個數字除以 2 如果餘數是 \texttt{0}，代表它整除得盡，也就是偶數；餘數是 \texttt{1}
+就是奇數。第二行把這個判斷寫成一個比較式，算出來是 \texttt{True}——這個寫法在第
+\ref{ch:conditionals} 章條件判斷會大量用到。 同樣的手法換個數字就是「能不能被 3 整除」
+（\texttt{number \% 3 == 0}），是很常見的判斷方式。
+
+\subsection*{次方與兩個好用的內建函式}
+
+\texttt{**} 是次方，兩個星號連在一起：\texttt{2 ** 10} 就是 2 的 10 次方。另外有兩個
+內建函式常常跟算術一起出現：\texttt{abs()} 取絕對值（不管正負，只要大小），
+\texttt{round()} 四捨五入。
+\index{abs()}\index{round()}
+
+\begin{example}{python}{(power-and-helpers.py) 次方、絕對值、四捨五入}
+print(2 ** 10)
+print(abs(-5))
+print(round(3.14159, 2))
+\end{example}
+
+\iosample{}{1024 \\ 5 \\ 3.14 \\}
+
+\texttt{round()} 的第二個引數是「要留幾位小數」，寫 \texttt{2} 就是留到小數點後兩位。
+如果不寫第二個引數，就是四捨五入到整數。
+
+\subsection*{運算順序，跟數學課一樣}
+
+同一行裡出現好幾個運算子時，Python 的優先順序跟你數學課學的一致：先算次方，再算乘、除、
+取商、取餘，最後才算加減；想改變順序就加括號。
+
+\begin{example}{python}{(operator-order.py) 括號改變運算順序}
+print(2 + 3 * 4)
+print((2 + 3) * 4)
+\end{example}
+
+\iosample{}{14 \\ 20 \\}
+
+第一行先算 \texttt{3 * 4} 得到 \texttt{12}，再加 \texttt{2}，所以是 \texttt{14}；
+第二行括號強迫先算 \texttt{2 + 3}，再乘 \texttt{4}，變成 \texttt{20}。 不確定的時候就加
+括號，多打一對括號不會讓程式變慢，但會讓下一個讀你程式碼的人（很可能是你自己）少猜一次。
+
+\subsection*{常見錯誤：除數是 0}
+
+數學上不能除以 0，Python 也一樣，而且它會直接停下來報錯。
+
+\begin{example}{python}{(divide-by-zero.py) 拿 0 當除數}
+seconds = 100
+
+print(seconds // 0)
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "divide-by-zero.py", line 3, in <module>
+    print(seconds // 0)
+          ~~~~~~~~^^~~
+ZeroDivisionError: integer division or modulo by zero
+\end{verbatim}
+
+錯誤類型是 \texttt{ZeroDivisionError}，
+\index{ZeroDivisionError}
+訊息直翻是「整數除法或取餘數時除以了 0」。 這個錯誤通常不是你手打了一個
+\texttt{0}，而是除數來自某個變數，而那個變數在某次執行時剛好變成了 \texttt{0}——例如
+「總分除以人數」的程式，遇到一個人都沒有的情況。 這類「平常都好好的，特定資料才爆炸」
+的問題，第 \ref{ch:files-exceptions} 章會教你怎麼接住它。
+
+\begin{drills}[label=drills:arithmetic]
+\item \texttt{17 // 5} 跟 \texttt{17 \% 5} 分別算出什麼？
+\item 一共有 250 秒，想印成「幾分幾秒」。 分鐘要用哪個運算子算？ 秒數呢？
+\item \texttt{print(9 / 3)} 印出來的是 \texttt{3} 還是 \texttt{3.0}？
+\item \texttt{7 \% 2} 算出來是多少？ 那 \texttt{8 \% 2} 呢？ 你要怎麼用 \texttt{\%}
+判斷一個數字是不是偶數？
+\item \texttt{print(1 + 2 * 3 ** 2)} 會印出什麼？（提示：三個運算子，先算哪一個？）
+\end{drills}
+
+\section{\texttt{type()} 的更多用法}
+\label{sec:type-more-uses}
+
+目前你看過的 \texttt{type()} 都是拿一個變數放進括號裡查詢。其實 \texttt{type()}
+接受的括號裡可以放任何一個值，不限於變數本身，包括一個運算式算出來的結果，甚至是另一個
+函式呼叫的結果。這一節帶你看幾個 \texttt{type()} 更實用的用法，順便揭穿一個新手很容易
+誤會的地方：數字做完運算之後，型別不一定跟你想的一樣。
+
+\begin{code}{python}{Query the type of an expression directly}
+type(expression)
+\end{code}
+
+\begin{example}{python}{(type-of-expressions.py) Query the type of an expression's result}
+print(type(3 + 5))
+print(type(6 / 2))
+print(type(3 + 2.5))
+print(type(int(float("3.14"))))
+\end{example}
+
+\iosample{}{<class 'int'> \\ <class 'float'> \\ <class 'float'> \\ <class 'int'>}
+
+這四行呼叫依序看下去：
+
+\begin{itemize}
+\item 第一行 \texttt{3 + 5} 兩邊都是 \texttt{int}，結果 \texttt{8} 也是 \texttt{int}，這符合
+直覺。
+\item 第二行 \texttt{6 / 2} 用 \texttt{/} 做除法，雖然算出來的值剛好是整數 \texttt{3}，
+但 \texttt{type()} 告訴你它其實是 \texttt{float}，也就是 \texttt{3.0}。這是 Python 的
+固定規則：只要用 \texttt{/} 做除法，不管兩邊除不除得盡，結果永遠是 \texttt{float}，跟
+數學上「6 除以 2 就是整數 3」的直覺不一樣，寫程式的時候要特別留意。
+\item 第三行 \texttt{3 +
+2.5} 是 \texttt{int} 加 \texttt{float}，Python 會自動把整數那一邊當成浮點數來算，所以
+結果也是 \texttt{float}：只要加減乘除任何一邊出現 \texttt{float}，整個結果就會是
+\texttt{float}。
+\item 第四行示範函式可以一層包一層：最裡面 \texttt{float("3.14")} 先把字串
+轉成 \texttt{3.14}，外面的 \texttt{int(...)} 再把 \texttt{3.14} 轉成整數 \texttt{3}，
+最外層的 \texttt{type()} 查的是最終這個 \texttt{3} 的型別，結果是 \texttt{int}。
+\end{itemize}
+
+\keypoint{只要運算式裡任何一個地方出現 \texttt{float}（包括除法 \texttt{/} 本身自動
+產生的 \texttt{float}），最後算出來的結果就會是 \texttt{float}，就算數值上剛好是整數
+也一樣。這個規則在後面章節做數學運算、判斷結果型別時會一直用到，先在這裡建立印象。}
+
+\stylepoint{在互動模式（第 \ref{ch:introduction} 章介紹過的、逐行輸入馬上看結果的那個環境）裡除錯時，不用
+先把運算式存進一個變數才能查型別，直接把整段運算式包進 \texttt{type()} 就好，例如
+\texttt{type(6 / 2)}，省下一個變數名，用完即丟。}
+
+\begin{drills}[label=drills:type-more-uses]
+\item \texttt{type(10 - 4)} 會印出什麼？\texttt{type(10 / 4)} 呢？
+\item \texttt{type(2 * 3.0)} 會印出什麼？為什麼？
+\item \texttt{type(str(3) + str(5))} 會印出什麼？（提示：先想清楚 \texttt{str(3) +
+str(5)} 這一步算出來的是什麼。）
+\end{drills}
+
+\section{同一個符號，不同型別不同意思}
+\label{sec:type-operators}
+
+型別不只影響一個值「看起來」是什麼，也影響某個符號用在它身上的時候，實際會發生什麼事。
+最明顯的例子就是加號 \texttt{+}。
+
+\begin{example}{python}{(plus-behavior.py) \texttt{+} used on numbers and strings}
+print(3 + 5)
+print("Py" + "thon")
+\end{example}
+
+\iosample{}{8 \\ Python}
+
+同一個 \texttt{+}，用在兩個數字上是「相加」，算出 \texttt{8}；用在兩個字串上卻是
+「串接」，把兩段文字直接接在一起，變成 \texttt{"Python"}，完全不是在做數學加法。
+\index{串接}
+這是
+Python 針對不同型別、讓同一個符號做不同事情的刻意設計（正式名稱之後會學到，叫「運算子
+多載」，這裡你只需要記得「同一個符號，看型別決定意思」這個現象就好）。
+
+那如果你把一個數字跟一個字串直接用 \texttt{+} 接在一起呢？
+
+\begin{example}{python}{(plus-error.py) Adding a number to a string causes trouble}
+count = 3
+print("There are currently " + count + " people")
+\end{example}
+
+執行後，程式會停下來，印出：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "plus-error.py", line 2, in <module>
+    print("There are currently " + count + " people")
+          ~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~
+TypeError: can only concatenate str (not "int") to str
+\end{verbatim}
+
+\texttt{TypeError} 代表 Python 看懂你的程式碼在講什麼，只是型別不對。
+\index{TypeError}
+它知道你想把
+字串跟 \texttt{count} 接在一起，但 \texttt{count} 的型別是 \texttt{int}，跟 \texttt{str}
+不同，\texttt{+} 用在字串上只認得另一個字串，不會自動幫你把數字轉成文字。這個問題怎麼
+解決？下一節就要處理它。
+
+\texttt{+} 不是唯一一個會這樣變臉的符號，\texttt{*} 也有一樣的故事。
+
+\begin{example}{python}{(star-behavior.py) \texttt{*} used on numbers and strings}
+print(4 * 3)
+print("ab" * 3)
+\end{example}
+
+\iosample{}{12 \\ ababab}
+
+\texttt{4 * 3} 是「相乘」，算出 \texttt{12}；\texttt{"ab" * 3} 用在字串上卻變成
+「重複」，把 \texttt{"ab"} 這段文字連續接三次，變成 \texttt{"ababab"}。這再次印證：
+同一個符號實際的意思，會隨著旁邊值的型別而改變，判斷規則要看型別，不能只看符號本身
+長什麼樣子。
+
+\begin{drills}[label=drills:type-family]
+\item \texttt{type(2.5)} 會印出什麼？\texttt{type("2.5")} 呢？兩者一樣嗎？
+\item 下面兩行分別會印出什麼？如果其中一行會出錯，錯誤類型是什麼？
+\begin{verbatim}
+print("age: " + 20)
+print("age: " + "20")
+\end{verbatim}
+\item \texttt{"ha" * 0} 會印出什麼？\texttt{"ha" * -1} 呢？
+\end{drills}
+
+\section{型別轉換：把值換成你要的種類}
+\label{sec:type-conversion}
+
+上一節留下一個問題：想把數字接進字串裡，直接用 \texttt{+} 行不通。這一節要介紹的四個
+函式，可以把一個值從一種型別，轉換成另一種型別。
+\index{型別轉換}
+
+\begin{code}{python}{Type conversion functions}
+str(value)      # 轉成字串
+int(value)      # 轉成整數
+float(value)    # 轉成浮點數
+bool(value)     # 轉成布林值
+\end{code}
+
+先回頭解決上一節的 \texttt{TypeError}：只要把 \texttt{count} 用 \texttt{str()} 包起
+來，先轉成字串，再用 \texttt{+} 接，就不會有型別不合的問題了。
+
+\begin{example}{python}{(fix-concat.py) Fixing the type error with \texttt{str()}}
+count = 3
+print("There are currently " + str(count) + " people")
+\end{example}
+
+\iosample{}{There are currently 3 people}
+
+\texttt{str(count)} 造出一個全新的字串物件 \texttt{"3"}，內容看起來跟數字 3 一樣，但
+型別已經是 \texttt{str}，可以安心跟其他字串用 \texttt{+} 接在一起了。注意這裡的動作是
+造一個新物件、把結果貼上去，\texttt{count} 本身這個物件仍然是原本那個整數 \texttt{3}，
+型別轉換並沒有「原地」把它改掉，這跟前面「指定是造新物件、貼名字牌」的說法是同一件事。
+
+反過來的情境也很常見：你手上已經有一段文字形式的資料，其實是數字的意思，但因為存的時候
+是字串，沒辦法直接拿去算。
+
+\begin{example}{python}{(text-to-number.py) Convert a numeric string back into a number}
+age_text = "25"
+age = int(age_text)
+print(age + 1)
+
+price_text = "39.9"
+price = float(price_text)
+print(price * 2)
+
+print(bool(0))
+print(bool(1))
+\end{example}
+
+\iosample{}{26 \\ 79.8 \\ False \\ True}
+
+\texttt{age\_text} 存的是字串 \texttt{"25"}，看起來像數字，但型別是 \texttt{str}，不能
+直接拿去做加法。\texttt{int(age\_text)} 把它轉成真正的整數 \texttt{25}，之後
+\texttt{age + 1} 才能正常運算，印出 \texttt{26}。\texttt{float()} 的道理一樣，只是轉成
+帶小數點的浮點數。
+
+最後兩行順便看一下 \texttt{bool()}：\texttt{bool(0)} 是
+\texttt{False}，\texttt{bool(1)} 是 \texttt{True}，你可以先記住這兩個最單純的例子，
+更完整的規則（哪些值算「真」、哪些算「假」）留到第 \ref{ch:conditionals} 章條件判斷再深入。
+
+型別轉換不是每次都會成功。如果你要求 Python 把一段「根本不像數字」的文字轉成整數，它
+沒辦法憑空猜出你想要的數字：
+
+\begin{example}{python}{(convert-fail.py) A failed conversion raises an error}
+score_text = "hello"
+score = int(score_text)
+print(score)
+\end{example}
+
+執行後會看到：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "convert-fail.py", line 2, in <module>
+    score = int(score_text)
+ValueError: invalid literal for int() with base 10: 'hello'
+\end{verbatim}
+
+這次遇到的是 \texttt{ValueError}，跟前面的 \texttt{TypeError} 屬於不同種類的問題：
+\texttt{"hello"} 本身型別就是 \texttt{str}，型別上完全沒問題，\texttt{int()} 也確實
+可以接受字串當引數（引數就是放進括號裡的那個值）
+\index{引數}
+；問題出在這個字串的\textbf{內容}並非
+一串看起來像數字的文字，Python 沒辦法把 \texttt{"hello"} 解讀成任何一個整數，抱怨的
+重點是「值不對」，跟「型別不對」是兩回事。
+\index{ValueError}
+
+修法要回到問題的源頭：確認你要轉換的字串，
+內容真的是看起來像數字的文字；如果它本來就是使用者手誤或資料本身有問題，轉換這一步
+沒辦法自己生出一個合理答案。
+
+\begin{drills}[label=drills:type-conversion]
+\item \texttt{int("42")} 執行後會得到什麼？型別是什麼？
+\item \texttt{str(3.14)} 執行後會得到什麼？型別是什麼？
+\item 下面這行程式碼執行會出錯嗎？如果會，是哪一種錯誤，為什麼？
+\begin{verbatim}
+float("3.14 dollars")
+\end{verbatim}
+\end{drills}
+
+\section{型別轉換的邊界情況}
+\label{sec:conversion-edge-cases}
+
+上一節看過型別轉換成功跟失敗的基本樣子。這一節整理幾個新手特別容易誤判的邊界情況：
+\texttt{int()} 把小數轉成整數的時候，實際做的事跟「四捨五入」不一樣；還有 \texttt{bool()}
+對字串的判斷方式，常常跟直覺完全相反。
+
+先看 \texttt{int()} 把 \texttt{float} 轉成 \texttt{int} 的規則。很多人直覺會以為
+\texttt{int()} 會幫你四捨五入，但實際上它做的是「無條件捨去小數部分」，而且不管正負號，
+一律往 0 的方向捨去。
+
+\begin{example}{python}{(int-truncation.py) How \texttt{int()} truncates decimals}
+print(int(3.9))
+print(int(3.1))
+print(int(-3.9))
+\end{example}
+
+\iosample{}{3 \\ 3 \\ -3}
+
+\texttt{int(3.9)} 結果是 \texttt{3}，四捨五入原本會得到的 \texttt{4} 並沒有出現；
+\texttt{int(3.1)} 也是 \texttt{3}，這個看起來符合「捨去」的直覺。真正容易誤判的是第
+三行：\texttt{int(-3.9)} 結果是 \texttt{-3}，很多人會直覺猜成 \texttt{-4}，猜錯的原因
+就出在這裡。
+
+\texttt{int()} 一律朝 0 的方向捨去小數部分，正數往下捨、負數往上捨，跟先
+取絕對值再無條件捨去的效果不一樣。如果你真的需要四捨五入，那是另一個內建函式的工作，
+這本書會在用得到的時候再介紹。
+
+\keypoint{\texttt{int()} 對 \texttt{float} 做的事情永遠是捨去小數、朝 0 靠攏，跟四捨
+五入是兩套完全不同的規則。這個規則對負數特別容易讓人猜錯方向，寫程式時如果剛好在處理
+負數的小數轉換，值得多留意一秒。}
+
+還有一個常見的踩雷點：如果字串裡本身帶著小數點，直接丟給 \texttt{int()} 會失敗，就算
+內容看起來完全像一個合理的數字。
+
+\begin{example}{python}{(decimal-string-fail.py) A string with a decimal point can't go straight into \texttt{int()}}
+age_text = "25.0"
+age = int(age_text)
+print(age)
+\end{example}
+
+執行後會看到：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "decimal-string-fail.py", line 2, in <module>
+    age = int(age_text)
+ValueError: invalid literal for int() with base 10: '25.0'
+\end{verbatim}
+
+\texttt{"25.0"} 這段文字裡有一個小數點，\texttt{int()} 只認得「純數字」形式的字串
+（像 \texttt{"25"}），只要多了小數點就會直接丟出 \texttt{ValueError}，不會自動幫你把
+小數部分捨去。想把這種字串轉成整數，要先繞道 \texttt{float()}，讓 Python 先讀懂它是
+一個帶小數的數字，再用 \texttt{int()} 把結果轉成整數，兩步分開做，Python 才處理得來：
+\texttt{int(float(age\_text))} 就會得到 \texttt{25}。
+
+最後看 \texttt{bool()}。上一節你看過 \texttt{bool(0)} 是 \texttt{False}、
+\texttt{bool(1)} 是 \texttt{True}，這符合直覺。但把字串丟進 \texttt{bool()}，判斷規則
+只看這段字串裡有沒有字元，完全不會去讀字元的內容講的是什麼。
+
+\begin{example}{python}{(bool-conversions.py) Converting between \texttt{bool()} and numbers}
+print(bool(""))
+print(bool(" "))
+print(bool("False"))
+print(bool("0"))
+print(int(True))
+print(float(True))
+\end{example}
+
+\iosample{}{False \\ True \\ True \\ True \\ 1 \\ 1.0}
+
+只有第一行 \texttt{bool("")} 是 \texttt{False}，因為這是一個完全沒有任何字元的空
+字串。第二行 \texttt{bool(" ")} 是 \texttt{True}，因為裡面有一個空格字元，就算這個
+字元用肉眼看幾乎是空的，對 Python 來說它仍然是一個字元，字串本身並不是空的。
+
+第三行、
+第四行最容易讓人誤會：\texttt{bool("False")} 跟 \texttt{bool("0")} 印出來都是
+\texttt{True}。原因是 \texttt{bool()} 完全不會去讀字串裡寫的內容究竟是「False」還是
+「0」，它只在乎這個字串是不是空字串，只要不是空字串，一律當成 \texttt{True}。想要判斷
+一段文字內容代表的是真是假，得先把文字轉成正確的型別，或是自己寫規則去比對內容，不能
+只靠 \texttt{bool()} 硬轉。
+
+最後兩行反過來看：\texttt{bool} 轉成數字的時候，
+\texttt{True} 當成 \texttt{1}、\texttt{False} 當成 \texttt{0}，所以 \texttt{int(True)}
+是 \texttt{1}，\texttt{float(True)} 是 \texttt{1.0}。這跟字串那三行的規則完全不一樣：
+字串轉 \texttt{bool()} 看的是「是不是空的」，\texttt{bool} 轉數字看的是「是
+\texttt{True} 還是 \texttt{False}」，兩個方向不能用同一套邏輯套用。
+
+\keypoint{\texttt{bool()} 用在字串上，判斷依據只看這個字串是不是空的，字串裡寫的文字
+內容完全不影響結果。\texttt{bool("False")}、\texttt{bool("0")} 這種看起來像是「假」的
+字串，因為都不是空字串，轉換結果都會是 \texttt{True}，這是新手最容易誤踩的一個地雷。}
+
+\begin{drills}[label=drills:conversion-edge-cases]
+\item \texttt{int(-2.1)} 跟 \texttt{int(2.9)} 分別會得到什麼？
+\item \texttt{int("3.0")} 執行會不會出錯？如果會，要怎麼修？
+\item \texttt{bool("0.0")} 會印出 \texttt{True} 還是 \texttt{False}？為什麼？
+\end{drills}
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:variable-naming}~節}
+\begin{enumerate}
+\item \texttt{my\_name} 合法；\texttt{2apples} 不合法（以數字開頭）；
+\texttt{total\_price} 合法；\texttt{if} 不合法（是保留字）；\texttt{User1} 合法（數字
+不在開頭就可以）。
+\item \texttt{NameError: name 'favorite\_colour' is not defined}（可能還會貼心猜一句
+「是不是想打 \texttt{favorite\_color}」），因為 Python 找不到叫這個名字的變數，兩處
+拼法對不起來。
+\item \texttt{SyntaxError}，因為變數名不能以數字開頭，Python 光是讀這一行就看不懂，
+連執行都還沒開始，跟「找不到變數」的 \texttt{NameError} 是不同階段的問題。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:naming-practices}~節}
+\begin{enumerate}
+\item \texttt{print = 5} 之後再呼叫 \texttt{print("hi")} 會出錯，因為這時候
+\texttt{print} 這個名字對應的已經是數字 5，原本的函式被蓋掉了，數字不能像函式一樣被
+呼叫，錯誤類型是 \texttt{TypeError}（\texttt{'int' object is not callable}）。
+\item \texttt{is\_passed} 比較適合，因為布林值變數習慣用 \texttt{is\_} 開頭命名，光看
+名字就知道這是一個對／錯的答案；\texttt{result} 太籠統，看不出裝的究竟是分數、名次還是
+對錯。
+\item 拿掉第一行之後，\texttt{type} 這個名字沒有被蓋掉，第五行的 \texttt{type(x)}
+呼叫的就是原本查詢型別的內建函式，程式會正常執行，印出 \texttt{<class 'int'>}，不會
+出錯。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:name-tags}~節}
+\begin{enumerate}
+\item \texttt{x}、\texttt{y}、\texttt{z} 一開始都指向同一個字串 \texttt{"start"}。
+\texttt{x = "changed"} 只是把 \texttt{x} 改貼到一個新的物件上，\texttt{y}、\texttt{z}
+不受影響，所以 \texttt{print(x, y, z)} 印出 \texttt{changed start start}。
+\item 會不一樣，印出的是 \texttt{start changed start}：改的名字不同，被改貼的名字牌就
+不同，跟哪一個名字被重新賦值有關，跟賦值的順序無關。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:type-on-value}~節}
+\begin{enumerate}
+\item \texttt{b} 會印出 \texttt{10}，因為 \texttt{b = a} 時 \texttt{b} 指向跟 \texttt{a}
+一樣的物件（值 10），之後 \texttt{a = 20} 只是讓 \texttt{a} 改指到新的物件 20，
+\texttt{b} 完全沒被影響。
+\item 會不一樣，\texttt{print(a)} 會印出 \texttt{20}，因為 \texttt{a} 這張名字牌已經
+改貼到新的物件 20 上面了。
+\item \texttt{<class 'int'>}，雖然 \texttt{x} 一開始指向字串 \texttt{"3"}，但第二行
+\texttt{x = 3} 讓 \texttt{x} 改指向整數 3，型別長在物件身上，跟著目前指的那個物件走。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:arithmetic}~節}
+\begin{enumerate}
+\item \texttt{17 // 5} 是 \texttt{3}（17 裡面裝得下三個完整的 5），\texttt{17 \% 5} 是
+\texttt{2}（裝完三個 5 之後剩下的）。
+\item 分鐘用 \texttt{250 // 60}，算出 \texttt{4}；秒數用 \texttt{250 \% 60}，算出
+\texttt{10}。也就是 4 分 10 秒。
+\item 印出 \texttt{3.0}。只要用 \texttt{/} 做除法，就算除得盡，結果一樣帶小數點。
+\item \texttt{7 \% 2} 是 \texttt{1}，\texttt{8 \% 2} 是 \texttt{0}。判斷偶數的寫法是
+\texttt{number \% 2 == 0}：餘數為 \texttt{0} 就代表除得盡，是偶數。
+\item 印出 \texttt{19}。先算次方 \texttt{3 ** 2} 得到 \texttt{9}，再算乘法
+\texttt{2 * 9} 得到 \texttt{18}，最後才加 \texttt{1}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:type-more-uses}~節}
+\begin{enumerate}
+\item \texttt{type(10 - 4)} 印出 \texttt{<class 'int'>}（兩邊都是整數，結果也是
+整數）；\texttt{type(10 / 4)} 印出 \texttt{<class 'float'>}（用 \texttt{/} 做除法，
+結果一律是 \texttt{float}）。
+\item 印出 \texttt{<class 'float'>}，因為 \texttt{2 * 3.0} 裡有一邊是 \texttt{float}
+（\texttt{3.0}），只要運算式裡任何一邊出現 \texttt{float}，結果就會是 \texttt{float}。
+\item 印出 \texttt{<class 'str'>}：\texttt{str(3)} 是字串 \texttt{"3"}，\texttt{str(5)}
+是字串 \texttt{"5"}，兩個字串用 \texttt{+} 接起來是串接，結果是字串 \texttt{"35"}，
+型別是 \texttt{str}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:type-family}~節}
+\begin{enumerate}
+\item \texttt{type(2.5)} 印出 \texttt{<class 'float'>}；\texttt{type("2.5")} 印出
+\texttt{<class 'str'>}，兩者不一樣：被引號包住的 \texttt{"2.5"} 屬於文字，就算內容
+看起來像數字，型別仍然是 \texttt{str}。
+\item 第一行 \texttt{print("age: " + 20)} 會出錯，錯誤類型是 \texttt{TypeError}（字串
+不能直接跟 \texttt{int} 用 \texttt{+} 接在一起）；第二行 \texttt{print("age: " +
+"20")} 會正常印出 \texttt{age: 20}，因為兩邊都是字串，\texttt{+} 做的是串接。
+\item \texttt{"ha" * 0} 跟 \texttt{"ha" * -1} 都印出一個空字串 \texttt{""}：重複零次
+或負數次，效果都是「什麼都不留」，Python 不會因為次數是負的而報錯。
+\item 不一樣，\texttt{type(0)} 是 \texttt{<class 'int'>}，\texttt{type(0.0)} 是
+\texttt{<class 'float'>}：就算數值上兩者相等，有沒有寫小數點會決定字面值的型別。
+\item \texttt{type(True)} 印出 \texttt{<class 'bool'>}。
+\item 印出 \texttt{1000000}，底線只是幫人眼閱讀用的排版符號，不會出現在印出來的內容
+裡，Python 讀到的跟直接寫 \texttt{1000000} 是同一個數字。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:type-conversion}~節}
+\begin{enumerate}
+\item 得到整數 \texttt{42}，型別是 \texttt{<class 'int'>}。
+\item 得到字串 \texttt{"3.14"}，型別是 \texttt{<class 'str'>}。
+\item 會出錯，錯誤類型是 \texttt{ValueError}，因為 \texttt{"3.14 dollars"} 這段文字裡除了
+數字跟小數點，還混了「dollars」這幾個字跟一個空格，不是一段乾淨的、看起來像浮點數的文字，
+\texttt{float()} 沒辦法把它解讀成任何一個數字。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:conversion-edge-cases}~節}
+\begin{enumerate}
+\item \texttt{int(-2.1)} 得到 \texttt{-2}，\texttt{int(2.9)} 得到 \texttt{2}：
+\texttt{int()} 一律朝 0 的方向捨去小數，跟四捨五入是兩套不同的規則。
+\item 會出錯，因為 \texttt{"3.0"} 裡帶著小數點，\texttt{int()} 不接受字串裡出現小數點，
+會丟出 \texttt{ValueError}；要修的話先用 \texttt{float("3.0")} 轉成浮點數，再用
+\texttt{int()} 轉成整數，也就是 \texttt{int(float("3.0"))}。
+\item 印出 \texttt{True}，因為 \texttt{"0.0"} 雖然內容看起來像數字 0，但它是一個非空
+字串，\texttt{bool()} 用在字串上只看是不是空字串，不會去讀內容代表的數值，所以結果是
+\texttt{True}。
+\end{enumerate}

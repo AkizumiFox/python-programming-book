@@ -1,0 +1,18 @@
+# build artifacts
+build/
+*.aux
+*.log
+*.out
+*.toc
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.bbl
+*.blg
+# working files
+scratchpad/
+# copyrighted reference material: never commit
+references/
+curriculum/
+pipeline/
+.DS_Store

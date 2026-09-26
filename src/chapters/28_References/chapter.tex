@@ -1,0 +1,125 @@
+\chapter*{參考資料}
+\label{ch:references}
+\addcontentsline{toc}{chapter}{參考資料}
+\markboth{參考資料}{參考資料}
+
+這本書不是憑空寫出來的。 決定每一章要教什麼、用什麼順序教、哪裡該慢下來的時候，我們
+橫向比較了七本已經存在的 Python 入門書——不是照抄任何一本，而是看它們在同一個主題上
+各自怎麼處理，再決定這本書要走哪一條路。
+
+這一章把那七本書列出來，另外附上寫作時實際查證過的官方文件與線上服務。 它跟第
+\ref{sec:learning-resources} 節不一樣：那一節談的是「有哪幾類學習資源、各自適合什麼樣的
+學習節奏」，刻意不點名任何一本書，因為那些分類不會過期；這一章反過來，給的是具體的書名
+與網址，並且老實告訴你每一本適合你在什麼時候拿起來。
+
+\section*{七本參考書}
+\addcontentsline{toc}{section}{七本參考書}
+
+下面按照「你讀完這本書之後，大概會照什麼順序用得上」排列，不是按重要性。 每一本後面
+標的「本書第 X 章參考」，是這本書寫作時真的拿它當素材的章節。 這七本都改版過好幾次，
+挑你買得到的最新版就好。
+
+\subsection*{想繼續動手做小工具}
+
+\paragraph{Automate the Boring Stuff with Python}（Al Sweigart 著，No Starch Press）
+——本書第 \ref{ch:introduction}、\ref{ch:variables}、\ref{ch:strings}、\ref{ch:lists}、\ref{ch:dict-set}、\ref{ch:functions}、\ref{ch:files-exceptions}、\ref{ch:csv}、\ref{ch:debugging}、\ref{ch:modules}、\ref{ch:regex}、\ref{ch:automating}、\ref{ch:capstone} 章參考。
+
+跟這本書的「目標一」距離最近的一本：它整本都在回答「這件煩人的瑣事，能不能叫電腦做」。
+檔案整理、抓網頁、寄信、操作試算表，一章一個實用主題。 如果你讀完這本書之後最想做的是
+「把我每週都要重複做的那件事自動化」，這本是最直接的下一步。 作者把全文免費放在
+\url{https://automatetheboringstuff.com}，可以先讀再決定要不要買紙本。
+
+\subsection*{想把語言基礎再打紮實一點}
+
+\paragraph{Python Crash Course}（Eric Matthes 著，No Starch Press）
+——本書第 \ref{ch:introduction}、\ref{ch:variables}、\ref{ch:conditionals}、\ref{ch:loops}、\ref{ch:lists}、\ref{ch:dict-set}、\ref{ch:functions}、\ref{ch:files-exceptions}、\ref{ch:debugging}、\ref{ch:pythonic}、\ref{ch:objects}、\ref{ch:capstone} 章參考。
+
+前半是語法基礎，後半是三個從頭做到尾的專案。 它最值得學的地方是「怎麼把一個專案一步步
+長出來」——幾乎每個小節結束都會叫你立刻執行看看，讓你一路上都有能跑的東西，這本書第
+\ref{ch:capstone} 章的節奏就是參考它的做法。 如果你覺得自己語法都懂了、但一要動手做完整
+的東西就卡住，問題通常不在語法，這本書治的正是那個症狀。
+
+\paragraph{Python for Everybody}（Charles Severance 著）
+——本書第 \ref{ch:introduction}、\ref{ch:variables}、\ref{ch:strings}、\ref{ch:conditionals}、\ref{ch:loops}、\ref{ch:lists}、\ref{ch:dict-set}、\ref{ch:functions}、\ref{ch:tuples}、\ref{ch:files-exceptions}、\ref{ch:objects}、\ref{ch:regex} 章參考。
+
+步調最慢、預設你知道得最少的一本，特別適合當「同一個主題換一個人再講一次」的備援。
+它完全免費，連配套的線上課程與練習都是，網址是 \url{https://www.py4e.com}。 如果這本書
+某一章你讀了兩遍還是覺得卡，去看它同一個主題怎麼講，常常就通了。
+
+\subsection*{想弄清楚「為什麼是這樣」}
+
+\paragraph{Think Python}（Allen B. Downey 著，O'Reilly）
+——本書第 \ref{ch:variables}、\ref{ch:strings}、\ref{ch:conditionals}、\ref{ch:loops}、\ref{ch:lists}、\ref{ch:dict-set}、\ref{ch:functions}、\ref{ch:tuples}、\ref{ch:files-exceptions}、\ref{ch:modules}、\ref{ch:comprehensions}、\ref{ch:iterators-generators}、\ref{ch:recursion}、\ref{ch:pythonic}、\ref{ch:objects}、\ref{ch:inheritance}、\ref{ch:regex}、\ref{ch:where-next} 章參考，是
+七本裡被引用最多的一本。
+
+它關心的不只是「怎麼寫」，還有「怎麼想」。 這本書第 \ref{ch:recursion} 章用縮排追蹤
+呼叫堆疊的那個手法，就是從它借來的。 如果你想從「會照著寫」進到「能自己推理出程式為什麼
+這樣跑」，這本是最好的橋。 作者同樣提供免費線上版：
+\url{https://allendowney.github.io/ThinkPython/}。
+
+\subsection*{想換一種完全不同的講法}
+
+\paragraph{Head First Python}（Paul Barry 著，O'Reilly）
+——本書第 \ref{ch:introduction}、\ref{ch:csv}、\ref{ch:comprehensions}、\ref{ch:automating}、\ref{ch:capstone} 章參考。
+
+版面充滿圖、手寫字、對話與練習，跟一般教科書長得完全不一樣。 有人非常吃這一套，有人
+完全不吃。 如果你發現自己讀純文字的技術書很容易分心，值得去書店翻個五分鐘，你會很快
+知道自己是哪一種人。
+
+\paragraph{Introducing Python}（Bill Lubanovic 著，O'Reilly）
+——本書第 \ref{ch:variables}、\ref{ch:strings}、\ref{ch:conditionals}、\ref{ch:loops}、\ref{ch:lists}、\ref{ch:dict-set}、\ref{ch:functions}、\ref{ch:tuples}、\ref{ch:files-exceptions}、\ref{ch:advanced-functions}、\ref{ch:comprehensions}、\ref{ch:iterators-generators}、\ref{ch:recursion}、\ref{ch:pythonic}、\ref{ch:objects}、\ref{ch:where-next} 章參考。
+
+份量厚、覆蓋面廣，從基礎語法一路走到網路、資料庫、並行處理，比較像「一本可以一直放在
+手邊翻」的書。 這本書第 \ref{sec:mutable-default} 節那個可變預設參數的坑，七本參考書裡
+只有它完整教過——這種「別人都略過、它認真講」的地方，在它書裡還有不少。
+
+\subsection*{等你準備好了再去}
+
+\paragraph{Fluent Python}（Luciano Ramalho 著，O'Reilly）
+——本書第 \ref{ch:advanced-functions}、\ref{ch:comprehensions}、\ref{ch:iterators-generators}、\ref{ch:pythonic}、\ref{ch:inheritance}、\ref{ch:where-next} 章參考。
+
+第 \ref{sec:beyond-this-book} 節提過它。 這是一本寫給\textbf{已經在寫 Python 的工程師}看的
+書，作者在序言裡就自己提醒過：剛開始學的人讀它會很難跟上，甚至可能誤以為每支 Python
+程式都得用上一堆特殊技巧。 這本書第 \ref{ch:advanced-functions} 到 \ref{ch:pythonic} 章
+教的 \texttt{lambda}、closure、decorator、generator、comprehension，在它書裡都有深得多
+的版本。 不建議現在就讀，但值得知道它在那裡——你哪一天覺得這本書已經餵不飽你了，它就是
+下一站。
+
+\section*{官方文件與規範}
+\addcontentsline{toc}{section}{官方文件與規範}
+
+\paragraph{Python 官方文件}\url{https://docs.python.org/3/}
+
+第 \ref{ch:modules} 章教過怎麼讀它。 你以後會用到的標準函式庫模組，第一手說明都在這裡，
+而且它是唯一一份一定跟你手上這版 Python 對得起來的資料——網路上的教學文章可能是三年前
+寫的，官方文件不會。
+
+\paragraph{PEP 8：Python 程式碼風格指南}\url{https://peps.python.org/pep-0008/}
+
+第 \ref{sec:pep8} 節介紹過的那份文件。 它比你想像中好讀，而且會親口告訴你「什麼時候
+該不遵守它」。
+
+\paragraph{PEP 20：The Zen of Python}\url{https://peps.python.org/pep-0020/}
+
+十九句話，講 Python 這個語言在意什麼。 在你的 Python 裡輸入 \texttt{import this} 也會
+把它整份印出來。 現在讀跟一年後再讀，感受會很不一樣。
+
+\section*{本書用到的公開服務}
+\addcontentsline{toc}{section}{本書用到的公開服務}
+
+第 \ref{ch:api} 章與第 \ref{ch:capstone} 章串接的三個 API，都不需要註冊、不需要金鑰，
+你可以直接照著書裡的範例打打看。 寫作時每一支都實際呼叫過，但線上服務會改版、會停用，
+如果哪天書裡的範例打不通，先去它的官網看看規格有沒有變。
+
+\begin{itemize}
+    \item \textbf{Open-Meteo}（天氣）\quad \url{https://open-meteo.com}\\
+    第 \ref{ch:api} 章查天氣用的服務。
+    \item \textbf{Frankfurter}（匯率）\quad \url{https://frankfurter.dev}\\
+    第 \ref{ch:api} 章查匯率用的服務，資料來自歐洲央行的參考匯率。 要注意它只涵蓋
+    三十種左右的幣別，\textbf{裡面沒有新台幣}——第 \ref{sec:currency-api} 節的練習會讓你
+    親自撞見這件事。
+    \item \textbf{ExchangeRate-API（開放版）}\quad \url{https://open.er-api.com/v6/latest}\\
+    第 \ref{ch:capstone} 章的記帳本改用的服務，因為它查得到新台幣。 它跟 Frankfurter
+    的請求與回應形狀幾乎一樣，這正是第 \ref{ch:api} 章說過的「換一個服務，套用同一套
+    骨架，換掉細節就好」。
+\end{itemize}

@@ -1,0 +1,890 @@
+\chapter{函式進階：把函式當成資料來用}
+\label{ch:advanced-functions}
+
+請人幫忙做事的時候，交出去的不一定只有「東西」，也可能是「怎麼做」這條規則本身。你把一疊
+表單推給別人說「幫我排好」，對方一定會反問一句：照什麼排？照日期、照名字，還是照金額？
+「整理」這個動作是固定的，會變的是那條比大小的規則。你把規則講出口的那一刻，其實就把
+「怎麼比」這件事整個交出去了——對方負責跑流程，你負責決定標準。
+
+第 \ref{ch:functions} 章的最後幾節，你已經摸到這件事的邊了：第 \ref{sec:function-first-class} 節說過，
+用 \texttt{def} 定義出來的函式本身也是一個物件，函式名稱只是貼在它身上的一張名字牌，所以
+函式可以被指定給別的變數（\texttt{operation = square}）、可以被當作引數傳給另一個函式
+（\texttt{apply\_twice(add\_ten, 5)}）。不過那一節裡收下函式的 \texttt{apply\_twice}，是
+我們自己寫的。真實世界的 Python 程式碼裡，情況通常反過來——\textbf{是別人早就寫好的函式，
+張著手等你把你的規則交給它}。這一章就是從這個轉向開始。
+
+這一章分四段推進：
+
+\begin{itemize}
+\item 第一段是「把規則交出去」：先學一個更短的寫法來寫那些用完就丟的小函式，再看它最常
+出現的三個位置——排序時的比較依據、找最大最小值的依據、以及一次處理一整串資料的處理方式
+（第 \ref{sec:lambda}～\ref{sec:map-filter} 節）。
+\item 第二段整個翻面，談「把規則帶回來」：函式不只可以被傳進去，也可以被別的函式生出來、
+再交還給你，而且它會記得自己出生時看到的東西（第 \ref{sec:closure} 節）。
+\item 第三段是這一章的最高點，也是前兩段的合體：在一個已經能用的函式外面「包一層」，讓它
+多做點事，但完全不動它原本的程式碼；先手動包一次，再揭曉 Python 替這件事準備的簡寫
+（第 \ref{sec:wrap-by-hand}～\ref{sec:decorator} 節）。
+\item 第四段回頭談一件完全不同的事：怎麼在 \texttt{def} 那一行就寫清楚「這個函式吃什麼、
+吐什麼」，以及這種標註一個非常反直覺的性質（第 \ref{sec:type-hints} 節）。
+\end{itemize}
+
+\section{不用取名字的小函式：\texttt{lambda}}
+\label{sec:lambda}
+
+回頭看第 \ref{sec:function-first-class} 節那個 \texttt{apply\_twice(add\_ten, 5)} 的例子。
+為了把「加十」這條規則交給 \texttt{apply\_twice}，我們先花了三行寫一個 \texttt{add\_ten}
+函式，替它想了一個名字，然後只用了一次就再也沒提過它。函式本體其實只有 \texttt{n + 10}
+這麼一點點東西，包裝卻比內容還大。
+
+Python 對這種「只有一個算式、用完就丟」的小函式，準備了一個更短的寫法：\texttt{lambda}。
+它做的事跟 \texttt{def} 完全一樣——造出一個函式物件——差別只在它不需要名字，可以直接寫在
+需要它的地方。
+\index{lambda}
+
+\begin{code}{python}{用 lambda 寫一個不具名的小函式}
+lambda parameter: expression
+\end{code}
+
+\texttt{lambda} 這個字後面接參數名稱（要好幾個就用逗號隔開），一個冒號，然後是一個
+\textbf{算得出值的式子}。這個式子算出來的結果，就是這個函式的回傳值——不用寫
+\texttt{return}，也不能寫。
+
+先看看它跟 \texttt{def} 版本擺在一起是什麼樣子。第 \ref{ch:functions} 章的寫法是：
+
+\begin{code}{python}{第 \ref{ch:functions} 章原本的 def 寫法}
+def add_ten(n):
+    return n + 10
+
+
+print(apply_twice(add_ten, 5))
+\end{code}
+
+換成 \texttt{lambda} 之後，三行的定義直接縮成呼叫裡的一小段：
+
+\begin{example}{python}{(apply-twice-lambda.py) 用 lambda 取代只用一次的小函式}
+def apply_twice(func, value):
+    return func(func(value))
+
+
+print(apply_twice(lambda n: n + 10, 5))
+\end{example}
+
+\iosample{}{25 \\}
+
+輸出跟第 \ref{sec:function-first-class} 節那個範例一模一樣，也還是 \texttt{25}：換了寫法，
+沒換行為。\texttt{lambda n: n + 10} 整串本身就是一個函式物件，它被直接當成引數塞進
+\texttt{apply\_twice} 的 \texttt{func} 參數裡，跟原本傳 \texttt{add\_ten} 沒有任何差別。
+唯一的差別是，這個函式物件從頭到尾沒有被貼上任何一張名字牌。
+
+\keypoint{\texttt{lambda ...} 整串寫出來的東西，就是一個函式物件，跟 \texttt{def} 造出來的
+是同一種東西——差別只在它沒有被貼上名字牌。這也解釋了為什麼你可以把它直接寫在括號裡：既然
+它本身就是那個「函式物件」，當然不用先存進變數再傳過去。要判斷一段程式碼給出去的是「函式
+本身」還是「呼叫函式的結果」，判準跟第 \ref{sec:function-first-class} 節一樣，永遠是看有沒有加括號。}
+
+既然 \texttt{lambda} 造出來的也是函式物件，那它當然也可以被存進變數：
+
+\begin{example}{python}{(say-hi-lambda.py) 把 lambda 存進變數再呼叫}
+say_hi = lambda name: f"Hi, {name}!"
+
+print(say_hi("Amy"))
+print(say_hi("Ben"))
+\end{example}
+
+\iosample{}{Hi, Amy! \\ Hi, Ben! \\}
+
+這樣寫可以動，而且看得懂——\texttt{say\_hi} 這張名字牌被貼到 \texttt{lambda} 造出來的函式
+物件上，之後 \texttt{say\_hi("Amy")} 就是在呼叫它。但這種寫法在 Python 圈子裡評價不高，
+原因很單純：繞了一圈，做的其實就是 \texttt{def} 的事。
+
+\stylepoint{如果你打算替一個 \texttt{lambda} 取名字（也就是寫成
+\texttt{名字 = lambda ...}），那就直接用 \texttt{def} 寫。兩種寫法效果一樣，但 \texttt{def}
+版本更好讀，出錯時的錯誤訊息也會告訴你是哪個函式出問題。\texttt{lambda} 真正的舞台，是
+「當引數直接塞進別的函式裡」的場合——也就是下一節要看的東西。}
+
+順帶一提：既然函式是物件，它就跟數字、字串一樣，也可以被放進 list 或 dict 裡當成資料收著。
+這件事在寫比較大的程式時偶爾會派上用場，這裡先知道「可以」就好。
+
+\subsection*{常見錯誤：在 lambda 裡面寫 return}
+
+\texttt{lambda} 的冒號後面只能放一個「算得出值的式子」。很多人第一次寫的時候會照著
+\texttt{def} 的習慣補上 \texttt{return}：
+
+\begin{example}{python}{(lambda-return-broken.py) 在 lambda 主體裡寫 return}
+add_one = lambda n: return n + 1
+
+print(add_one(5))
+\end{example}
+
+\begin{verbatim}
+  File "lambda-return-broken.py", line 1
+    add_one = lambda n: return n + 1
+                        ^^^^^^
+SyntaxError: invalid syntax
+\end{verbatim}
+
+這次連程式都沒開始跑就出錯了——\texttt{SyntaxError} 是「你寫的東西不符合 Python 的文法」，
+Python 連讀都讀不下去。原因是 \texttt{return} 是一個\textbf{敘述}（statement），是一個
+「動作」；而 \texttt{lambda} 的冒號後面要的是一個\textbf{式子}（expression），是一個「算得
+出值的東西」。同樣的理由，\texttt{if} 的整段結構、\texttt{for} 迴圈、\texttt{print} 之外的
+賦值，通通不能塞進 \texttt{lambda}。正確的寫法是把 \texttt{return} 拿掉，只留
+\texttt{lambda n: n + 1}——那個式子算出來的值自動就是回傳值。
+
+這條限制看起來很嚴格，其實正好說明了 \texttt{lambda} 的定位：它只適合真的很小的函式。
+只要邏輯稍微複雜一點，你自然就得寫回 \texttt{def}。
+
+\begin{drills}[label=drills:lambda]
+\item 有 \texttt{f = lambda a, b: a * b}，那麼 \texttt{print(f(3, 4))} 會印出什麼？
+\item 把 \texttt{lambda n: n * n} 改寫成一個叫 \texttt{square} 的 \texttt{def} 函式。
+\end{drills}
+
+\section{把「照什麼標準」交出去：\texttt{sorted(key=)}、\texttt{max}、\texttt{min}}
+\label{sec:key-function}
+
+開場那個「照什麼排」的問題，在這一節兌現。這件事你其實已經做過一次了：第
+\ref{sec:sort-key} 節教過 \texttt{sort()}／\texttt{sorted()} 的 \texttt{key} 參數，
+你在那裡寫過 \texttt{key=len}，把「量長度」這條規則交給排序函式，讓它照字數排而不是照
+字母順序。當時沒有特別點破的是：\textbf{那一行就是把一個函式當成引數傳給另一個函式}——只是那時候
+你還沒有「函式是一種值」這個說法可以用。
+
+現在你有了，而且可以往前走一步。\texttt{key=len} 之所以方便，是因為「量長度」剛好有一個
+現成的內建函式。但真實的資料很少這麼配合：如果你手上是一串商品，每一項都是一個 dict，
+要照價格排，Python 沒有一個現成的「取出價格」函式可以給你。這種時候，你要自己生一個——
+而且它短到不值得取名字，正是上一節 \texttt{lambda} 的舞台。
+
+先把規則講完整：\texttt{key} 收的是一個函式，排序時它會拿這個函式對每一項各跑一次，用算出來
+的結果當比大小的依據。\texttt{sorted} 負責排，你負責給「照什麼排」。\texttt{max} 跟
+\texttt{min} 也是同一套。
+
+\begin{code}{python}{用 key 指定比較的依據}
+sorted(iterable, key=function)
+max(iterable, key=function)
+min(iterable, key=function)
+\end{code}
+
+有一件事第 \ref{sec:sort-key} 節已經強調過，這裡再提醒一次，因為接下來每一個範例都靠它：
+\texttt{key=} 後面交出去的是函式\textbf{本身}，名字後面\textbf{不加括號}。加了括號就變成
+「現在就呼叫它、把結果交出去」，那是完全不同的一件事——第 \ref{sec:sort-key} 節那個
+\texttt{key=len()} 的 \texttt{TypeError}，跟第 \ref{sec:function-first-class} 節那個
+\texttt{operation = square()}，錯的都是同一件事。
+
+接下來是這一節真正的重點，也是你以後最常真的會寫的形狀。第 \ref{ch:dict-set} 章那種
+「一串 dict」是實務上最常見的資料長相：
+
+\begin{example}{python}{(sort-products.py) 把一串商品資料照價格排序}
+products = [
+    {"name": "notebook", "price": 120},
+    {"name": "pen", "price": 25},
+    {"name": "folder", "price": 60},
+]
+
+by_price = sorted(products, key=lambda item: item["price"])
+
+for product in by_price:
+    print(product["name"], product["price"])
+
+print(products[0]["name"])
+\end{example}
+
+\iosample{}{pen 25 \\ folder 60 \\ notebook 120 \\ notebook \\}
+
+\texttt{lambda item: item["price"]} 這一段翻成白話就是：「給我一項商品，我回你它的價格。」
+\texttt{sorted} 拿到這條規則之後，會對清單裡的每一個 dict 各呼叫它一次，拿回三個數字
+（120、25、60），然後照這三個數字的大小去排原本那三個 dict。最後一行印出的還是
+\texttt{notebook}，再次確認 \texttt{products} 自己完全沒被動過。
+
+同一份資料，如果要的不是整串排序，而只是「最貴的那一項」，\texttt{max} 收的
+\texttt{key} 一模一樣：
+
+\begin{example}{python}{(most-expensive.py) 找出最貴與最便宜的商品}
+products = [
+    {"name": "notebook", "price": 120},
+    {"name": "pen", "price": 25},
+    {"name": "folder", "price": 60},
+]
+
+top = max(products, key=lambda item: item["price"])
+cheapest = min(products, key=lambda item: item["price"])
+
+print(top["name"], top["price"])
+print(cheapest["name"], cheapest["price"])
+\end{example}
+
+\iosample{}{notebook 120 \\ pen 25 \\}
+
+注意 \texttt{max} 回傳的是\textbf{那一整項商品}（整個 dict），不是那個價格數字——
+\texttt{key} 只影響「怎麼比」，不影響「回傳什麼」。\texttt{min} 是同一回事，只是挑的是
+算出來最小的那一項。
+
+\keypoint{\texttt{key=} 要的是一個「吃一項、吐出比較依據」的函式。\texttt{sorted}／
+\texttt{max}／\texttt{min} 會自己對每一項呼叫它一次，你不用寫迴圈；而且它們只拿算出來的
+結果當比較依據，原本的資料一個字都不會被改動，回傳的也還是原本那些東西。}
+
+\begin{drills}[label=drills:key-function]
+\item \texttt{print(sorted(["kiwi", "fig", "banana"], key=len))} 會印出什麼？
+\item 有 \texttt{people = [\{"name": "Amy", "age": 30\}, \{"name": "Ben", "age": 24\}]}，
+那麼 \texttt{print(sorted(people, key=lambda p: p["age"])[0]["name"])} 會印出什麼？
+\item 有人寫了 \texttt{sorted(products, key=lambda item: item["price"]())}，執行時出錯了。
+問題出在哪裡？
+\end{drills}
+
+\section{一次處理一整串：\texttt{map} 與 \texttt{filter}}
+\label{sec:map-filter}
+
+\texttt{sorted(key=)} 是「把比較的依據交出去」。同樣是交一條規則出去，還有兩個內建函式收的
+是別種規則：\texttt{map} 收的是「每一項要怎麼處理」，\texttt{filter} 收的是「哪些項目要
+留下來」。
+\index{map}
+\index{filter}
+
+\begin{code}{python}{把處理方式或篩選條件交給 map／filter}
+map(function, iterable)
+filter(function, iterable)
+\end{code}
+
+先看 \texttt{map}，而且情境是你已經吃過苦頭的：第 \ref{ch:files-exceptions} 章跟
+第 \ref{ch:csv} 章都提過，從檔案裡讀進來的東西一律是字串，就算長得像數字也一樣，要算數之前
+得先一個一個轉成整數。這件事交給 \texttt{map} 一行就完成，而且要交出去的規則同樣是一個
+你早就認識的函式——\texttt{int}。
+
+\begin{example}{python}{(convert-prices.py) 把一串數字字串一次轉成整數}
+prices = ["12", "5", "38"]
+
+numbers = list(map(int, prices))
+print(numbers)
+print(sum(numbers))
+\end{example}
+
+\iosample{}{[12, 5, 38] \\{} 55 \\}
+
+\texttt{map(int, prices)} 的意思是「拿 \texttt{int} 這條規則，套到 \texttt{prices} 的每一
+項上」。跟 \texttt{key=len} 一樣，\texttt{int} 後面沒有括號——交出去的是規則本身。外面那層
+\texttt{list()} 等一下就會解釋為什麼需要。
+
+\texttt{filter} 的形狀幾乎一模一樣，差別只在它交出去的函式要回答一個是非題：這一項要不要
+留下來？回傳 \texttt{True} 就留，\texttt{False} 就丟掉。這種「一句話就講完」的條件，正是
+\texttt{lambda} 的主場。
+
+\begin{example}{python}{(passing-scores.py) 挑出及格的分數}
+scores = [92, 45, 78, 59, 60]
+
+passed = list(filter(lambda score: score >= 60, scores))
+print(passed)
+\end{example}
+
+\iosample{}{[92, 78, 60] \\}
+
+\texttt{lambda score: score >= 60} 對每個分數各跑一次，算出 \texttt{True} 或
+\texttt{False}，\texttt{filter} 只把答 \texttt{True} 的那幾項留下來。
+
+\subsection*{常見錯誤：忘記用 \texttt{list()} 包起來}
+
+上面兩個範例外面那層 \texttt{list()} 不是裝飾用的。如果直接把 \texttt{map} 的結果印出來：
+
+\begin{example}{python}{(convert-prices-broken.py) 直接印出 map 的結果}
+prices = ["12", "5", "38"]
+
+print(map(int, prices))
+\end{example}
+
+\iosample{}{<map object at 0x102bbfee0> \\}
+
+（後面那串十六進位數字每次執行都不一樣，那是這個東西在記憶體裡的位置，不用管它。）
+
+畫面上沒有你要的 \texttt{[12, 5, 38]}，而是一個看不出內容的東西。原因是 \texttt{map} 並
+\textbf{不會馬上把結果全部算好交給你}，它回傳的是一個「等你來拿才現算」的東西。要真的把
+每一項都算出來、擺成一份清單，就得用 \texttt{list()} 把它整個攤開。\texttt{filter} 也是
+一樣的性質。
+
+這種「先不急著算」的設計在 Python 裡其實到處都是，它有一整套背後的道理，完整的討論留到
+第 \ref{ch:iterators-generators} 章。這裡你只要記住一件事：\texttt{map} 或 \texttt{filter} 的結果，
+想看內容就用 \texttt{list()} 包起來。
+
+\subsection*{同一件事的另一種寫法}
+
+第 \ref{ch:lists} 章你已經看過 comprehension 的初探——那個把「造一份空清單、跑迴圈、逐一
+append」濃縮成一行的寫法。上面挑及格分數那件事，用 comprehension 寫是這樣：
+
+\begin{code}{python}{同一件事的兩種寫法}
+passed = list(filter(lambda score: score >= 60, scores))
+
+passed = [score for score in scores if score >= 60]
+\end{code}
+
+兩行做的事完全一樣，跑出來的結果也一樣（都是 \texttt{[92, 78, 60]}）。
+
+\stylepoint{\texttt{map} 與 \texttt{filter} 的寫法沒有錯，但 Python 圈子普遍覺得
+comprehension 比較好讀，實務上你在別人的 Python 程式碼裡看到 comprehension 的機會，也遠
+多於看到 \texttt{map}／\texttt{filter}。所以這一節的定位是「看得懂就好」：讀到別人這樣寫
+你要知道它在做什麼，但輪到你自己寫的時候，優先考慮 comprehension。它完整的寫法（包含為
+什麼比較好讀）留到第 \ref{ch:comprehensions} 章。}
+
+\begin{drills}[label=drills:map-filter]
+\item \texttt{print(list(map(lambda n: n * 2, [3, 1, 2])))} 會印出什麼？
+\item 有 \texttt{words = ["kiwi", "fig", "banana"]}，把
+\texttt{list(filter(lambda w: len(w) > 3, words))} 改寫成 comprehension 的形式。
+\end{drills}
+
+\section{函式可以被生出來，而且會記得出生時看到的東西}
+\label{sec:closure}
+
+到目前為止，三節談的都是同一個方向：你手上有一條規則，把它交給別人寫好的函式去跑。這一節
+整個翻面。
+
+回到開場那疊表單。除了「把規則交出去」之外，還有另一種常見的情況：你請一位很懂行的同事
+\textbf{幫你訂一條規則}。你跟他說「這次要照日期排」，他回頭給你的不是一份排好的表單，而是
+一張寫著「照日期比大小」的卡片——一條你之後可以隨時拿去用、想用幾次就用幾次的規則。而且
+關鍵是，這張卡片會記得他當初訂它的時候你說的那句「照日期」。下次你再請他訂一條「照金額」
+的，他會給你另一張卡片，兩張互不干擾。
+
+在 Python 裡，這件事寫出來就是：一個函式裡面再定義一個函式，然後把裡面那個函式
+\textbf{回傳出去}。
+
+\begin{code}{python}{在函式裡造一個函式，再把它回傳出去}
+def outer_function(value):
+    def inner_function(parameter):
+        code using value and parameter
+
+    return inner_function
+\end{code}
+
+最後那行 \texttt{return inner\_function} 沒有括號——這是第 \ref{sec:function-first-class} 節那條
+判準的又一次應用：這裡要交回去的是函式物件本身，不是呼叫它的結果。
+
+\begin{example}{python}{(make-greeter.py) 訂做兩句不同的招呼語}
+def make_greeter(greeting):
+    def greet(name):
+        print(f"{greeting}, {name}!")
+
+    return greet
+
+
+morning = make_greeter("Good morning")
+evening = make_greeter("Good evening")
+
+morning("Amy")
+evening("Amy")
+morning("Ben")
+\end{example}
+
+\iosample{}{Good morning, Amy! \\ Good evening, Amy! \\ Good morning, Ben! \\}
+
+一行一行看清楚發生了什麼事。\texttt{make\_greeter("Good morning")} 這一行做了三件事：
+Python 進到 \texttt{make\_greeter} 裡面，先把 \texttt{greeting} 這張名字牌貼到字串
+\texttt{"Good morning"} 上，接著執行 \texttt{def greet(name):} 造出一個新的函式物件，最後
+把這個函式物件回傳出來，被外面的 \texttt{morning} 接住。\texttt{make\_greeter} 到這裡就
+執行完畢、結束了。
+
+然後我們又呼叫了一次 \texttt{make\_greeter("Good evening")}。這一次是全新的一輪呼叫，
+Python 會重新執行一次那個 \texttt{def greet(name):}，造出\textbf{另一個}函式物件，交給
+\texttt{evening}。所以 \texttt{morning} 跟 \texttt{evening} 是兩張貼在\textbf{兩個不同函式
+物件}上的名字牌，儘管它們的程式碼長得一模一樣。
+
+真正有意思的是輸出：\texttt{morning("Amy")} 印的是 Good morning，\texttt{evening("Amy")}
+印的是 Good evening。兩個函式各自記得了自己出生時看到的那句招呼語，而且互不干擾。這種
+「記得出生時周遭環境」的函式，有一個正式名字叫 \textbf{closure}（閉包）。
+\index{closure（閉包）}
+
+\subsection*{它為什麼記得？名字牌最後一次派上用場}
+
+這裡有一件事跟直覺正面衝突，值得慢慢講。
+
+第 \ref{sec:function-scope} 節說得很清楚：函式裡面的區域變數，只在那一次呼叫執行期間存在，
+函式執行完就消失，外面完全存取不到。而 \texttt{greeting} 就是 \texttt{make\_greeter} 的
+一個區域變數（它是參數，參數也是區域變數）。按照這條規則，\texttt{make\_greeter} 早在
+\texttt{morning} 接住回傳值的那一刻就已經執行完畢、\texttt{greeting} 應該早就不見了才對——那 \texttt{morning("Amy")}
+執行到 \texttt{f"\{greeting\}, \{name\}!"} 的時候，是從哪裡撈出那句 Good morning 的？
+
+答案要用「名字牌」來講，才會完全講得通。這是我們從第 \ref{ch:variables} 章一路用到現在的那個
+比喻——變數不是裝東西的盒子，是貼在物件上的名字牌——而這裡是它在這本書裡\textbf{最後一次}
+派上用場。
+
+真正消失的，是 \texttt{make\_greeter} 那一輪呼叫所使用的那個區域名字空間，不是名字牌指著
+的\textbf{物件}。\texttt{greet} 這個內層函式在被造出來的時候，帶走的不是
+\texttt{"Good morning"} 這個字串的一份副本，而是 \texttt{greeting} 那張名字牌本身。只要
+還有函式握著那張名字牌，名字牌指著的那個字串物件就不會不見——Python 不會把還有人握著的
+東西丟掉。
+
+所以第二次呼叫 \texttt{make\_greeter} 的時候，發生的是一整套全新的事：新的一輪呼叫、新的
+一張 \texttt{greeting} 名字牌、貼在新的字串物件 \texttt{"Good evening"} 上、新造出來的
+\texttt{greet} 函式物件握著這張新名字牌。兩輪呼叫從頭到尾沒有共用任何東西，這就是為什麼
+\texttt{morning} 跟 \texttt{evening} 各說各話，一點也不會混。
+
+\keypoint{closure 記住的是\textbf{名字牌}，不是值的副本。外層函式執行完畢之後，它的區域
+名字空間確實消失了，但只要內層函式還握著其中某張名字牌，那張名字牌指著的物件就會留著。
+這也是為什麼每呼叫一次外層函式，就會得到一個記得不同東西的內層函式——每一輪呼叫都有自己
+全新的一組名字牌。}
+
+\subsection*{只讀沒問題，要改就出事}
+
+\texttt{make-greeter.py} 裡的內層函式只是\textbf{讀}外層的 \texttt{greeting}，從頭到尾
+沒有想改它。如果內層函式想\textbf{改}外層的東西呢？來寫一個計數器試試看：每呼叫一次就
+往上加一。
+
+\begin{example}{python}{(make-counter-broken.py) 內層函式想修改外層的變數}
+def make_counter():
+    count = 0
+
+    def increase():
+        count = count + 1
+        print(count)
+
+    return increase
+
+
+counter = make_counter()
+counter()
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "make-counter-broken.py", line 12, in <module>
+    counter()
+    ~~~~~~~^^
+  File "make-counter-broken.py", line 5, in increase
+    count = count + 1
+            ^^^^^
+UnboundLocalError: cannot access local variable 'count' where it is not associated with a value
+\end{verbatim}
+
+這位是老朋友。第 \ref{sec:function-scope} 節談 \texttt{global} 的時候，你看過一模一樣的
+\texttt{UnboundLocalError}，原因也完全一樣：\textbf{只要函式主體裡有任何一行對某個名字
+賦值，Python 就把這個名字在整段主體裡都當成區域變數}。\texttt{count = count + 1} 的等號
+左邊有 \texttt{count}，所以在 \texttt{increase} 眼中，\texttt{count} 是一個屬於它自己的
+新名字——跟外層那個完全無關。可是等號右邊又要先讀取 \texttt{count} 才能算，而這個「內層
+版本」的 \texttt{count} 到那一刻根本還沒被賦值過，於是當場報錯。
+
+修法也跟 \texttt{global} 是同一個路數，只是換一個關鍵字：\texttt{nonlocal}。
+\index{nonlocal}
+
+\begin{example}{python}{(make-counter.py) 用 nonlocal 修改外層函式的變數}
+def make_counter():
+    count = 0
+
+    def increase():
+        nonlocal count
+        count = count + 1
+        print(count)
+
+    return increase
+
+
+counter = make_counter()
+counter()
+counter()
+
+another = make_counter()
+another()
+\end{example}
+
+\iosample{}{1 \\ 2 \\ 1 \\}
+
+有了 \texttt{nonlocal count} 這一行，\texttt{increase} 裡的 \texttt{count} 不再是一張新的
+內層名字牌，而是明確指向\textbf{外層那一輪呼叫}的那張 \texttt{count}。每次呼叫
+\texttt{counter()}，改動的都是同一張名字牌，所以數字才會一路累加上去。
+
+最後三行是關鍵的對照：\texttt{another = make\_counter()} 是全新的一輪呼叫，配一組全新的
+名字牌，所以 \texttt{another()} 從 \texttt{1} 開始數，跟已經數到 \texttt{2} 的
+\texttt{counter} 毫無關係。
+
+\texttt{global} 跟 \texttt{nonlocal} 是同一件事的兩個層次：\texttt{global} 說的是「我要動
+的是\textbf{最外層那個全域}的名字牌」，\texttt{nonlocal} 說的是「我要動的是\textbf{外面那
+層函式}的名字牌」。也因為這樣，\texttt{nonlocal} 只有在「函式裡面又定義了一個函式」的時候
+才有意義——這正是第 \ref{ch:functions} 章沒有教它的原因，那時候還沒有這種場景。
+
+而範例 \texttt{make-greeter.py} 之所以完全不需要 \texttt{nonlocal}，就是因為它只
+\textbf{讀}外層的 \texttt{greeting}，沒有對它賦值。這條界線很簡單，也就是 \texttt{nonlocal}
+存在的全部理由：\textbf{只讀不用宣告，要改才要宣告}。
+
+\begin{drills}[label=drills:closure]
+\item 有以下程式，\texttt{print(double(10), triple(10))} 會印出什麼？
+\begin{quote}
+\texttt{def make\_multiplier(factor):} \\
+\texttt{~~~~def multiply(n):} \\
+\texttt{~~~~~~~~return n * factor} \\
+\texttt{~~~~return multiply} \\
+\texttt{double = make\_multiplier(2)} \\
+\texttt{triple = make\_multiplier(3)}
+\end{quote}
+\item 承 \texttt{make-counter.py}：如果連續呼叫三次 \texttt{counter()}，第三次會印出什麼？
+如果這時候才建立 \texttt{another = make\_counter()} 並呼叫一次，會印出什麼？
+\item 有人照著 \texttt{make-counter.py} 寫，但把 \texttt{nonlocal count} 那一行漏掉了。
+執行時會出什麼錯？為什麼？
+\end{drills}
+
+\section{自己動手替函式包一層}
+\label{sec:wrap-by-hand}
+
+現在把前面兩件事接起來：函式可以被當引數收下（第 \ref{sec:lambda}～\ref{sec:map-filter} 節），
+函式也可以被造出來、被回傳（第 \ref{sec:closure} 節）。兩者合在一起，就能做到一件很有用
+的事——在一個已經能用的函式外面「包一層」。
+
+情境是這樣的：你手上有一個寫好、也測試過、正常運作的函式。現在你想在它執行前後各印一行
+記錄，方便追蹤程式跑到哪裡了。但你\textbf{不想動它原本的程式碼}——可能是那段邏輯很敏感、
+可能是別人寫的、也可能是你想在很多函式上都做同一件事，不想每個都改一遍。
+
+做法就是開場類比的第三個方向：原本的做法不動，只在前後各補一道手續，交出去的變成「包過的
+那一份」。寫成 Python，就是寫一個函式，它收下原本那個函式，造一個新的函式（新的裡面前後
+各印一行、中間呼叫原本那個），再把新的交回來。這正是上一節 closure 的形狀，只是這次被
+記住的東西不是一句招呼語，而是\textbf{一個函式}。
+
+\begin{example}{python}{(wrap-by-hand.py) 手動替函式包上一層記錄}
+def add_log(func):
+    def wrapper(name):
+        print("[log] start")
+        result = func(name)
+        print("[log] done")
+        return result
+
+    return wrapper
+
+
+def greet(name):
+    return f"Hello, {name}!"
+
+
+greet = add_log(greet)
+
+print(greet("Amy"))
+\end{example}
+
+\iosample{}{[log] start \\{} [log] done \\ Hello, Amy! \\}
+
+慢慢拆。\texttt{add\_log} 是一個收下函式、回傳函式的函式：它的參數 \texttt{func} 接住被傳
+進來的那個函式物件，然後定義一個叫 \texttt{wrapper} 的內層函式。\texttt{wrapper} 做三件事
+——先印一行「開始」，接著呼叫 \texttt{func(name)} 做原本該做的事、把結果接住，再印一行
+「完成」，最後把結果原封不動 \texttt{return} 出去。因為 \texttt{wrapper} 是一個 closure，
+它記得住 \texttt{func} 這張名字牌指著的是哪個函式。最後 \texttt{add\_log} 回傳
+\texttt{wrapper} 本身（沒有括號）。
+
+輸出的順序值得確認一次：兩行記錄先出現，\texttt{Hello, Amy!} 最後才印。這是因為
+\texttt{greet("Amy")} 整個跑完（包含兩行記錄）之後才把字串交出來，最外面那個
+\texttt{print} 這時候才有東西可印。
+
+\subsection*{整章的樞紐：\texttt{greet = add\_log(greet)}}
+
+上面那支程式裡，最需要盯著看的是這一行：
+
+\begin{code}{python}{把包好的那一個重新貼回原本的名字牌}
+greet = add_log(greet)
+\end{code}
+
+等號右邊 \texttt{add\_log(greet)} 先跑：把原本的 \texttt{greet} 函式物件交給
+\texttt{add\_log}，拿回一個包好的 \texttt{wrapper} 函式物件。然後等號把 \texttt{greet} 這張
+名字牌\textbf{撕下來、改貼到那個新的函式物件上}。
+
+從這一行之後，\texttt{greet} 指的已經不是原本那個函式了，而是包過的那一個。但原本那個函式
+並沒有消失——它還被 \texttt{wrapper} 握在手上（就是 \texttt{func} 那張名字牌），只是外面
+的人喊不到它了。
+
+這一行的巧妙之處在於：\textbf{呼叫端完全不用改}。程式其他地方原本怎麼寫 \texttt{greet(...)}，
+現在還是那樣寫，只是行為多了兩行記錄。換一張名字牌這件事，你在第 \ref{sec:function-first-class} 節
+就學過了（\texttt{operation = square}），只是當時大概沒想過可以這樣用。
+
+\keypoint{這裡的 \texttt{wrapper} 為了看得清楚，固定只收一個參數 \texttt{name}，所以
+\texttt{add\_log} 只能拿來包「剛好收一個引數」的函式。真正在專案裡通用的寫法，內層會用
+第 \ref{sec:function-args} 節的 \texttt{*args}／\texttt{**kwargs} 收下任意引數，這樣不管被包的
+函式長什麼樣子都應付得了。你以後在別人的程式碼裡看到滿滿的星號，不用意外——那就是這裡的
+\texttt{name} 換成了「什麼都收」的寫法而已。}
+
+\subsection*{常見錯誤：忘記 \texttt{return wrapper}}
+
+\texttt{add\_log} 最後那一行 \texttt{return wrapper} 很容易漏掉，畢竟前面的縮排區塊看起來
+已經「寫完了」。漏掉的話會這樣：
+
+\begin{example}{python}{(wrap-by-hand-broken.py) add\_log 忘記把 wrapper 回傳出去}
+def add_log(func):
+    def wrapper(name):
+        print("[log] start")
+        result = func(name)
+        print("[log] done")
+        return result
+
+
+def greet(name):
+    return f"Hello, {name}!"
+
+
+greet = add_log(greet)
+
+print(greet("Amy"))
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "wrap-by-hand-broken.py", line 15, in <module>
+    print(greet("Amy"))
+          ~~~~~^^^^^^^
+TypeError: 'NoneType' object is not callable
+\end{verbatim}
+
+這個錯誤訊息值得學會怎麼讀，因為它指的地方不是真正出錯的地方。整句話翻成中文是「\texttt{None}
+這種東西不能被呼叫」。從哪裡冒出一個 \texttt{None}？回想第 \ref{ch:functions} 章講過的規則：
+函式如果沒有寫 \texttt{return}，呼叫它得到的值就是 \texttt{None}。\texttt{add\_log} 現在正是
+這種函式，所以 \texttt{add\_log(greet)} 交回來的是 \texttt{None}，接著
+\texttt{greet = add\_log(greet)} 把 \texttt{greet} 這張名字牌貼到了 \texttt{None} 身上。等到
+下一行寫 \texttt{greet("Amy")}，等於是在呼叫 \texttt{None}——當然不行。
+
+注意裡面那個 \texttt{def wrapper} 本身完全沒問題，它確實被造出來了，只是造完就被丟在
+\texttt{add\_log} 裡面沒交出來。看到 \texttt{'NoneType' object is not callable}，第一個要
+檢查的就是：那個應該回傳函式的地方，是不是漏了 \texttt{return}？
+
+\section{\texttt{@}：包一層的簡寫}
+\label{sec:decorator}
+
+上一節那支程式完全能動，但寫起來有點囉嗦：函式定義完之後，還要記得在下面補一行
+\texttt{greet = add\_log(greet)}。而且這一行離 \texttt{def greet} 可能隔了一段距離，讀的人
+不一定會注意到「這個函式其實被包過了」。
+
+Python 為這個固定的動作準備了一個專用的簡寫。把上一節的最後兩步：
+
+\begin{code}{python}{手動的寫法}
+def greet(name):
+    return f"Hello, {name}!"
+
+
+greet = add_log(greet)
+\end{code}
+
+換成這樣：
+
+\begin{code}{python}{用 @ 的簡寫}
+@add_log
+def greet(name):
+    return f"Hello, {name}!"
+\end{code}
+
+在 \texttt{def} 上面那一行寫一個 \texttt{@} 加上函式名稱，意思就是：「這個函式定義完之後，
+立刻做一次 \texttt{greet = add\_log(greet)}」。就這樣，沒有別的了。
+
+\begin{example}{python}{(decorator-at.py) 用 @ 改寫上一節那支程式}
+def add_log(func):
+    def wrapper(name):
+        print("[log] start")
+        result = func(name)
+        print("[log] done")
+        return result
+
+    return wrapper
+
+
+@add_log
+def greet(name):
+    return f"Hello, {name}!"
+
+
+print(greet("Amy"))
+\end{example}
+
+\iosample{}{[log] start \\{} [log] done \\ Hello, Amy! \\}
+
+輸出跟 \texttt{wrap-by-hand.py} 一模一樣，因為做的事情本來就完全一樣。\texttt{add\_log} 這個
+函式一個字都沒改，改的只有「怎麼把它套上去」的寫法。
+
+這種寫在 \texttt{def} 上面、用來替函式包一層的東西，正式名稱叫 \textbf{decorator}
+（裝飾器）。它在真實的 Python 專案裡幾乎無所不在——網頁框架用它來標記「這個函式負責處理
+哪個網址」，測試工具用它來標記「這是一個要跑的測試」，權限檢查、快取、記錄，全都靠它。
+以後你打開任何一個像樣的 Python 專案，看到滿滿的 \texttt{@} 開頭的行，現在你知道那是什麼
+了：每一個都只是「定義完之後，把這個函式交給某個函式包一層，再貼回原本的名字」。
+\index{decorator（裝飾器）}
+
+\keypoint{\texttt{@add\_log} 不是一種新的語言機制，它只是
+\texttt{greet = add\_log(greet)} 的簡寫——這種「只是為了寫起來順手，沒有新增任何能力」的
+語法，一般叫做語法糖（syntactic sugar）。所以看到任何 \texttt{@} 開頭的東西，你都可以在
+腦子裡翻譯回第 \ref{sec:wrap-by-hand} 節那個手動的兩步形狀，再回頭想它到底做了什麼。}
+\index{語法糖（syntactic sugar）}
+
+要說明的是，decorator 這個主題還可以做得更花——讓 decorator 自己也帶參數、一個函式上疊好
+幾個 decorator、用它來包整個 class。這些寫法的地基都是這一節的那個等式，等你真的需要的
+時候再學不遲。這本書要你精熟的只有一件事：\texttt{@deco} 就是 \texttt{f = deco(f)}，
+兩邊可以互相翻譯。
+
+\begin{drills}[label=drills:decorator]
+\item 把下面這段用 \texttt{@} 的寫法，改寫成不用 \texttt{@} 的兩步寫法：
+\begin{quote}
+\texttt{@shout} \\
+\texttt{def say(word):} \\
+\texttt{~~~~return f"hello \{word\}"}
+\end{quote}
+\item 承上題，如果 \texttt{shout} 的定義是下面這樣，\texttt{print(say("amy"))} 會印出什麼？
+\begin{quote}
+\texttt{def shout(func):} \\
+\texttt{~~~~def wrapper(word):} \\
+\texttt{~~~~~~~~return func(word).upper()} \\
+\texttt{~~~~return wrapper}
+\end{quote}
+\item 有一個 decorator 叫 \texttt{add\_note}，它的 \texttt{wrapper} 裡寫的是
+\texttt{return func(text) + " (checked)"}。現在有一個函式：
+\begin{quote}
+\texttt{def clean(text):} \\
+\texttt{~~~~return text.strip()}
+\end{quote}
+如果用手動的方式套上去（也就是補一行 \texttt{clean = add\_note(clean)}），那麼
+\texttt{print(clean("~~hi~~"))} 會印出什麼？
+\end{drills}
+
+\section{幫函式的參數與回傳值貼上標籤：type hints}
+\label{sec:type-hints}
+
+前面六節談的都是「拿函式來用」。這一節換個方向，回頭談「怎麼描述一個函式」。
+
+第 \ref{sec:function-docstring} 節教過 docstring：在函式主體第一行寫一段說明文字，讓下一個
+讀到這段程式碼的人知道它在做什麼。那是給人看的散文。Python 還準備了一種更短、更結構化的
+寫法，可以直接寫在 \texttt{def} 那一行上，讓人一眼看出「這個函式吃什麼、吐什麼」——這種
+標註叫做 type hint（型別標註）。
+\index{type hint（型別標註）}
+
+\begin{code}{python}{在 def 那一行標註參數與回傳值的型別}
+def function_name(parameter: type) -> return_type:
+    code
+\end{code}
+
+參數名稱後面加一個冒號、接型別名稱；整串參數的右括號後面用 \texttt{->} 接回傳值的型別，
+再接原本那個冒號。
+
+\begin{example}{python}{(total-price-hint.py) 替兩個小函式加上標註}
+def total_price(prices: list[float]) -> float:
+    return sum(prices)
+
+
+def make_label(name: str, count: int) -> str:
+    return f"{name} x {count}"
+
+
+print(total_price([12.5, 8.0, 30.0]))
+print(make_label("notebook", 3))
+\end{example}
+
+\iosample{}{50.5 \\ notebook x 3 \\}
+
+\texttt{def total\_price(prices: list[float]) -> float:} 這一行，不用看函式主體就讀得懂：
+它收一份裝著小數的清單，吐回一個小數。可以用的型別就是你已經認識的那些——\texttt{int}、
+\texttt{float}、\texttt{str}、\texttt{bool}，容器則寫成 \texttt{list[str]}、
+\texttt{list[float]} 這種「清單，裡面裝的是字串／小數」的形式。
+
+順帶一提，如果一個函式只負責印東西、沒有 \texttt{return} 任何值（第 \ref{ch:functions} 章
+說過，這種函式呼叫後拿到的是 \texttt{None}），標註就寫成 \texttt{-> None}。這在別人的程式
+碼裡很常見，看到不用緊張。
+
+\subsection*{標錯了會怎樣？答案是什麼事都不會發生}
+
+看到 \texttt{name: str} 這種寫法，直覺上會覺得：既然都寫出來了，那傳錯東西進去 Python 應該
+會擋下來吧？來實測一次。
+
+\begin{example}{python}{(hint-not-checked.py) 故意傳跟標註完全不符的東西}
+def make_label(name: str, count: int) -> str:
+    return f"{name} x {count}"
+
+
+print(make_label("notebook", 3))
+print(make_label(99, "three"))
+\end{example}
+
+\iosample{}{notebook x 3 \\ 99 x three \\}
+
+第二次呼叫，\texttt{name} 收到的是數字 \texttt{99}、\texttt{count} 收到的是字串
+\texttt{"three"}，兩個都跟標註完全相反。程式照跑不誤，連一句警告都沒有。
+
+\keypoint{Python \textbf{完全不會}因為你標錯型別就報錯。type hint 對程式執行時的行為
+零影響——Python 執行的時候根本不看它們。這件事跟直覺衝突（「寫了就會檢查吧？」），但務必
+記牢：它們是標籤，不是門禁。程式會不會出事，取決於函式主體裡那些運算撐不撐得住你傳進去
+的東西，跟標註無關。}
+
+\subsection*{那它到底有什麼用}
+
+既然不檢查，為什麼還要寫？因為它服務的不是 Python，是\textbf{人跟工具}。
+
+第一，是給讀程式碼的人看的。看到 \texttt{def total\_price(prices: list[float]) -> float:}，
+你不用跳進函式裡讀主體，也不用猜參數名稱的言外之意，一眼就知道該餵什麼、會拿回什麼。
+
+第二，是給編輯器看的。現代的程式編輯器會讀這些標註，你打字打到一半，它就能提示這個變數
+有哪些方法可以用；如果你把字串傳給一個標了 \texttt{int} 的參數，它也會先在畫面上畫一條
+波浪線提醒你——注意，這是編輯器在提醒，不是 Python 在報錯。
+
+第三，是團隊的事。在一個好幾個人一起維護、跑好幾年的專案裡，這種標註等於是
+\textbf{用程式碼本身寫下來的約定}：這個函式承諾收什麼、承諾給什麼。約定寫在註解裡容易
+過期，寫在 \texttt{def} 那一行上就跟著程式碼一起被讀、一起被改。也因為這樣，許多公司的
+專案會要求新寫的函式一律加上標註。
+
+\subsection*{常見錯誤：冒號打成等號}
+
+有一個手滑很容易看漏，因為兩種寫法都不會報錯，但意思完全不同：
+
+\begin{example}{python}{(hint-typo.py) 把冒號打成等號}
+def show(count=int):
+    print(count)
+
+
+show()
+\end{example}
+
+\iosample{}{<class 'int'> \\}
+
+\texttt{def show(count=int):} 裡的等號不是標註，是\textbf{預設值}——它把 \texttt{count} 的
+預設值設成 \texttt{int} 這個函式物件本身（第 \ref{ch:variables} 章看過，\texttt{print(type(x))}
+印出來的 \texttt{<class 'int'>} 就是這個東西）。所以不給引數呼叫 \texttt{show()}，印出來的
+就是這個奇怪的東西。真正的標註寫法是冒號：\texttt{def show(count: int):}。
+
+\begin{drills}[label=drills:type-hints]
+\item 有 \texttt{def double(n: int) -> int: return n * 2}。呼叫
+\texttt{print(double("ab"))} 會不會報錯？會印出什麼？
+\item 看到 \texttt{def find\_names(records: list[str], keyword: str) -> list[str]:}
+這一行，在完全不看函式主體的情況下，你知道這個函式要收什麼、會給你什麼？
+\end{drills}
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:lambda}~節}
+\begin{enumerate}
+\item 印出 \texttt{12}。\texttt{lambda} 也可以有好幾個參數，用逗號隔開就行。
+\item \texttt{def square(n): return n * n}（寫成兩行：\texttt{def square(n):} 換行縮排
+\texttt{return n * n}）。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:key-function}~節}
+\begin{enumerate}
+\item 印出 \texttt{['fig', 'kiwi', 'banana']}：三個字的長度分別是 6、3、4，照長度由小到大
+排就是 fig、kiwi、banana。
+\item 印出 \texttt{Ben}：照 \texttt{age} 排完之後排第一個的是 24 歲的 Ben，再取他的
+\texttt{name}。
+\item 多打了一對括號。\texttt{item["price"]} 取出來的是一個數字，後面加上 \texttt{()}
+等於是在呼叫這個數字，會丟出 \texttt{TypeError}。把括號拿掉就對了。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:map-filter}~節}
+\begin{enumerate}
+\item 印出 \texttt{[6, 2, 4]}：每一項各乘 2，順序不變（\texttt{map} 不排序）。
+\item \texttt{[w for w in words if len(w) > 3]}，結果是
+\texttt{['kiwi', 'banana']}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:closure}~節}
+\begin{enumerate}
+\item 印出 \texttt{20 30}。\texttt{double} 跟 \texttt{triple} 是兩次不同呼叫造出來的兩個
+函式物件，各自握著自己那張 \texttt{factor} 名字牌（分別指著 2 跟 3）。
+\item 第三次呼叫 \texttt{counter()} 印出 \texttt{3}；\texttt{another()} 印出 \texttt{1}，
+因為 \texttt{another} 來自全新的一輪 \texttt{make\_counter()} 呼叫，配的是一組全新的名字
+牌，跟 \texttt{counter} 完全無關。
+\item 會丟出 \texttt{UnboundLocalError}。少了 \texttt{nonlocal}，\texttt{count = count + 1}
+這一行的賦值會讓 Python 把 \texttt{count} 當成 \texttt{increase} 自己的區域變數，可是等號
+右邊又要先讀它，而它還沒被賦值過。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:decorator}~節}
+\begin{enumerate}
+\item 先照常定義 \texttt{def say(word): return f"hello \{word\}"}，然後在下面補一行
+\texttt{say = shout(say)}。
+\item 印出 \texttt{HELLO AMY}：\texttt{wrapper} 先呼叫原本的 \texttt{say} 拿到
+\texttt{"hello amy"}，再對它做 \texttt{.upper()}。
+\item 印出 \texttt{hi (checked)}：原本的 \texttt{clean} 先把前後空白去掉得到
+\texttt{"hi"}，包在外面那層再接上 \texttt{" (checked)"}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:type-hints}~節}
+\begin{enumerate}
+\item 不會報錯，會印出 \texttt{abab}。標註 \texttt{int} 對執行完全沒有影響，而
+\texttt{"ab" * 2} 剛好是合法的字串重複運算，所以程式順利跑完——即使它回傳的其實是字串，
+跟標註寫的 \texttt{int} 不符。
+\item 它收兩個東西：一份裝著字串的清單 \texttt{records}，跟一個字串 \texttt{keyword}；
+回傳的是另一份裝著字串的清單。
+\end{enumerate}

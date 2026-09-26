@@ -1,0 +1,989 @@
+\chapter{模組與標準函式庫}
+\label{ch:modules}
+
+到目前為止，你寫的每一支程式，用到的功能幾乎都是自己一行一行打出來的。但真實世界寫程式不
+是這樣。你不會為了算一個平方根就自己重新推導數學公式，也不會為了抽一個隨機數字就自己
+發明一套演算法，這些事情早就有人寫好、測試過，放在那裡等你直接拿來用。
+
+這一章要帶你認識
+Python 自己內建的「標準函式庫」，你可以把它想成一整套已經放在你書架上的工具書，電腦裡
+本來就有，不用另外安裝（這一點跟第 \ref{ch:data-tools} 章不一樣：那裡教的 \texttt{pip} 是去外面的書店買
+書；這裡的書，你打開電腦的那一刻就已經在書架上了），你只需要知道怎麼把對的那本書拿下來
+用。
+
+這一章分五段推進：
+
+\begin{itemize}
+\item 先搞懂「拿書」這個動作本身怎麼做：\texttt{import} 到底在做什麼，有哪幾種常見的
+寫法（第~\ref{sec:import-syntax}~節）。
+\item 接著實際去書架上翻幾本你以後會很常用到的書，處理檔案路徑和系統資訊的 \texttt{os}
+和 \texttt{sys}（第~\ref{sec:os-and-sys}~節）。
+\item 再翻抽隨機數的 \texttt{random} 和處理日期的 \texttt{datetime}（第~
+\ref{sec:random-and-datetime}~節）。
+\item 接著認識一個處理「整理一批資料」時特別好用的工具，\texttt{collections} 模組裡的
+\texttt{Counter}，並簡短認識一下 \texttt{itertools}
+（第~\ref{sec:collections-and-itertools}~節）。
+\item 最後，我們要把角色反過來：你自己寫的 \texttt{.py} 檔案，其實也可以變成書架上的一
+本書，讓別的檔案 \texttt{import} 它、引用裡面的函式（第~\ref{sec:write-your-own-module}
+~節）。
+\end{itemize}
+
+我們不會把每一本書從頭到尾念給你聽，因為那既不可能，也沒必要，這一章真正的重點，是讓你
+養成「不知道就去查官方文件」的習慣，這個習慣比背下每個函式的名字重要得多。
+
+讀完這一章，你不會記得住標準函式
+庫裡的每一個函式，沒有人記得住，但你會知道要用的時候去哪裡找、怎麼看懂文件在講什麼，這
+個能力比死背 API 更耐用。
+
+\section{先搞懂「拿書」這個動作：import 語法}
+\label{sec:import-syntax}
+
+在認識任何一個模組的功能之前，得先搞懂一件更根本的事：你要怎麼跟 Python 說「我要用某
+個模組」。這個動作叫做 \texttt{import}，它有幾種常見的寫法，接下來每一節、每一個模組的
+範例都會用到這裡教的語法，不會再重講一次，值得在這裡花點時間把差異搞清楚。這一節借用
+\texttt{math}，Python 內建的數學模組，來示範，你不需要先知道 \texttt{math} 裡有什麼，
+跟著範例做就會自然理解。
+\index{import}
+
+第一種寫法，是把整個模組匯入進來，之後每次要用模組裡的東西，都要在前面加上模組的名字：
+
+\begin{code}{python}{Importing an entire module}
+import module_name
+
+module_name.member_name
+\end{code}
+
+\begin{example}{python}{(circle-area.py) Using import math to compute a circle's area}
+import math
+
+radius = 4
+area = math.pi * radius ** 2
+print(f"The area of a circle with radius {radius} is approximately {area:.2f}")
+\end{example}
+
+\iosample{}{The area of a circle with radius 4 is approximately 50.27 \\}
+
+\texttt{import math} 之後，\texttt{math.pi}（圓周率）跟 \texttt{math.sqrt(...)} 之類的
+東西都要透過 \texttt{math.} 這個首碼才能用。
+\index{math 模組}
+第二種寫法，是只精確匯入你要用的那一兩個名
+字，之後就可以直接用，不用再加模組名字首碼：
+
+\begin{code}{python}{Importing a single name precisely}
+from module_name import member_name
+
+member_name
+\end{code}
+
+\begin{example}{python}{(hypotenuse.py) Using from math import sqrt to compute the hypotenuse}
+from math import sqrt
+
+a = 3
+b = 4
+c = sqrt(a ** 2 + b ** 2)
+print(f"The hypotenuse length is {c}")
+\end{example}
+
+\iosample{}{The hypotenuse length is 5.0 \\}
+
+兩種寫法做的事情本質上一樣，差別只在「要不要打模組名字首碼」。什麼時候選哪一種？
+
+\begin{itemize}
+\item 如果你只會用到模組裡一兩個東西，而且那個名字不會跟你自己程式裡的變數撞名，用
+\texttt{from...import} 比較精簡好讀。
+\item 如果你會用到模組裡很多不同的功能，或者擔心名字撞
+在一起搞混，整模組匯入（\texttt{import math}，之後都寫 \texttt{math.sqrt(...)}）會比較
+清楚安全，一看到 \texttt{math.} 開頭，就知道這是從 \texttt{math} 模組來的東西，不會誤
+以為是你自己定義的函式。
+\end{itemize}
+
+\keypoint{\texttt{import math} 這個動作，其實跟你已經很熟的 \texttt{x = 5} 是同一件事，
+只是這次貼名字牌的對象換成了一整包別人寫好的程式碼，不再是一個數字。\texttt{import} 把
+\texttt{math} 這個模組物件，貼上了一張叫 \texttt{math} 的名字牌，之後你打 \texttt{math}
+這三個字，Python 就知道你在說哪一包程式碼。}
+
+這兩種寫法最容易搞混的地方，是「你用哪種方式匯入，就只能用哪種方式呼叫」，混著用會直
+接出錯。先看第一種混淆：明明只用 \texttt{import math} 整模組匯入，卻忘了打模組名字首
+碼，直接呼叫 \texttt{math} 裡的東西：
+
+\begin{example}{python}{(import-mistake-1.py) Using something without importing it first}
+radius = 4
+area = math.pi * radius ** 2
+print(area)
+\end{example}
+
+存檔執行後，你會看到：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "import-mistake-1.py", line 2, in <module>
+    area = math.pi * radius ** 2
+           ^^^^
+NameError: name 'math' is not defined. Did you forget to import 'math'?
+\end{verbatim}
+
+\texttt{NameError} 是說 Python 從頭到尾都沒看過 \texttt{math} 這個名字，這支程式從頭
+到尾根本沒有寫 \texttt{import math} 這一行，Python 當然不知道 \texttt{math} 是什麼。
+新版 Python 其實很貼心，直接在錯誤訊息裡猜了一句「你是不是忘了 import \texttt{math}」，
+這次剛好被它猜中了。
+
+再看反過來的混淆：用了 \texttt{from math import sqrt} 精確匯入，卻在呼叫的時候又多打
+了一次模組名字首碼：
+
+\begin{example}{python}{(import-mistake-2.py) Using the module prefix after a precise import}
+from math import sqrt
+
+result = math.sqrt(16)
+print(result)
+\end{example}
+
+執行結果同樣是 \texttt{NameError}：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "import-mistake-2.py", line 3, in <module>
+    result = math.sqrt(16)
+             ^^^^
+NameError: name 'math' is not defined. Did you forget to import 'math'?
+\end{verbatim}
+
+這裡容易讓人困惑的地方是：明明程式裡有一行 \texttt{import} 相關的敘述，怎麼還是
+\texttt{NameError}？原因是 \texttt{from math import sqrt} 只把 \texttt{sqrt} 這一個
+名字貼上了名字牌，\texttt{math} 這個名字本身完全沒有被貼過名字牌，這支程式應該直接寫
+\texttt{sqrt(16)}，不用、也不能加 \texttt{math.} 首碼。
+
+這兩種寫法之外，還有第三種常見的變化：幫模組或名字另外取一個比較短、比較好打，或是比較
+不容易跟你自己變數撞名的名字，這個動作叫做「取別名」，寫法是在 \texttt{import} 敘述後
+面加上 \texttt{as 別名}：
+\index{import ... as ...（別名）}
+
+\begin{code}{python}{Giving a module or name an alias}
+import module_name as alias
+
+alias.member_name
+
+from module_name import member_name as alias
+
+alias
+\end{code}
+
+\begin{example}{python}{(dice-roll.py) Using import random as rd for an alias}
+import random as rd
+
+roll = rd.randint(1, 6)
+print(f"Rolled a {roll}")
+\end{example}
+
+因為骰出來的點數每次執行都會不一樣，下面顯示的是作者某一次執行的結果，你自己執行時骰出
+的點數幾乎一定不一樣：
+
+\iosample{}{Rolled a 2 \\}
+
+\texttt{import random as rd} 之後，這支程式接下來都改用 \texttt{rd} 稱呼
+\texttt{random} 模組，效果跟打完整的 \texttt{random} 一模一樣，只是打字比較少。
+\texttt{as} 也可以接在 \texttt{from...import} 後面，把精確匯入的名字換一個名字：
+
+\begin{example}{python}{(hypotenuse-alias.py) Using from math import sqrt as square\_root for an alias}
+from math import sqrt as square_root
+
+a = 6
+b = 8
+c = square_root(a ** 2 + b ** 2)
+print(f"The hypotenuse length is {c}")
+\end{example}
+
+\iosample{}{The hypotenuse length is 10.0 \\}
+
+\keypoint{\texttt{from...import} 和 \texttt{import...as} 常常被搞混，但它們解決的是兩
+件不同的事。\texttt{from module\_name import member\_name} 決定的是「要不要打模組名字
+首碼」：把模組裡的某個名字直接搬出來，之後可以省略首碼。\texttt{import module\_name as
+alias} 決定的是「這個模組要叫什麼名字」：模組本身還是要透過首碼才能用它裡面的東西，只是
+首碼換成你自訂的別名，通常是為了少打幾個字，或是避免跟你自己的變數名字撞在一起。兩者可
+以合併使用，像 \texttt{from module\_name import member\_name as alias}，把「精確匯入」
+和「取別名」一次做完。}
+
+取了別名之後，如果不小心又用回原本的模組名字，一樣會出錯，道理跟前面兩個 NameError 一
+模一樣：
+
+\begin{example}{python}{(alias-mistake.py) Using the original module name after aliasing it}
+import random as rd
+
+number = random.randint(1, 6)
+print(number)
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "alias-mistake.py", line 3, in <module>
+    number = random.randint(1, 6)
+             ^^^^^^
+NameError: name 'random' is not defined. Did you forget to import 'random'?
+\end{verbatim}
+
+\texttt{import random as rd} 只把名字牌 \texttt{rd} 貼到 random 模組上，\texttt{random}
+這個名字本身，從頭到尾都沒有被貼過名字牌。取別名之後，程式碼裡就只認得那個別名，原本的
+模組名字等於不存在。
+
+\begin{drills}[label=drills:import-syntax]
+\item 這段程式碼執行後會發生什麼事？為什麼？
+\begin{verbatim}
+import math
+print(sqrt(25))
+\end{verbatim}
+\item 這段呢？
+\begin{verbatim}
+from math import pi
+print(math.pi)
+\end{verbatim}
+\item 這段程式碼執行後會印出什麼？
+\begin{verbatim}
+from math import pow
+print(pow(2, 10))
+\end{verbatim}
+\item 這段程式碼執行後會發生什麼事？為什麼？
+\begin{verbatim}
+import datetime as dt
+print(datetime.date.today())
+\end{verbatim}
+\item 如果你想用 \texttt{from random import choice as pick} 這種寫法匯入，之後要怎麼
+呼叫這個函式？
+\end{drills}
+
+\section{os 與 sys：跟你的電腦、跟執行方式對話}
+\label{sec:os-and-sys}
+
+書架上翻的頭兩本書，鎖定兩個你之後會很常打交道的模組：\texttt{os}（跟作業系統、跟檔案路
+徑打交道）和 \texttt{sys}（跟「這支程式是怎麼被執行的」有關的資訊）。這兩個模組的名字都
+是英文縮寫，\texttt{os} 是 operating system（作業系統），\texttt{sys} 是 system
+（系統），光看名字大概就能猜到它們在管什麼。
+
+\begin{code}{python}{Commonly used os module functions}
+import os
+
+os.getcwd()
+os.listdir(folder_path)
+os.path.join(path_part1, path_part2)
+\end{code}
+
+\texttt{os.getcwd()} 不用傳任何引數，回傳一個字串，代表「目前所在的資料夾路徑」（cwd
+是 current working directory 的縮寫，意思就是「你現在站在檔案系統的哪裡」）；
+\index{os.getcwd()}
+\texttt{os.listdir(folder\_path)} 傳入一個資料夾路徑字串，回傳一個 list，裡面是那個資
+料夾底下所有檔案和子資料夾的名字；
+\index{os.listdir()}
+\texttt{os.path.join(...)} 把好幾段路徑片段組合成一
+個完整路徑字串，比你自己手動用斜線接起來安全，Windows 用反斜線、macOS 和 Linux 用斜
+線，\texttt{os.path.join} 會自動幫你選對的符號，你不用自己判斷。
+\index{os.path.join()}
+
+\begin{example}{python}{(list-files.py) Listing files in the current folder}
+import os
+
+current_folder = os.getcwd()
+print(f"Current folder: {current_folder}")
+
+for filename in sorted(os.listdir(current_folder)):
+    full_path = os.path.join(current_folder, filename)
+    print(full_path)
+\end{example}
+
+下面是作者自己電腦上、在一個叫 \texttt{python-practice} 的資料夾（就是第 \ref{ch:introduction} 章請你建立
+的那一個）裡執行的結果，你自己執行時，資料夾路徑和列出來的檔案清單，一定會跟這裡不一
+樣，這正是這幾個函式該做的事：老實反映你電腦上這個資料夾現在的樣子。清單裡也包含了這支
+程式檔案自己（\texttt{list-files.py}），因為它自己也放在這個資料夾裡：
+
+\iosample{}{Current folder: /Users/nathan/python-practice \\
+/Users/nathan/python-practice/add.py \\
+/Users/nathan/python-practice/greet.py \\
+/Users/nathan/python-practice/hello.py \\
+/Users/nathan/python-practice/list-files.py \\
+/Users/nathan/python-practice/notes.txt \\}
+
+到這裡你可能會想問：\texttt{os} 模組裡還有其他函式嗎？當然有，而且遠比這三個多。這是本
+章最重要的示範：帶你實際去官方文件查一次，把整份清單背下來完全不是重點。打開瀏覽器，到
+\texttt{https://docs.python.org/3/library/os.html}（如果你在 Google 搜尋「python os
+module documentation」，通常第一個結果就是它）。
+
+頁面上每一個函式，都會先列出「函式簽
+名」，
+\index{函式簽名（signature）}
+長得像 \texttt{os.listdir(path='.')} 這樣的一行，你可以把它讀成：「\texttt{listdir}
+這個函式可以傳入一個叫 \texttt{path} 的引數，如果你沒傳，預設值是 \texttt{'.'}」（
+\texttt{.} 這個符號在檔案路徑裡代表「目前所在的資料夾」，這也是為什麼前面的範例就算不特
+別傳 \texttt{path} 也能用的原因）。
+
+函式簽名下面通常會有一兩段文字說明這個函式在做什
+麼、可能丟出什麼樣的例外，再往下常常會附一小段範例程式碼。你不需要一次讀懂整頁，先掃
+函式簽名和第一段說明，看看是不是你要的東西，需要更細節再往下讀範例就好。
+
+這一整套「打開
+文件、看簽名、看說明、看範例」的流程，之後每次你遇到不熟的模組或函式都可以重複套用，
+接下來這一章剩下的模組，我們不會再把這個流程重講一次，只會簡短提醒你「一樣的方法，自己
+去查」。
+
+現在就練習一次：\texttt{os.path} 底下還有 \texttt{basename()} 和 \texttt{dirname()}
+這兩個函式，這裡完全不打算解釋它們在做什麼，換你自己去文件頁面上找。找到之後應該會發
+現，兩者都是傳入一個完整路徑字串，\texttt{basename()} 只回傳路徑最後一段（通常是檔名本
+身），\texttt{dirname()} 回傳去掉最後一段之後剩下的資料夾路徑。
+\index{os.path.basename()／os.path.dirname()}
+動手試一次：
+
+\begin{code}{python}{os.path.basename() and os.path.dirname()}
+os.path.basename(path)
+os.path.dirname(path)
+\end{code}
+
+以 \texttt{path = "/Users/nathan/python-practice/notes.txt"} 為例，
+\texttt{os.path.basename(path)} 會得到 \texttt{"notes.txt"}，
+\texttt{os.path.dirname(path)} 會得到 \texttt{"/Users/nathan/python-practice"}。
+這兩個函式常常搭配 \texttt{os.listdir()} 一起用，例如只想挑出某個副檔名的檔案時，會
+需要先用 \texttt{os.path.basename()} 拿到檔名，再用字串方法檢查結尾。
+
+\texttt{os} 管的是檔案跟資料夾，\texttt{sys} 管的是另一件事：這支程式本身是怎麼被執
+行的。這裡只教一個你以後會很常用到的東西：\texttt{sys.argv}。
+
+\begin{code}{python}{sys.argv: arguments typed after the filename at runtime}
+import sys
+
+sys.argv[0]
+sys.argv[1]
+\end{code}
+
+\texttt{sys.argv} 是一個 list，裡面裝的是你在終端機打 \texttt{python3} 之後、那整行文
+字被空白切開的每一段。
+\index{sys 模組／sys.argv}
+
+\keypoint{很多新手以為 \texttt{sys.argv[0]} 是自己打的第一個參數，其實不是。
+\texttt{sys.argv[0]} 永遠是這支程式自己的檔名，你自己想額外傳進去的參數，要從
+\texttt{sys.argv[1]} 才開始算。}
+
+\begin{example}{python}{(greet-arg.py) Greeting using command-line arguments}
+import sys
+
+print(f"This program's filename is: {sys.argv[0]}")
+
+if len(sys.argv) > 1:
+    name = sys.argv[1]
+    print(f"Hello, {name}!")
+else:
+    print("Hello, stranger! You can pass a name when you run this, like this:")
+    print("python3 greet-arg.py Alice")
+\end{example}
+
+假設你在終端機打 \texttt{python3 greet-arg.py Alice}，執行結果會是：
+
+\iosample{}{This program's filename is: greet-arg.py \\
+Hello, Alice! \\}
+
+如果不加任何名字，只打 \texttt{python3 greet-arg.py}，結果會變成：
+
+\iosample{}{This program's filename is: greet-arg.py \\
+Hello, stranger! You can pass a name when you run this, like this: \\
+python3 greet-arg.py Alice \\}
+
+\texttt{greet-arg.py} 裡那一行 \texttt{if len(sys.argv) > 1} 不是隨便寫寫的，拿掉它會
+出事。看看少了這道檢查會發生什麼：
+
+\begin{example}{python}{(greet-arg-mistake.py) Accessing an argument without checking its count}
+import sys
+
+name = sys.argv[1]
+print(f"Hello, {name}!")
+\end{example}
+
+假設你直接執行 \texttt{python3 greet-arg-mistake.py}，沒有多打任何名字：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "greet-arg-mistake.py", line 3, in <module>
+    name = sys.argv[1]
+           ~~~~~~~~^^^
+IndexError: list index out of range
+\end{verbatim}
+
+沒多打參數時，\texttt{sys.argv} 只有 \texttt{sys.argv[0]}（程式檔名）這一個元素，沒有
+第二個位置可以取。這就是為什麼 \texttt{greet-arg.py} 動手存取 \texttt{sys.argv[1]} 之
+前，要先用 \texttt{if len(sys.argv) > 1} 確認清單裡真的有這個位置，這跟第 \ref{ch:strings} 章提過的
+差一錯誤是同一種提醒：存取索引之前，先想清楚清單到底有幾個元素。
+
+\texttt{os} 模組底下還有一個函式，值得特別停下來講：\texttt{os.path.exists(path)}，
+傳入一個路徑字串，回傳 \texttt{True} 或 \texttt{False}，告訴你這個路徑存不存在。乍看之
+下，這好像是「打開檔案之前先檢查檔案在不在」的完美工具：
+
+\begin{code}{python}{Checking whether a file exists: LBYL vs. EAFP}
+# 先檢查再做 (LBYL)：可以運作，但不是 Python 慣用寫法
+if os.path.exists(file_path):
+    process_file(file_path)
+else:
+    handle_missing_file()
+
+# 先做，出錯再處理 (EAFP)：更符合 Python 的慣用寫法
+try:
+    process_file(file_path)
+except FileNotFoundError:
+    handle_missing_file()
+\end{code}
+
+\stylepoint{\texttt{os.path.exists()} 可以先檢查檔案存不存在，但還記得第 \ref{ch:files-exceptions} 章教過的
+嗎？從你檢查完到你真的打開檔案之間，這段時間檔案有可能被刪掉、被搬走，狀態已經變了，
+「檢查過」不等於「安全」。優先用 \texttt{try/except} 接住 \texttt{FileNotFoundError}，
+還是比先檢查再動手更保險，這跟第 \ref{ch:files-exceptions} 章教的 EAFP 是同一個道理。}
+
+跟 \texttt{os.path.exists()} 同一家族的還有兩個，用來分辨一個路徑指向的是資料夾還是
+檔案：\texttt{os.path.isdir(path)} 跟 \texttt{os.path.isfile(path)}，各自回傳
+\texttt{True} 或 \texttt{False}。
+\index{os.path.isdir()／os.path.isfile()}
+\texttt{os.listdir()} 交給你的只是一串名字，光看名字分不出哪個是資料夾、哪個是檔案，
+這兩個函式就是用來問這件事的。
+
+\begin{example}{python}{(list-what-is-what.py) 分辨資料夾與檔案}
+import os
+
+for name in sorted(os.listdir(".")):
+    full_path = os.path.join(".", name)
+    if os.path.isdir(full_path):
+        print(name, "是資料夾")
+    else:
+        print(name, "是檔案")
+\end{example}
+
+\iosample{}{notes\_folder 是資料夾 \\ readme.txt 是檔案 \\}
+
+要注意的是，這兩個函式吃的是\textbf{完整路徑}，不是 \texttt{os.listdir()} 給你的那個
+名字——所以上面先用 \texttt{os.path.join()} 把資料夾位置跟名字接起來，才拿去問。
+直接把 \texttt{name} 丟進 \texttt{os.path.isdir()}，除非你剛好就站在那個資料夾裡，
+否則會得到 \texttt{False}，而且不會報錯，是那種安靜的錯。
+
+\section{random 與 datetime：抽個隨機數、算個日期}
+\label{sec:random-and-datetime}
+
+書架上再翻兩本書：\texttt{random}（抽隨機數）跟 \texttt{datetime}（處理日期）。這兩個
+模組的示範方式跟前一節一樣，只教一兩個你以後最常用到的功能，剩下的，你已經知道怎麼自
+己去查文件了。
+
+\begin{code}{python}{Commonly used random module functions}
+import random
+
+random.randint(low, high)
+random.choice(sequence)
+\end{code}
+
+\texttt{random.randint(low, high)} 回傳一個 \texttt{low} 到 \texttt{high} 之間的整
+數；
+\index{random.randint()}
+\texttt{random.choice(sequence)} 從一個序列（list、tuple、字串都可以）裡隨機挑一
+個元素回傳。
+\index{random.choice()}
+
+\keypoint{\texttt{random.randint(low, high)} 的範圍是「包含頭尾兩端」的，\texttt{low}
+跟 \texttt{high} 都有可能被抽到。這跟你已經很熟的 \texttt{range(low, high)}「不包含尾
+端」剛好不一樣，很容易搞混，用之前先想一下這次要的是哪一種。}
+
+\begin{example}{python}{(guess-number.py) A number-guessing game}
+import random
+
+secret_number = random.randint(1, 10)
+guess_count = 0
+
+while True:
+    guess = int(input("Guess a number between 1 and 10: "))
+    guess_count += 1
+    if guess < secret_number:
+        print("Too low, try again!")
+    elif guess > secret_number:
+        print("Too high, try again!")
+    else:
+        print(f"Correct! The answer was {secret_number}. You guessed {guess_count} times.")
+        break
+\end{example}
+
+因為 \texttt{secret\_number} 是每次執行都重新抽的，下面這組輸入輸出只是作者某一次執行
+的結果，那次亂數剛好抽到 7，你自己執行時抽到的數字幾乎一定不一樣，猜的過程也會不一
+樣，這是正常的：
+
+\iosample{3 \\ 9 \\ 7 \\}{Guess a number between 1 and 10: Too low, try again! \\
+Guess a number between 1 and 10: Too high, try again! \\
+Guess a number between 1 and 10: Correct! The answer was 7. You guessed 3 times. \\}
+
+\begin{example}{python}{(pick-helper.py) Randomly picking a helper for the day}
+import random
+
+students = ["Alice", "David", "Emma", "Bob"]
+today_helper = random.choice(students)
+print(f"Today's helper is: {today_helper}")
+\end{example}
+
+一樣，這裡顯示的是作者某一次執行的結果，你自己執行，抽到的名字幾乎一定不一樣：
+
+\iosample{}{Today's helper is: Emma \\}
+
+到這裡你已經看過一次「打開官方文件、看函式簽名、看說明」的完整示範（第~
+\ref{sec:os-and-sys}~節示範了怎麼查 \texttt{os} 模組）。這一次換你自己動手：
+\texttt{random} 模組裡除了 \texttt{randint} 和 \texttt{choice}，還有一個很好用的函式
+叫 \texttt{sample}，這一章完全沒教過它，要自己去
+\texttt{https://docs.python.org/3/library/random.html} 找。
+
+頁面上往下捲，會找到一行
+函式簽名長得像 \texttt{random.sample(population, k)}，說明寫著「從 population 這個序
+列裡，不重複地隨機抽出 k 個元素，回傳一個 list」。
+\index{random.sample()}
+光看這一行，大概就能猜到它跟
+\texttt{random.choice()} 的差別：\texttt{choice()} 每次只抽一個，同一批人裡可能被抽到
+好幾次；\texttt{sample()} 一次抽好 k 個，保證彼此不重複，很適合抽獎、分組這類「不能抽
+到同一個人兩次」的情境。
+
+\begin{example}{python}{(lottery-pick.py) Using random.sample() from the docs for a lottery draw}
+import random
+
+numbers = list(range(1, 43))
+winning_numbers = random.sample(numbers, 6)
+print(f"This week's winning numbers: {sorted(winning_numbers)}")
+\end{example}
+
+跟前面的 random 範例一樣，下面顯示的是作者某一次執行的結果，你自己執行，抽到的號碼幾
+乎一定不一樣：
+
+\iosample{}{This week's winning numbers: [11, 25, 26, 30, 32, 39] \\}
+
+\stylepoint{\texttt{random.sample()} 本身回傳的 list 沒有排序，抽出來的順序就是抽出的
+順序。範例裡特地包了一層 \texttt{sorted(...)}，只是為了讓開獎號碼看起來由小到大比較好
+讀，不影響 \texttt{sample()} 抽樣本身的公平性。}
+
+接下來看 \texttt{datetime}，處理日期最常用的模組。
+
+\begin{code}{python}{Commonly used datetime module functions}
+import datetime
+
+datetime.date.today()
+datetime.date(year, month, day)
+some_date + datetime.timedelta(days=n)
+\end{code}
+
+\texttt{datetime.date.today()} 回傳一個代表「今天」的日期物件，印出來會是
+\texttt{YYYY-MM-DD} 這種格式；
+\index{datetime.date.today()}
+如果你要的日期換成某一天你自己指定的日期，不是今天，可以用
+\texttt{datetime.date(year, month, day)}，例如 \texttt{datetime.date(2027, 1, 1)} 就是
+「2027 年 1 月 1 日」這一天的日期物件，跟 \texttt{today()} 回傳的東西是同一種型別，可以
+放在一起做運算；
+\index{datetime.date(year, month, day)}
+兩個日期物件相減，會得到一個 \texttt{timedelta} 物件，
+裡面的 \texttt{.days} 屬性就是「相差幾天」的整數；一個日期物件加上
+\texttt{datetime.timedelta(days=n)}，會得到 \texttt{n} 天後的另一個日期物件，減法自
+然也可以，會得到 \texttt{n} 天前的日期。
+\index{datetime.timedelta()}
+
+\begin{example}{python}{(event-countdown.py) Counting the days until a date}
+import datetime
+
+today = datetime.date.today()
+print(f"Today's date is: {today}")
+
+new_year = datetime.date(2027, 1, 1)
+days_left = (new_year - today).days
+print(f"There are {days_left} days left until January 1, 2027")
+
+reminder_date = today + datetime.timedelta(days=10)
+print(f"10 days from today is: {reminder_date}")
+\end{example}
+
+「今天」跟「還有幾天」這兩行的數字，會隨著你實際執行的日期改變，下面顯示的是作者寫這
+段文字那天（2026 年 9 月 1 日）執行的結果：
+
+\iosample{}{Today's date is: 2026-09-01 \\
+There are 122 days left until January 1, 2027 \\
+10 days from today is: 2026-09-11 \\}
+
+日期物件加減的時候，如果忘了用 \texttt{timedelta} 包起來，直接加一個整數，會出什麼事？
+
+\begin{example}{python}{(date-mistake.py) Adding an integer directly instead of using timedelta}
+import datetime
+
+today = datetime.date.today()
+next_week = today + 7
+print(next_week)
+\end{example}
+
+執行結果：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "date-mistake.py", line 4, in <module>
+    next_week = today + 7
+                ~~~~~~^~~
+TypeError: unsupported operand type(s) for +: 'datetime.date' and 'int'
+\end{verbatim}
+
+這裡的 \texttt{TypeError} 是在提醒你：日期物件不知道「加 7」該當成加 7 天、7 小時，還
+是別的什麼單位，它只認得 \texttt{timedelta} 這種專門表示「一段時間長度」的物件。正確寫
+法要把 7 包成 \texttt{datetime.timedelta(days=7)}，像本節稍早的
+\texttt{event-countdown.py} 那樣。
+
+\begin{drills}[label=drills:stdlib-modules]
+\item \texttt{random.randint(1, 5)} 可能抽到的最小值、最大值各是多少？
+\item 你的程式檔名是 \texttt{weather.py}，在終端機打
+\texttt{python3 weather.py taipei}，\texttt{sys.argv} 這個 list 裡有幾個元素？
+\texttt{sys.argv[0]}、\texttt{sys.argv[1]} 分別是什麼？
+\item 小華覺得 \texttt{random.randint(1, 10)} 應該跟 \texttt{range(1, 10)} 一樣不包含
+10，所以他很確定下面這段程式碼絕對不會印出「Got a 10!」：
+\begin{verbatim}
+number = random.randint(1, 10)
+if number == 10:
+    print("Got a 10!")
+\end{verbatim}
+小華的想法哪裡錯了？
+\item \texttt{random.sample([10, 20, 30, 40], 2)} 會回傳一個裝有幾個元素的 list？裡面
+的元素有沒有可能重複？
+\item \texttt{path = "/Users/nathan/python-practice/notes.txt"}，
+\texttt{os.path.basename(path)} 跟 \texttt{os.path.dirname(path)} 分別會得到什麼？
+\end{drills}
+
+\section{collections.Counter：專門用來計數的字典}
+\label{sec:collections-and-itertools}
+
+第 \ref{ch:dict-set} 章教過的 dict，很適合用來記錄「一個線索對應一個答案」的資料。有一種特別常見的任
+務，剛好是 dict 拿手的另一種用法：給你一份清單，數清單裡每一種東西各出現幾次。用你現
+有的工具就寫得出來：
+
+\begin{example}{python}{(vote-count-manual.py) Manually counting with a dict}
+votes = ["Alice", "David", "Alice", "Emma", "Alice", "David", "Alice", "Bob"]
+vote_counts = {}
+
+for name in votes:
+    vote_counts[name] = vote_counts.get(name, 0) + 1
+
+print(vote_counts)
+\end{example}
+
+\iosample{}{\{'Alice': 4, 'David': 2, 'Emma': 1, 'Bob': 1\} \\}
+
+這裡用了第 \ref{ch:dict-set} 章教過的 \texttt{get(key, default)}：如果 \texttt{name} 這個 key 已經在
+\texttt{vote\_counts} 裡，就把它原本的票數加 1；如果還沒出現過，\texttt{get} 會給一個
+預設值 0，加 1 之後剛好就是這個人的第一票。這樣寫完全沒有問題，但「用 dict 計數」這個
+模式實在太常見，Python 標準函式庫的 \texttt{collections} 模組，已經把它包成一個現成的
+容器型別，叫 \texttt{Counter}：
+\index{collections.Counter}
+
+\begin{code}{python}{Common usage of collections.Counter}
+from collections import Counter
+
+counts = Counter(iterable)
+counts.most_common(n)
+\end{code}
+
+把任何一個可疊代物件（list、字串都可以）直接餵給 \texttt{Counter(...)}，它會自動數出
+裡面每個元素各出現幾次，回傳一個 \texttt{Counter} 物件，可以把它想成一種「加強版的
+dict」：查詢、走訪的用法跟 dict 完全一樣，只是多了幾個計數專用的方法。
+
+\texttt{counts.most\_common(n)} 依照出現次數由多到少排序，回傳前 \texttt{n} 名，每一名
+是一個 \texttt{(元素, 次數)} 的 tuple，整體裝在一個 list 裡（呼應第 \ref{ch:tuples} 章教過的
+unpacking，可以直接用 \texttt{for 元素, 次數 in counts.most\_common():} 走訪）；不傳
+\texttt{n} 的話，預設回傳全部，一樣是由多到少排好序。
+\index{most\_common()}
+
+\begin{example}{python}{(vote-count.py) Rewriting the vote count with Counter}
+from collections import Counter
+
+votes = ["Alice", "David", "Alice", "Emma", "Alice", "David", "Alice", "Bob"]
+vote_counts = Counter(votes)
+
+print(vote_counts)
+
+winner, winner_votes = vote_counts.most_common(1)[0]
+print(f"{winner} is currently leading with {winner_votes} votes")
+
+for name, count in vote_counts.most_common():
+    print(f"{name}: {count} votes")
+\end{example}
+
+\iosample{}{Counter(\{'Alice': 4, 'David': 2, 'Emma': 1, 'Bob': 1\}) \\
+Alice is currently leading with 4 votes \\
+Alice: 4 votes \\
+David: 2 votes \\
+Emma: 1 votes \\
+Bob: 1 votes \\}
+
+跟 \texttt{vote-count-manual.py} 對照著看：兩支程式數出來的結果一模一樣，但
+\texttt{Counter} 版本不用自己寫 \texttt{get(name, 0) + 1} 這個累加邏輯，還多送了
+\texttt{most\_common()} 這個直接排好名次的方法。
+
+\keypoint{查詢一個不存在的 key 時，\texttt{Counter} 跟一般 dict 的行為不一樣。一般
+dict 用中括號查一個不存在的 key，會丟出第 \ref{ch:dict-set} 章教過的 \texttt{KeyError}；
+\texttt{Counter} 遇到同樣的情況，會直接回傳 0，不會報錯。這其實也是一種對讀者友善的
+EAFP 精神：計數這件事，「查無此人」本來就等於「目前是 0 票」，\texttt{Counter} 幫你把
+這個常見情境內建好了，不用自己再寫 \texttt{try/except} 或 \texttt{get()} 去接。}
+
+\begin{example}{python}{(counter-missing-key.py) Looking up a name that never appeared}
+from collections import Counter
+
+votes = ["Alice", "David", "Alice", "Emma"]
+vote_counts = Counter(votes)
+
+print(vote_counts["Bob"])
+\end{example}
+
+\iosample{}{0 \\}
+
+\texttt{Counter} 是 \texttt{collections} 模組裡的名字，不是 Python 內建、隨時都能用的
+東西，忘記 \texttt{import} 一樣會出現本章一開始就看過的 \texttt{NameError}：
+
+\begin{example}{python}{(counter-import-mistake.py) Forgetting to import Counter}
+votes = ["Alice", "David", "Alice"]
+vote_counts = Counter(votes)
+print(vote_counts)
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "counter-import-mistake.py", line 2, in <module>
+    vote_counts = Counter(votes)
+                  ^^^^^^^
+NameError: name 'Counter' is not defined
+\end{verbatim}
+
+這支程式缺了開頭那一行 \texttt{from collections import Counter}，跟第~
+\ref{sec:import-syntax}~節示範過的道理完全一樣：不管一個名字來自標準函式庫裡的哪個模
+組，用之前一定要先 \texttt{import}，Python 不會自動幫你找。
+
+標準函式庫裡跟 \texttt{collections} 放在一起的，還有一個叫 \texttt{itertools} 的模
+組，專門處理「疊代」相關的各種小技巧，例如把好幾個序列的元素兩兩配對出所有組合。這裡只
+點到為止，讓你知道遇到「窮舉所有組合」這類需求時，可以想到有這個模組存在，值得去官方文
+件看看，不會要求你這裡就精熟它：
+\index{itertools（product()／combinations()）}
+
+\begin{example}{python}{(itertools-peek.py) Using itertools.product to list all combinations}
+import itertools
+
+sizes = ["S", "M", "L"]
+colors = ["Red", "Blue"]
+
+for size, color in itertools.product(sizes, colors):
+    print(f"Size {size}, Color {color}")
+\end{example}
+
+\iosample{}{Size S, Color Red \\
+Size S, Color Blue \\
+Size M, Color Red \\
+Size M, Color Blue \\
+Size L, Color Red \\
+Size L, Color Blue \\}
+
+如果自己寫，這段程式碼要用第 \ref{ch:loops} 章教過的巢狀迴圈（一個 \texttt{for} 迴圈裡面再包一個
+\texttt{for} 迴圈）才寫得出同樣的效果，\texttt{itertools.product(...)} 把這個常見模式
+包成一行。\texttt{itertools} 模組裡類似的函式還有不少，例如
+\texttt{itertools.combinations(sequence, r)}，列出「從一批東西裡挑 \texttt{r} 個、不
+考慮挑選順序」的所有搭配（適合「兩兩配對但不重複算兩次」這種情境，跟 \texttt{product}
+「每個位置各自獨立配對」不太一樣），用法都大同小異，需要的時候查文件就好。
+
+標準函式庫裡
+類似 \texttt{itertools} 這種「會用就好、不強求精熟」的模組還有很
+多，之後遇到「這個任務感覺 Python 應該已經有現成工具」的情況，養成先去官方文件搜尋一
+下的習慣，往往比自己從頭寫更快。
+
+\begin{drills}[label=drills:collections-and-itertools]
+\item 下面這段程式碼會印出什麼？
+\begin{verbatim}
+from collections import Counter
+
+grades = ["A", "B", "A", "A", "C", "B"]
+grade_counts = Counter(grades)
+print(grade_counts["A"])
+print(grade_counts["F"])
+\end{verbatim}
+\item \texttt{Counter(["x", "y", "x"]).most\_common(1)} 這一行會回傳什麼？
+\item \texttt{itertools.product(["a", "b"], [1, 2])} 這一行會依序配對出幾組結果？
+\end{drills}
+
+\section{寫自己的模組}
+\label{sec:write-your-own-module}
+
+前面幾節，你都是在拿別人寫好的書來用：\texttt{math}、\texttt{os}、\texttt{sys}、
+\texttt{random}、\texttt{datetime}、\texttt{collections}，這些都是別人寫好、測試過，
+放在書架上的模組。這一節要把角色反過來：你自己寫的 \texttt{.py} 檔案，本質上跟這些模組
+是同一種東西，一樣可以被 \texttt{import}，一樣可以被別的檔案拿去用。
+\index{自訂模組}
+
+\begin{code}{python}{Saving a function as a standalone module}
+# my_module.py
+def function_name(argument):
+    ...
+
+# main.py
+import my_module
+
+my_module.function_name(value)
+\end{code}
+
+具體做法是：把你想重複使用的函式，存進一個獨立的 \texttt{.py} 檔案，檔名就是之後
+\texttt{import} 要打的名字（不含 \texttt{.py} 這個副檔名）。下面先準備一個工具檔案，裡
+面放兩個小函式：
+
+\begin{example}{python}{(my\_tools.py) Saving two small utility functions as a standalone file}
+def count_vowels(text):
+    """Count the number of vowel letters in a string (a, e, i, o, u, case-insensitive)."""
+    vowels = "aeiouAEIOU"
+    count = 0
+    for char in text:
+        if char in vowels:
+            count += 1
+    return count
+
+
+def celsius_to_fahrenheit(celsius):
+    """Convert Celsius temperature to Fahrenheit."""
+    return celsius * 9 / 5 + 32
+\end{example}
+
+你可能注意到，這兩個函式主體的第一行都是一個三引號字串，例如
+\texttt{"""Count the number of vowel letters..."""}，這叫做 docstring（說明文件字串），用來說
+明這個函式在做什麼，不是必要的，但是個好習慣，之後別人（或你自己）用 \texttt{help()} 或
+編輯器查詢這個函式時，就會看到這段說明。
+\index{docstring（說明文件字串）}
+實際用 \texttt{help()} 查一次看看：
+
+\begin{example}{python}{(check-docstring.py) Using help() to view a function's docstring}
+import my_tools
+
+help(my_tools.count_vowels)
+\end{example}
+
+執行後，終端機會顯示：
+
+\begin{verbatim}
+Help on function count_vowels in module my_tools:
+
+count_vowels(text)
+    Count the number of vowel letters in a string (a, e, i, o, u, case-insensitive).
+\end{verbatim}
+
+\texttt{help()} 不只可以查你自己寫的函式，前面幾節提到的 \texttt{os.listdir}、
+\texttt{random.randint}，只要模組已經 \texttt{import} 過，都可以直接
+\texttt{help(os.listdir)} 這樣查。這跟本章稍早示範的「打開官方文件查函式簽名」是同一
+件事的另一種做法，差別在 \texttt{help()} 直接印在終端機裡，不用開瀏覽器；缺點是網頁文
+件通常還會有額外的範例和更完整的說明，兩種方式互相搭配使用即可。
+
+這支檔案本身執行不會印出任何東西，它只是定義了兩個函式，等別的檔案來呼叫，所以這裡沒
+有對應的輸出範例。把它存成 \texttt{my\_tools.py}，跟下面這支檔案放在同一個資料夾裡：
+
+\begin{example}{python}{(use-my-tools.py) Calling your own function with import my\_tools}
+import my_tools
+
+sentence = "Hello, World!"
+vowel_count = my_tools.count_vowels(sentence)
+print(f"'{sentence}' has {vowel_count} vowels")
+
+temperature = my_tools.celsius_to_fahrenheit(30)
+print(f"30 Celsius is {temperature} Fahrenheit")
+\end{example}
+
+\iosample{}{'Hello, World!' has 3 vowels \\
+30 Celsius is 86.0 Fahrenheit \\}
+
+你剛剛做的事，跟第~\ref{sec:import-syntax}~節的 \texttt{import math} 是一模一樣的動
+作，只是這次書架上的書換成了你自己寫的 \texttt{my\_tools.py}。既然是一模一樣的動作，
+第~\ref{sec:import-syntax}~節教過的幾種寫法，在這裡當然也完全適用：
+
+\begin{example}{python}{(use-my-tools-2.py) Calling your own function with a precise import}
+from my_tools import celsius_to_fahrenheit
+
+temperature = celsius_to_fahrenheit(0)
+print(f"0 Celsius is {temperature} Fahrenheit")
+\end{example}
+
+\iosample{}{0 Celsius is 32.0 Fahrenheit \\}
+
+\stylepoint{你自己的檔案被 \texttt{import} 之後，也是被貼上一張名字牌（模組名
+\texttt{my\_tools}），跟 \texttt{os}、\texttt{random} 這些別人寫的模組沒有兩樣，
+Python 並不區分「標準函式庫的模組」跟「你自己寫的模組」，兩者是同一套機制。}
+
+自己寫的模組要能被 \texttt{import}，有一個容易忽略的前提：檔案要跟呼叫它的那支程式放
+在同一個資料夾裡（至少目前這個階段，你只需要記得這一點，更複雜的資料夾結構是之後才會
+遇到的事）。如果不是，會發生什麼事？
+
+\begin{example}{python}{(missing-module.py) Importing when the file isn't in the same folder}
+import my_tools
+
+print(my_tools.count_vowels("test"))
+\end{example}
+
+假設 \texttt{missing-module.py} 跟 \texttt{my\_tools.py} 沒有放在同一個資料夾，執行時
+會看到：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "missing-module.py", line 1, in <module>
+    import my_tools
+ModuleNotFoundError: No module named 'my_tools'
+\end{verbatim}
+
+還記得第 \ref{ch:data-tools} 章的 \texttt{ModuleNotFoundError} 嗎？那裡是套件根本沒有安裝；這裡的情況不
+一樣，\texttt{my\_tools.py} 確實存在，只是不在 Python 找模組的地方。Python 找你自己寫
+的模組，預設只會找「目前執行的這支程式所在的資料夾」，不會自動去別的資料夾翻找，這也是
+為什麼前面一直提醒你，兩個檔案要放在同一個資料夾裡。
+
+\begin{drills}[label=drills:write-your-own-module]
+\item 你把一個函式 \texttt{def add(a, b): return a + b} 存成一個檔案，想在另一個檔案裡
+用 \texttt{import my\_math} 的方式使用它，這個檔案該存成什麼檔名？
+\item 如果你想省略模組名字首碼，直接用 \texttt{add(3, 5)} 呼叫這個函式，
+\texttt{import} 那一行該怎麼寫？
+\item 小美把 \texttt{my\_tools.py} 存在桌面的一個資料夾，把 \texttt{use-my-tools.py}
+存在另一個資料夾，執行後出現 \texttt{ModuleNotFoundError}，該怎麼修正？
+\end{drills}
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:import-syntax}~節}
+\begin{enumerate}
+\item 會出現 \texttt{NameError: name 'sqrt' is not defined}，這裡只用
+\texttt{import math} 整模組匯入，\texttt{sqrt} 這個名字沒有被單獨貼上名字牌，只有
+\texttt{math} 有；要嘛改成 \texttt{math.sqrt(25)}，要嘛開頭改成
+\texttt{from math import sqrt}。
+\item 會出現 \texttt{NameError: name 'math' is not defined}，這裡只用
+\texttt{from math import pi} 精確匯入了 \texttt{pi}，\texttt{math} 這個名字本身沒有被
+貼過名字牌，應該直接寫 \texttt{print(pi)}。
+\item 會印出 \texttt{1024.0}，\texttt{from math import pow} 已經把 \texttt{pow} 精確
+匯入，可以直接呼叫，\texttt{2} 的 \texttt{10} 次方是 1024，\texttt{math.pow} 回傳的是
+浮點數。
+\item 會出現 \texttt{NameError: name 'datetime' is not defined}，\texttt{import
+datetime as dt} 只把名字牌 \texttt{dt} 貼到 \texttt{datetime} 模組上，\texttt{datetime}
+這個名字本身沒有被貼過名字牌，應該寫成 \texttt{dt.date.today()}。
+\item \texttt{pick(sequence)}，取別名之後，程式碼裡只認得別名 \texttt{pick}，原本的函
+式名字 \texttt{choice} 已經不能再拿來呼叫。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:random-and-datetime}~節}
+\begin{enumerate}
+\item 最小值是 1，最大值是 5，\texttt{random.randint(low, high)} 的範圍包含頭尾兩端。
+\item \texttt{sys.argv} 有 2 個元素：\texttt{sys.argv[0]} 是 \texttt{"weather.py"}，
+\texttt{sys.argv[1]} 是 \texttt{"taipei"}。
+\item 小華把 \texttt{random.randint()} 跟 \texttt{range()} 的邊界行為搞混了，
+\texttt{random.randint(1, 10)} 是「包含頭尾兩端」的閉區間，10 是有可能被抽到的，
+所以這段程式碼有可能印出「Got a 10!」，跟不包含尾端的 \texttt{range(1, 10)} 不一樣。
+\item 會回傳一個裝有 2 個元素的 list，元素之間不會重複，因為 \texttt{random.sample()}
+是不重複抽樣，跟每次都可能抽到同一個的 \texttt{random.choice()} 不一樣。
+\item \texttt{os.path.basename(path)} 會得到 \texttt{"notes.txt"}（路徑最後一段）；
+\texttt{os.path.dirname(path)} 會得到 \texttt{"/Users/nathan/python-practice"}（去掉
+最後一段之後剩下的資料夾路徑）。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:collections-and-itertools}~節}
+\begin{enumerate}
+\item 依序印出 \texttt{3} 和 \texttt{0}：\texttt{"A"} 在清單裡出現 3 次；\texttt{"F"}
+從沒出現過，\texttt{Counter} 對不存在的 key 直接回傳 0，不會丟出 \texttt{KeyError}。
+\item 會回傳 \texttt{[('x', 2)]}，一個裝著一個 tuple 的 list，\texttt{"x"} 出現 2 次，
+是清單裡出現次數最多的元素，\texttt{most\_common(1)} 只取排名第一名。
+\item 會依序配對出 4 組：\texttt{("a", 1)}、\texttt{("a", 2)}、\texttt{("b", 1)}、
+\texttt{("b", 2)}，第一個序列有 2 個元素、第二個序列有 2 個元素，總共 $2 \times 2 = 4$
+種組合。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:write-your-own-module}~節}
+\begin{enumerate}
+\item \texttt{my\_math.py}，檔名（不含 \texttt{.py}）要跟 \texttt{import} 後面打的
+名字完全一致。
+\item \texttt{from my\_math import add}。
+\item 把 \texttt{my\_tools.py} 搬到跟 \texttt{use-my-tools.py} 同一個資料夾裡。
+Python 找自己寫的模組，預設只會找「目前執行的這支程式所在的資料夾」，兩個檔案不在同一
+個資料夾就會找不到。
+\end{enumerate}

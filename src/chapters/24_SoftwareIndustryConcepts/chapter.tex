@@ -1,0 +1,885 @@
+\chapter{軟體業詞彙與運作方式}
+\label{ch:industry}
+
+前面十八章，你一直在跟「怎麼寫出一支能動的程式」打交道。這一章要暫時放下語法，回頭問一個
+不太一樣的問題：你寫的這些程式，在真正的軟體公司裡，是怎麼被一群人一起做出來、一起維護、
+最後真的送到使用者手上的？這個問題不管你有沒有職場經驗都值得認識。
+
+如果你還沒進過職場，這一
+章帶你認識一個新世界，讓你知道「軟體工程師的日常」大概長什麼樣，之後不管是準備面試、選志向，
+還是單純好奇，都有一個具體的畫面可以想。
+
+如果你已經在工作，尤其是常常要跟工程師開會、卻聽不太
+懂「這個 API 還在 review」「這張 ticket 排到下個 sprint」這類話的人（PM、營運、行銷都很常見
+遇到這種情況），這一章的目標是讓你讀完之後，真的能拿這些詞彙去跟工程師同事對話，聽得懂、也
+問得出對的問題。
+
+整章分四段推進，順序是刻意設計過的：
+
+\begin{itemize}
+\item 先從你在第 \ref{ch:introduction} 章已經碰過的終端機出發，往下多學幾個指令，這是最小、最具體、你馬上就能
+自己動手驗證的部分。
+\item 接著把視角從「單一指令」拉高到「一個專案長什麼樣」：真正的軟體專案通常是一個資料夾，
+裡面裝著一堆檔案、一份說明文件、一個獨立的執行環境，很少只有單一一個 \texttt{.py} 檔案，
+這一段直接呼應你在第 \ref{ch:automating} 章自己動手做出來的整合應用專案。
+\item 有了「專案」這個具體的東西之後，第三段才問一個更根本的問題：好幾個工程師同時改同一個
+專案時，要怎麼避免互相蓋掉對方的成果，這就是版本控制存在的理由。
+\item 最後一段拉到最高、最抽象的視角，把剛剛看到的「一個專案」放進一整間軟體公司的脈絡裡，
+把你以後開會會聽到的詞彙一次講清楚，包括程式合併之後自動發生的事、軟體實際運作的樣子，以及
+團隊安排工作進度時常用的說法。
+\end{itemize}
+
+先講清楚這一章\textbf{不}做什麼：接下來不會出現任何一行 Git 指令，也不會把終端機操作教到
+精熟，這一章的目標是「聽得懂、問得出問題」，不是「會操作」。
+
+真正動手把一個小專案從頭做到尾
+的部分，留給下一章用一個實際的 API 串接小專案讓你完整體驗一次；這一章新增的幾個小節（例如
+\texttt{.gitignore}、CI/CD、以及會議情境模擬）也遵守同一個原則，目標是聽懂、看懂，不是現在
+就動手操作。
+
+\section{你現在在哪裡、怎麼移動}
+\label{sec:terminal-location}
+
+回想第 \ref{ch:introduction} 章，你已經打開過終端機，也已經在裡面打過 \texttt{python3 hello.py} 這樣的指令，讓
+Python 執行一支程式。但那時候你做的事情很單純：終端機已經幫你「站」在正確的資料夾裡了，你
+只需要打對執行指令。這一節要補的，是終端機裡更基本、卻更常用的一件事：你怎麼知道自己現在
+「人在哪個資料夾」，又怎麼「走」到別的資料夾去。
+
+你可以把終端機想成一個只能用打字操控的資料夾總管，跟你平常用滑鼠點兩下打開資料夾的那個總管
+做的是同一件事，只是這裡沒有圖示可以點，你得用指令告訴它該往哪裡走。以下三個指令，你接下來
+每次打開終端機都會用到。
+
+\textbf{第一步：確認自己在哪裡。} macOS／Linux 打 \texttt{pwd}（print working directory 的
+縮寫），Windows 的命令提示字元打 \texttt{cd}（不加任何東西，直接按 Enter），PowerShell 兩種
+都能用。畫面會印出一長串路徑，就是你現在所在資料夾的完整位置。
+\index{pwd}
+
+\textbf{第二步：切換到別的資料夾。} 用 \texttt{cd 資料夾名稱}。例如你在第 \ref{ch:introduction} 章新建的那個
+\texttt{python-practice} 資料夾，如果它就在你目前的位置底下，打
+\texttt{cd python-practice} 就能走進去。想往回走一層，打 \texttt{cd ..}，這兩個點是
+「上一層資料夾」的意思，不管在哪個作業系統都通用。
+\index{cd}
+
+\textbf{第三步：看看這個資料夾裡有什麼。} macOS／Linux 打 \texttt{ls}（list 的縮寫），
+Windows 命令提示字元打 \texttt{dir}，PowerShell 兩種都能用。畫面會列出目前資料夾底下的所有
+檔案跟子資料夾。
+\index{ls／dir}
+
+把這三個指令連起來用，會像這樣（以下用 macOS／Linux 的指令示範，PowerShell 使用者可以直接
+照打）：
+
+\begin{verbatim}
+$ pwd
+/Users/xiaomei/python-practice
+$ ls
+hello.py
+$ cd ..
+$ pwd
+/Users/xiaomei
+$ cd python-practice
+$ pwd
+/Users/xiaomei/python-practice
+\end{verbatim}
+
+這段互動在做的事情，翻成白話就是：先確認「我現在在 \texttt{python-practice} 這個資料夾」，
+接著看看裡面有什麼（喔，有一個 \texttt{hello.py}），然後往上走一層，再確認一次「我現在在
+\texttt{xiaomei} 這個資料夾」，走回 \texttt{python-practice}，最後再確認一次「我又回來了」。
+之後不管你的專案資料夾在電腦裡的哪個位置，這三個指令都能帶你走到你要去的地方，不需要離開
+終端機、切去用滑鼠點資料夾總管再切回來。
+
+\keypoint{終端機裡的「路徑」永遠是相對於你現在站的位置。\texttt{cd python-practice} 能不能
+成功，取決於 \texttt{python-practice} 是不是真的在你現在所在的資料夾底下。如果不確定，先
+\texttt{pwd}／\texttt{ls} 看清楚自己在哪裡、旁邊有什麼，比直接憑印象打指令可靠得多。}
+
+再補兩個好用的捷徑，省得你每次都要一層一層 \texttt{cd ..} 走回去。第一個是「回家」：
+macOS／Linux／PowerShell 打 \texttt{cd \textasciitilde}（波浪符號，通常在鍵盤數字鍵 1 左邊），
+不管你目前站在哪裡，都會直接跳回你這個使用者帳號的「家目錄」，也就是你剛打開終端機時預設所在
+的位置。
+
+第二個是「回到剛剛那裡」：打 \texttt{cd -}（減號），會跳回你「上一次所在」的資料夾，
+不用先想清楚完整路徑該怎麼寫，在兩個資料夾之間來回切換時特別方便。
+\index{cd \textasciitilde／cd -}
+
+\begin{drills}[label=drills:terminal-location]
+\item 你在 \texttt{python-practice} 資料夾裡，打了 \texttt{cd ..} 走到上一層，這時候想直接
+跳回剛剛那個 \texttt{python-practice}，不想再重新打一次完整路徑，該打哪個指令？
+\item 你不確定自己現在在電腦裡的哪個很深的資料夾裡，想先跳回一個熟悉的起點重新開始，該打
+哪個指令？
+\end{drills}
+
+\section{建立、複製與整理檔案}
+\label{sec:cli-basics}
+
+上一節你學會了「看」跟「走」，這一節補上「動手」的部分：怎麼在終端機裡建立、複製、搬移
+檔案，以及兩個能讓你打指令的手速變快、變準的小技巧，最後補上一個所有終端機初學者都該提早
+知道的風險提醒。
+
+\textbf{建立資料夾：} \texttt{mkdir 資料夾名稱}（make directory 的縮寫），macOS／Linux／
+Windows 都通用。建好之後用上一節學的 \texttt{cd} 走進去，就能開始在裡面工作。
+\index{mkdir}
+
+\textbf{複習：執行 \texttt{.py} 檔案。} 這件事你在第 \ref{ch:introduction} 章已經做過很多次了，確定自己在正確
+的資料夾裡（用 \texttt{pwd}／\texttt{ls} 確認），打 \texttt{python3 檔名.py}（macOS）或
+\texttt{python 檔名.py}（Windows）執行。這裡不重新教一次，只是提醒你：這一節後面的示範，都
+建立在你已經很熟悉這個動作的前提上。
+
+\textbf{複製檔案：} macOS／Linux／PowerShell 用 \texttt{cp 來源檔名 目的地}（copy 的縮寫），
+Windows 命令提示字元用 \texttt{copy 來源檔名 目的地}。複製完成後，原本的檔案還在原地，
+資料夾裡多了一份一模一樣的副本。舉例來說，\texttt{cp hello.py backup\_hello.py} 會在同一個
+資料夾裡多一個叫 \texttt{backup\_hello.py} 的檔案，內容跟 \texttt{hello.py} 一模一樣。
+\index{cp／mv／touch／cat}
+
+\textbf{搬移或改名檔案：} macOS／Linux／PowerShell 用 \texttt{mv 來源檔名 目的地}（move 的
+縮寫），Windows 命令提示字元用 \texttt{move}。跟 \texttt{cp} 不一樣的地方在於：\texttt{mv}
+執行完之後，原本的檔案就不在原地了，只有目的地那一份存在。\texttt{mv} 還有一個容易被忽略的
+用法：如果目的地只是「同一個資料夾裡的另一個檔名」，效果就等於「改名」，例如
+\texttt{mv draft.py final.py} 會把 \texttt{draft.py} 直接改名成 \texttt{final.py}，資料夾
+裡並不會同時出現兩個檔案。
+
+\keypoint{\texttt{cp} 是複製，原本的檔案還在，多一份新的；\texttt{mv} 是搬移或改名，原本的
+檔案不見了，只剩目的地那一份。兩個指令長得很像，功能卻完全不同，打錯的後果也不一樣：複製
+打錯最多是多出一個垃圾檔案，搬移打錯可能會讓你以為某個檔案不見了，其實它只是被改名或搬到
+別的地方，仍然可以用 \texttt{ls}／\texttt{cd} 找回來。}
+
+\begin{code}{text}{複製與搬移檔案}
+$ pwd
+/Users/xiaomei/python-practice
+$ mkdir archive
+$ cp hello.py backup_hello.py
+$ ls
+archive  backup_hello.py  hello.py
+$ mv backup_hello.py archive/backup_hello.py
+$ ls
+archive  hello.py
+$ ls archive
+backup_hello.py
+\end{code}
+
+這段記錄示範了兩件事：\texttt{cp} 之後資料夾裡多了一個 \texttt{backup\_hello.py}，原本的
+\texttt{hello.py} 完全沒有受影響；\texttt{mv} 之後，\texttt{backup\_hello.py} 從目前資料夾
+的列表裡消失了，改成出現在 \texttt{archive} 這個子資料夾底下，並不是又多存了一份到別的
+地方，是同一個檔案換了位置。
+
+\textbf{清空畫面：} 終端機用久了，畫面會被前面打過的指令跟輸出結果塞滿，不好閱讀。macOS／
+Linux／PowerShell 打 \texttt{clear}，Windows 命令提示字元打 \texttt{cls}，會把畫面清乾淨，
+只留下一行新的提示字元等你輸入，之前執行過的指令並沒有真的消失，只是「看起來」乾淨了。
+\index{clear／cls}
+
+\textbf{兩個讓手速變快的小技巧：} 終端機不是只能一個字一個字慢慢打出來。第一個技巧是自動
+完成：打資料夾或檔案名稱時，打前面幾個字母，按一下 \texttt{Tab} 鍵，終端機通常會自動幫你把
+剩下的部分補完（如果同時有好幾個檔案開頭一樣，可能要按兩下 \texttt{Tab} 才會列出所有候選），
+可以少打很多字，也比較不會打錯字。
+
+第二個技巧是叫出歷史指令：按鍵盤上的方向鍵「上」，終端機
+會把你剛剛打過的上一行指令整行叫回來，不用重新打一次，這在你需要連續執行好幾次同樣（或很像）
+的指令時特別省事。
+\index{Tab 自動完成／方向鍵歷史指令}
+
+\textbf{建立一個空檔案：} 有時候你只是想先佔一個檔名、之後再回頭填內容，不需要真的打開編輯器。
+macOS／Linux／PowerShell 打 \texttt{touch 檔名}（原本的用途是「更新檔案的最後修改時間」，
+但如果檔案不存在，順帶效果就是幫你建一個內容全空的新檔案），Windows 命令提示字元沒有直接對應
+的指令，通常改用 \texttt{type nul > 檔名} 達到同樣效果。建好之後用你已經很熟的編輯器打開它，
+把程式碼寫進去就好。
+
+\textbf{不開編輯器、直接看檔案內容：} 有時候你只是想快速確認一個檔案裡寫了什麼，不需要為了
+看一眼就整個打開編輯器。macOS／Linux 打 \texttt{cat 檔名}（concatenate 的縮寫），Windows
+命令提示字元打 \texttt{type 檔名}，PowerShell 兩種都能用，畫面會把整個檔案的內容直接印在
+終端機裡。這個指令適合快速確認一個小檔案（例如上一節提過的 \texttt{requirements.txt}）裡
+寫了什麼，檔案內容一多，印出來反而會洗掉畫面，這時候還是打開編輯器看比較方便。
+
+\textbf{刪除檔案的提醒：} macOS／Linux 用 \texttt{rm 檔名}，Windows 命令提示字元用
+\texttt{del 檔名}，PowerShell 兩種都能用。這個指令本身不難，難的是它帶來的風險：\textbf{終端
+機刪除的檔案不會進垃圾桶，也沒有「復原」這個選項，指令一按下去，檔案就真的消失了。} 你平常用
+滑鼠把檔案拖進垃圾桶，就算手滑了還能救回來；終端機沒有這層保護，打錯資料夾、打錯檔名，後果是
+直接、立即、不可逆的。
+\index{rm／del}
+
+下面示範一段完整的終端機互動記錄，把這一節跟上一節學到的指令串起來，延續第 \ref{ch:introduction} 章的
+\texttt{python-practice} 資料夾：
+
+\begin{code}{text}{在終端機裡建立、確認、清理}
+$ pwd
+/Users/xiaomei/python-practice
+$ mkdir scratch
+$ cd scratch
+$ ls
+$ python3 hello.py
+python3: can't open file 'hello.py': [Errno 2] No such file or directory
+$ cd ..
+$ python3 hello.py
+Hello, world!
+$ rm hello.py
+$ ls
+\end{code}
+
+這段記錄裡藏了一個很典型的小意外：在剛建立、還是空的 \texttt{scratch} 資料夾裡打
+\texttt{python3 hello.py}，Python 老實地回報「找不到這個檔案」，因為 \texttt{hello.py}
+根本不在這裡，它還留在上一層的 \texttt{python-practice}。這正是上一節〈學習要點〉提醒的事：
+指令對不對，取決於你現在站在哪裡；\texttt{cd ..} 回到正確的位置之後，同一個指令就順利執行了。
+
+最後 \texttt{rm hello.py} 把檔案刪掉、\texttt{ls} 確認資料夾已經空了，這一步在自己的練習
+資料夾裡做沒什麼風險，但養成「刪之前先用 \texttt{pwd}／\texttt{ls} 確認自己在哪裡」的習慣，
+會讓你在正式的專案資料夾裡也不容易失手。
+
+到這裡，你已經知道怎麼用終端機在資料夾之間走動、確認位置、建立資料夾、複製與搬移檔案、
+自動完成與叫回歷史指令，還有謹慎地刪除檔案。這幾個指令看起來瑣碎，但它們是接下來要做的每
+一件事的地基，下一節要帶你用這些指令，走進一個「正常的軟體專案」長什麼樣。
+
+為了方便之後查閱，這裡把這兩節用到的指令整理成一張對照表：
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+作用 & macOS／Linux & Windows \\
+\midrule
+顯示目前所在路徑 & \texttt{pwd} & \texttt{cd}（不加參數）／PowerShell 可用 \texttt{pwd} \\
+切換資料夾 & \texttt{cd 資料夾名稱} & 同左 \\
+回到上一層資料夾 & \texttt{cd ..} & 同左 \\
+列出資料夾內容 & \texttt{ls} & \texttt{dir}／PowerShell 可用 \texttt{ls} \\
+建立新資料夾 & \texttt{mkdir 資料夾名稱} & 同左 \\
+建立空檔案 & \texttt{touch 檔名} & \texttt{type nul > 檔名} \\
+印出檔案內容 & \texttt{cat 檔名} & \texttt{type 檔名}／PowerShell 可用 \texttt{cat} \\
+複製檔案 & \texttt{cp 來源 目的地} & \texttt{copy 來源 目的地} \\
+搬移／改名檔案 & \texttt{mv 來源 目的地} & \texttt{move 來源 目的地} \\
+清空畫面 & \texttt{clear} & \texttt{cls}／PowerShell 可用 \texttt{clear} \\
+刪除檔案 & \texttt{rm 檔名}（不會進垃圾桶！） & \texttt{del 檔名}／PowerShell 可用 \texttt{rm} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{drills}[label=drills:cli-basics]
+\item 你剛打開終端機，想先確認自己現在「人在哪個資料夾」，該打哪個指令？
+\item 你用 \texttt{mkdir} 建了一個新資料夾，想確認裡面目前是不是真的空的，該打哪個指令？
+\item 你想把 \texttt{report.py} 複製一份、取名叫 \texttt{report\_backup.py}，而且原本的
+\texttt{report.py} 還要留著，該打哪個指令？如果改成用 \texttt{mv} 打同樣的指令，結果會有
+什麼不一樣？
+\end{drills}
+
+\section{一個「正常專案」長什麼樣}
+\label{sec:project-anatomy}
+
+到目前為止，你寫過的程式大多是單獨一個 \texttt{.py} 檔案，寫完、存檔、執行，事情就結束了。
+但你在第 \ref{ch:automating} 章做的那個檔案整理工具，已經稍微不一樣了：裡面有分類邏輯、有真正搬移檔案的部分、
+還接了一段下載檔案的程式碼，而且你需要 \texttt{requests} 這個第三方套件才能讓下載的部分動
+起來。你當時可能沒有特別意識到，但你已經在做業界說的「一個專案」了，只是規模比較小。
+
+業界所謂的「一個軟體專案」，指的通常是一個資料夾，裡面裝著好幾個互相搭配的檔案，各自負責
+不同的部分，很少只是單一一個檔案。以你第 \ref{ch:automating} 章那個檔案整理工具收尾後的樣子為例（實際檔名
+依你當時的寫法可能略有出入，這裡示範的是典型的結構）：
+
+\begin{verbatim}
+file-organizer/
+|-- organize-and-backup.py   main script: classify, move, back up, download
+|-- requirements.txt         packages to install (requests)
+|-- README.md                 documentation
+|-- .gitignore                files excluded from version control (see Section 19.6)
+|-- downloads_demo/           unsorted source files go here
+`-- organized_demo/           sorted files, organized by category, go here
+    |-- images/
+    |-- documents/
+    `-- music/
+\end{verbatim}
+
+這棵樹狀圖要傳達的重點是：\texttt{organize-and-backup.py} 不是孤零零一個檔案，它旁邊還有
+其他東西一起組成「這個專案」，套件清單、說明文件、版本控制設定、甚至程式執行後產生的輸出
+資料夾，全部放在同一個 \texttt{file-organizer/} 底下。如果你曾經打開終端機，用
+\texttt{cd}／\texttt{ls} 這些指令在自己的專案資料夾裡走來走去、確認檔案都在，做的其實就是
+業界工程師每天在做的事。
+
+其中特別值得說一次的是 \texttt{README.md}：它不是任何程式語言規定要有的東西，Python 執行
+你的程式時完全不會去讀它，單純是寫給「人」看的說明書，這個專案在做什麼、怎麼執行、需要先
+裝什麼套件。
+\index{README.md}
+
+你現在可能覺得自己寫的東西自己當然知道在幹嘛，不需要特別寫，但三個月後你回頭
+打開這個資料夾，或是換一台電腦想重新執行一次，你會感謝三個月前的自己留了這幾行字，更不用說，
+如果這個專案以後要交給別人接手，一份清楚的 README 常常是對方唯一的入口。
+
+規模再大一點的專案，資料夾裡常常還會多幾樣東西，這裡先點名兩個你以後很可能碰到、但這一章
+不會深入的名字，讓你之後看到時不會完全陌生。
+
+一個叫 \texttt{tests/} 的資料夾，裡面放的不是
+給使用者用的程式，是工程師自己寫來「檢查程式有沒有寫對」的程式，一跑出錯就代表某個地方壞掉
+了。
+
+另一個常見的慣例是把主程式放進一個叫 \texttt{src/}（source 的縮寫）的子資料夾裡，跟
+README、requirements.txt 這些「關於這個專案」的檔案分開放，資料夾一打開就能一眼分清楚
+「這是程式本體」跟「這是給人看的說明」。這兩個名字現在只需要有印象，不需要現在就自己動手建。
+\index{tests/／src/}
+
+把這一節提到的所有東西放進同一個資料夾，一個規模再大一點、更接近業界實際樣子的專案，樹狀圖
+大概會長這樣：
+
+\begin{verbatim}
+file-organizer/
+|-- src/
+|   `-- organize_and_backup.py   main program
+|-- tests/
+|   `-- test_classify.py         test script that checks the classification logic
+|-- requirements.txt             packages to install
+|-- README.md                     documentation
+`-- .gitignore                    files excluded from version control
+\end{verbatim}
+
+跟前面那個比較陽春的版本比起來，這裡多了 \texttt{src/} 跟 \texttt{tests/} 兩層資料夾，程式
+本體被收進 \texttt{src/} 底下，跟頂層那些「關於這個專案」的檔案分開；\texttt{tests/} 底下的
+\texttt{test\_classify.py} 不是給使用者執行的程式，是工程師自己寫來檢查
+\texttt{classify\_file()} 這種函式邏輯有沒有寫對用的，這一章不會教你怎麼寫測試程式，只需要
+知道看到 \texttt{tests/} 資料夾時，裡面裝的是這一類東西。
+
+兩種樹狀圖沒有哪一種「才是正確
+答案」，規模小的專案用第一種也完全夠用，資料夾長什麼樣，取決於團隊的習慣跟專案的規模。
+
+\begin{drills}[label=drills:project-anatomy]
+\item 你打開一個同事傳來的專案資料夾，看到裡面有 \texttt{src/}、\texttt{tests/}、
+\texttt{README.md} 三個東西，你會先打開哪一個，才能最快知道這個專案在做什麼、要怎麼執行？
+\item \texttt{tests/} 資料夾裡的程式，是寫給誰用、檢查什麼東西的？
+\end{drills}
+
+\section{虛擬環境與套件管理}
+\label{sec:project-structure}
+
+你在第 \ref{ch:data-tools} 章第一次用 \texttt{pip} 裝過第三方套件，在第 \ref{ch:automating} 章可能又因為 \texttt{requests}
+再裝了一次。這一節要解決一個你可能還沒碰過、但只要電腦上專案一多就一定會遇到的問題：如果你
+同時在做兩個專案，一個需要某個套件的舊版本，另一個需要同一個套件的新版本，會發生什麼事？
+
+想像兩個家庭合租一間房子、共用同一台冰箱：甲家庭把冰箱裡的鮮奶換成豆漿，是因為家裡有人不能
+喝奶製品，結果乙家庭隔天想煮的那道菜，需要的正好是鮮奶，東西卻被換掉了。兩邊都沒有做錯
+事，問題出在他們共用了同一個空間，而彼此的需求不一樣。
+
+你電腦裡的 Python 套件，預設情況下
+也是這樣共用的：如果 A 專案需要某個套件的 1.0 版、B 專案需要同一個套件的 2.0 版，直接
+\texttt{pip install} 只會有一個版本裝在電腦上，兩個專案不可能同時滿意。
+
+「虛擬環境」（virtual environment）就是在解決這個問題：它讓每個專案擁有一份自己專屬的套件
+清單，彼此互相隔離，A 專案裝的版本不會影響到 B 專案，就像幫每個家庭各自準備一台冰箱。你不
+需要現在就自己動手建一個虛擬環境，這一節的目標是讓你知道「這是在幹嘛、為什麼需要」，真正
+動手操作留給你以後真的碰到版本衝突時再學。
+\index{虛擬環境（virtual environment）}
+
+跟虛擬環境經常一起出現的，是上一節樹狀圖裡看到的 \texttt{requirements.txt}，一份純文字
+檔案，記錄「這個專案需要裝哪些套件、哪個版本」。
+\index{requirements.txt}
+以第 \ref{ch:automating} 章那個檔案整理工具為例，它的內容
+可能長這樣：
+
+\begin{code}{text}{(requirements.txt) 一個專案的套件清單}
+requests==2.31.0
+\end{code}
+
+這份清單存在的意義，是讓別人（或是你自己換一台電腦）不用一個一個猜「這個專案到底需要裝什麼
+套件、裝哪個版本才不會出錯」，直接照著這份清單裝，就能重建出一模一樣的環境，這也是為什麼
+它幾乎是每個「正常專案」資料夾裡的標準配備，跟 README 一樣，是寫給未來的自己或別人看的。
+
+反過來想，如果你已經用 \texttt{pip install} 陸續裝了好幾個套件，想幫這個專案生出一份
+\texttt{requirements.txt}，業界工程師通常會用 \texttt{pip freeze} 這個指令，讓 \texttt{pip}
+自己把目前環境裡裝了哪些套件、哪個版本整理成一份清單印出來，直接存成
+\texttt{requirements.txt} 就好，很少手動一行一行慢慢打。這裡只需要知道有這個指令、它在幫你
+做什麼，不需要現在就自己動手用。
+
+\begin{drills}[label=drills:project-structure]
+\item 你收到同事傳來的一個專案資料夾，裡面有一份 \texttt{requirements.txt}，內容寫著
+\texttt{pandas==2.1.0}。這份檔案大概在告訴你什麼事？
+\item 如果一個資料夾裡只有一支 \texttt{.py} 檔案，沒有 README、沒有
+\texttt{requirements.txt}，這樣還算不算業界說的「一個專案」？（提示：想想 \ref{sec:project-anatomy} 節的定義，
+「專案」看的是什麼，不是看檔案數量。）
+\end{drills}
+
+\section{版本控制在解決什麼問題}
+\label{sec:version-control-why}
+
+想像你跟同事一起維護一份共用的文件，不是程式碼，就是一份普通的說明文件或報告。你們兩個人
+都可以編輯它，你今天下午改了一段，同事晚上也改了同一段，隔天早上你打開檔案，發現自己那段
+改動整個不見了，取而代之的是同事的版本。
+
+或者更糟：你上禮拜寫的內容，這禮拜想找回來看看，卻
+發現檔案已經被改到面目全非，沒有人記得原本長什麼樣、是誰在什麼時候改的。這種經驗，只要跟
+別人共同編輯過同一份東西，幾乎每個人都碰過。
+
+軟體工程師面對的是同一個問題的加強版：一個專案可能同時有好幾個工程師在改同一批程式碼檔案，
+而且程式碼一旦改壞，往往不像「這句話讀起來怪怪的」那麼容易被發現，很可能是整支程式直接
+動不了。
+
+他們解決這個問題的工具，叫做「版本控制系統」，目前業界最主流的實作是一套叫做 Git
+的工具，但這一節要先建立的是「這一類工具在做什麼」的概念，不是 Git 的操作細節。
+\index{版本控制系統（version control system）}
+
+版本控制系統做的核心事情，是幫你的專案「拍照存證」：每一次你覺得「這是一個值得記住的
+狀態」，就對整個專案的目前狀態拍一張快照，並且寫一句話說明「這次改了什麼、為什麼改」。這個
+動作在版本控制的世界裡有個專門的名字，叫做 \textbf{commit}。
+\index{commit}
+
+跟你平常用 Ctrl+S 存檔不一樣的
+地方在於：一般存檔每次都會蓋掉上一個版本，你回不去了；但每一次 commit 都會被完整保留下來，
+你隨時可以回頭翻出三天前、三個禮拜前的某一次 commit，看看那個時間點的程式碼長什麼樣，甚至
+把整個專案還原回那個狀態。
+
+\keypoint{commit 不只是「存檔」的另一個說法，是「存檔加上一句話說明這次改了什麼、為什麼改」
+的組合。少了那句說明，你三個月後回頭看一長串「更新」「修正」這種沒有內容的紀錄，會完全不
+知道自己當初在改什麼。}
+
+有了這套「拍照存證」的機制，前面提過的兩個困擾就都有解法了：檔案改壞了，能翻回某一次 commit
+的狀態找回舊版本；兩人同時改同一份檔案，版本控制系統至少能告訴你「這兩處改動衝突了，需要
+你自己決定要保留哪一邊」，不會像單純共用一份檔案那樣，其中一人的改動悄悄地、無聲無息地被
+蓋掉。
+
+這個「告訴你哪裡衝突了」具體長什麼樣，用一個小例子感受一下。假設 \texttt{organize.py} 裡
+原本有這一行：
+
+\begin{verbatim}
+EXTENSION_MAP = {"jpg": "images", "pdf": "documents"}
+\end{verbatim}
+
+小美想多支援 \texttt{.png}，把它改成 \texttt{\{"jpg": "images", "png": "images", "pdf": "documents"\}}
+並且 commit；同一時間，小華想多支援 \texttt{.docx}，也在自己的分支上把同一行改成
+\texttt{\{"jpg": "images", "pdf": "documents", "docx": "documents"\}} 並且 commit。
+
+等小華想把自己的分支
+合併回主線（此時小美的改動已經先進去了）時，版本控制系統會發現「這一行在兩邊被改成不一樣的
+內容」，沒辦法自己決定該用哪一種，於是停下來、把兩個版本都攤開給小華看，請小華自己決定最後
+這一行要長什麼樣（通常答案是把兩邊都要的改動合在一起，變成同時支援 png 跟 docx）。這種
+「兩邊都改了同一個地方、系統沒辦法自動判斷該用哪個」的狀況，就叫做\textbf{衝突（conflict）}。
+\index{衝突（conflict）}
+
+衝突本身不是壞事，甚至該說是版本控制系統在盡它的本分：與其悄悄選一邊、讓另一邊的改動憑空
+消失，不如老實告訴你「這裡兩邊打架了，你自己來裁決」。
+
+\section{不該被拍進快照裡的東西：.gitignore}
+\label{sec:gitignore}
+
+上一節的「拍照存證」比喻很好用，但也帶出一個新問題：如果每一次 commit 都要把整個專案目前的
+狀態拍下來，是不是資料夾裡每一樣東西都該被拍進去？答案是不一定。有些東西刻意不該被記錄進
+版本控制系統裡，業界工程師會準備一份叫 \texttt{.gitignore} 的檔案，明確列出「這些東西不用
+拍、每次都跳過」。
+\index{.gitignore}
+
+最常見的三類「不該拍」的東西：
+
+\begin{enumerate}
+\item \ref{sec:project-structure} 節提過的虛擬環境資料夾。虛擬環境裡裝的套件檔案數量往往非常龐大，而且內容完全
+可以靠 \texttt{requirements.txt} 重新裝出來，沒有必要把整個虛擬環境資料夾本身也塞進版本
+控制系統裡，那樣做只會讓專案的紀錄變得又大又難管理。
+\item Python 執行時自動產生的暫存檔案，最典型的是一個叫 \texttt{\_\_pycache\_\_} 的資料
+夾。你目前的程式還不會產生這種東西，但等你的專案變大、開始用到 \texttt{import} 自己寫的
+模組時，Python 會自動幫你的模組建立一份預先編譯好的版本，放在這個資料夾裡加快下次執行的
+速度。這類檔案是 Python 自己重新產生就好的暫存品，不算你動手寫出來的原始碼，同樣沒有記錄的
+必要。
+\index{\_\_pycache\_\_}
+\item 最重要、也最容易被新手忽略的一類：帳號密碼、API 金鑰這類機密資訊。如果你的程式裡有
+一段像 \texttt{API\_KEY = "abcd1234"} 這樣直接寫死金鑰的程式碼，一旦這個專案被記錄進版本
+控制系統，這串金鑰就會永久留在每一次 commit 的紀錄裡，就算你之後刪掉那一行重新 commit，
+舊的紀錄裡還是找得到，這是業界公認的高風險失誤。之後如果這個專案要分享給別人或公開在網路上，
+機密資訊一定要事先排除在外。
+\end{enumerate}
+
+一份典型的 \texttt{.gitignore} 內容大概長這樣：
+
+\begin{code}{text}{(.gitignore) 排除不該被記錄的東西}
+venv/
+__pycache__/
+*.pyc
+.env
+\end{code}
+
+每一行代表一種要排除的檔案或資料夾名稱模式：\texttt{venv/} 排除整個虛擬環境資料夾（資料夾
+名稱不一定叫 \texttt{venv}，你的專案實際用什麼名稱就寫什麼名稱）；\texttt{\_\_pycache\_\_/}
+排除剛剛提到的暫存資料夾；\texttt{*.pyc} 排除所有以 \texttt{.pyc} 結尾的暫存檔案，星號代表
+「不管檔名前面是什麼都算」；\texttt{.env} 則是業界慣用來存放機密設定值（像 API 金鑰、資料庫
+密碼）的檔案名稱，同樣排除在外。
+
+\keypoint{\texttt{.gitignore} 只是「請版本控制系統跳過這些東西」的名單，不是刪除，也不是
+加密。真正保護機密資訊的做法，是一開始就不要把金鑰直接寫死在程式碼裡；\texttt{.gitignore}
+只是最後一道防線，避免有人不小心把不該提交的檔案也一起拍進快照裡。}
+
+\begin{drills}[label=drills:gitignore]
+\item 以下四樣東西，哪些通常該放進 \texttt{.gitignore}：\texttt{organize-and-backup.py}、
+\texttt{venv} 資料夾、\texttt{requirements.txt}、\texttt{\_\_pycache\_\_} 資料夾？
+\item 如果一個專案完全沒有 \texttt{.gitignore}，會發生什麼具體的問題？
+\end{drills}
+
+\section{一群人一起改同一個專案}
+\label{sec:version-control}
+
+上一節解決的是「怎麼記錄改動、怎麼找回舊版本」，但還沒回答一個更根本的問題：如果團隊裡有五
+個工程師，同時都在改同一個專案，難道大家都直接在同一份「正式版本」上動手嗎？如果有人改到
+一半、程式碼還不能動，其他人豈不是也會被拖累？
+
+答案是不會。版本控制系統讓每個人可以先在「自己的分支」上工作，互不干擾。
+
+這個分支的概念叫做
+\textbf{branch}：你可以把整個專案目前的狀態想成一條主線，這條主線任何時候都應該是「能正常
+運作的版本」；每個工程師要動手改東西之前，先從主線上「岔出」一條屬於自己的分支，在那條分支
+上盡情實驗、修改，就算改到一半、程式碼暫時是壞的，也完全不會影響主線，也不會影響其他人正在
+做的事。用文字描述這個關係大概像這樣：
+\index{branch}
+
+\begin{verbatim}
+main   --o---------------o---o-->
+            \               /
+mei      o---o---o---o
+\end{verbatim}
+
+小美從主線上的某個點岔出自己的分支，在上面做了好幾次 commit（圖上的每個 \texttt{o}），等
+她確定這些改動都沒問題了，才把整條分支合併回主線。這個「我這邊改完了，想合併回主線，請大家
+先看一下」的請求，有個專門的名字，叫做 \textbf{pull request}（簡稱 PR）。
+\index{pull request（PR）}
+
+但主線的守門員不會照單全收。在正式合併之前，通常會有其他工程師先看過這些改動，確認邏輯沒
+問題、沒有明顯的錯誤、風格跟團隊的習慣一致，這個「別人先看過、給意見，才決定要不要合併」的
+把關步驟，叫做 \textbf{code review}。等 review 通過，這條分支才會真正併回主線，變成主線的
+一部分。
+\index{code review}
+
+\stylepoint{code review 不是在挑剔或不信任誰的能力，多一雙眼睛看過，本來就比較容易抓到
+寫程式的人自己盲點裡看不到的問題（例如漏掉一種特殊情況、或跟專案其他地方的寫法衝突），這是
+團隊維持程式碼品質的例行機制，幾乎每個正式的軟體團隊都會走這一道流程。}
+
+這整套 branch、pull request、code review 的流程存在的理由很直接：團隊規模一旦大到超過
+一兩個人，光靠口頭溝通「我改了這裡、你先別碰那裡」根本不可行，需要一套所有人都遵守、不用
+互相口頭確認也能安心協作的流程，這正是版本控制系統要解決的問題。
+
+再補一個常聽到、卻常被搞混的說法：把小美的分支併回主線這個動作，業界工程師平常講話會直接
+說「merge」（合併），跟前面說的 pull request 是兩件事，但緊密相關。pull request 是「提出
+合併請求、附上要 review 的內容」；merge 是「review 通過之後，改動真的被接進主線」那個動作
+本身。你會聽到「這支 PR 我 merge 了」，說的就是這條分支的改動已經正式進到主線了。
+\index{merge}
+
+\begin{drills}[label=drills:version-control]
+\item 小明把自己剛剛改好的程式碼推上去，並且提出「想請同事先看過再合併回主線」的請求，這個
+動作叫什麼？
+\item 小華還沒動手改任何東西之前，先從主線岔出一條屬於自己的分支開始工作，這麼做的目的是
+什麼？
+\item 「review 通過」跟「merge」是同一件事嗎？請用這一節的說法解釋兩者的差別。
+\end{drills}
+
+\section{軟體長什麼樣：前端、後端、部署}
+\label{sec:software-anatomy}
+
+前三段學到的「終端機」「專案」「版本控制」，都是工程師平常怎麼「做」軟體；這一節開始，要把
+視角拉高，看看一個做出來的軟體，實際上是由哪些零件組成的，這是你以後開會最常聽到的一組
+詞彙。
+
+用一個大家都有的生活經驗切入：去餐廳吃飯。
+
+\begin{itemize}
+\item 你走進餐廳，跟外場服務生點餐、看菜單、拿到上桌的菜，這整個「你看得到、直接互動的
+部分」，對應到軟體世界裡叫做\textbf{前端（front-end）}，就是使用者實際點得到、看得到的
+畫面，例如一個網頁或手機 App 的介面。
+\index{前端（front-end）}
+\item 你看不到的內場廚房，負責真正把菜煮出來，對應到\textbf{後端（back-end）}，使用者看
+不到，負責處理邏輯與資料的部分。
+\index{後端（back-end）}
+\item 廚房裡的食材儲藏室，對應到\textbf{資料庫（database）}，東西實際存放的地方。
+\index{資料庫（database）}
+\item 外場跟內場之間，靠一張點餐單傳遞訊息：外場不需要知道廚房怎麼炒菜，廚房也不需要知道
+客人坐在哪一桌，兩邊只靠這張單子溝通，這正是\textbf{API（Application Programming
+Interface）}在做的事：軟體跟軟體之間講話的接口，一方送出請求（「這桌要一份炒飯」），
+另一方回覆結果。
+\index{API（Application Programming Interface）}
+\end{itemize}
+
+這裡只需要
+記住這個白話說明，程式碼層次的實作留到第 \ref{ch:api} 章實際串接一次 API 的時候再展開。
+
+這個類比也能延伸到「一道新菜怎麼正式上菜單」：主廚先在後場試做一次，端給店長跟幾個內部員工
+試吃，確認味道跟出餐流程都沒問題，這個「先在沒人看到的地方確認沒問題」的階段，對應到
+\textbf{staging}，正式上線前，先給團隊內部測試確認沒問題的環境。
+\index{staging}
+
+等一切都確認過了，這道菜
+才正式端給客人，對應到\textbf{production}，使用者實際在用的正式環境。把程式從工程師的
+電腦、經過 staging 確認，一路送到 production 讓使用者真正用得到的整個動作，叫做
+\textbf{部署（deploy）}。
+\index{production}
+\index{部署（deploy）}
+
+這裡也順便帶一句你以後可能會聽到的說法：如果整套後端邏輯全部塞在同一支程式裡一起部署，
+業界稱這種做法是「monolith」（單體式架構）；如果拆成好幾個各自獨立、各自部署的小服務，
+彼此再透過 API 互相溝通，則稱為「微服務（microservice）」。這兩種做法各有適合的情境，這
+一章不深入比較，你只需要知道以後聽到這兩個詞，指的是後端架構要不要拆成很多小塊這個選擇。
+\index{monolith／微服務（microservice）}
+
+這個「餐廳」的比喻只在這一節用，接下來不會反覆出現，它的任務只是幫你把這幾個詞彙在腦中
+掛上一個具體的畫面，之後你在職場上聽到這些詞，直接對照白話意思即可，不需要再繞回餐廳。整理
+成一張表方便你之後查閱：
+
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+詞彙 & 白話意思 \\
+\midrule
+前端（front-end） & 使用者看得到、點得到的部分，例如網頁或 App 的畫面 \\
+後端（back-end） & 使用者看不到，負責處理邏輯與資料的部分 \\
+資料庫（database） & 東西實際存放的地方 \\
+API & 軟體跟軟體之間講話的接口，一方送出請求、另一方回覆 \\
+部署（deploy） & 把程式從工程師的電腦送到使用者用得到的地方 \\
+staging & 正式上線前，先給團隊內部測試確認沒問題的環境 \\
+production & 使用者實際在用的正式環境 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{drills}[label=drills:software-anatomy]
+\item 一個網站的畫面看起來完全正常，按鈕點下去也有反應，但你填的資料每次重新整理都不見了，
+比較可能是前端出問題，還是後端或資料庫出問題？
+\item 「這個功能已經在 staging 上跑得很順，但 production 上還沒開放」，這句話代表使用者
+現在看不看得到這個功能？為什麼？
+\end{drills}
+
+光是知道「deploy」這個動作的終點在哪裡還不夠，下一節要接著回答一個很實際的問題：合併之後，
+這些步驟是每次都要有人手動做一遍，還是有辦法讓電腦自動幫你做？
+
+\section{合併之後，自動發生的事：CI/CD}
+\label{sec:cicd}
+
+上一節提到，程式要經過 staging 確認，才會真正 deploy 到 production。如果每一次合併都要
+工程師自己記得「該測試了、該部署了」，一忙起來很容易漏掉某個步驟，甚至忘記測試就直接把有
+問題的程式碼送上 production，讓使用者遇到壞掉的功能。業界的解法，是讓電腦自動幫你做這些
+重複、容易忘記的事，這一整套自動化機制有個統稱，叫做 \textbf{CI/CD}。
+\index{CI/CD}
+
+CI 是 Continuous Integration（持續整合）的縮寫：每一次有人把改動合併回主線，就自動觸發一
+連串檢查，最常見的是自動把整個專案的測試程式碼跑一遍，確認這次改動沒有把原本能動的功能弄
+壞。如果測試沒過，這套系統會立刻回報「這次合併有問題」，讓工程師在使用者發現之前就先發現。
+
+CD 則有兩種常見的意思，都跟「後續動作自動化」有關：Continuous Delivery（持續交付）指的是
+自動把通過測試的版本準備好、隨時可以部署；Continuous Deployment（持續部署）則更進一步，
+測試一通過就自動直接 deploy 到 production，中間完全不需要人手動按下部署的按鈕。
+
+你可以把 CI/CD 想成一條裝在合併動作後面的輸送帶：改動一旦被 merge 進主線，就自動被送上這條
+輸送帶，依序經過測試、打包、部署到 staging、甚至部署到 production 這幾道關卡，每一道關卡都
+是電腦自動執行，不需要工程師手動一步一步操作。這也是為什麼你可能會聽到工程師說「這次
+pipeline 跑失敗了」，這裡的 pipeline（管線）指的就是這整條自動化輸送帶，「跑失敗」代表某一
+道關卡（通常是測試那一關）沒有通過。
+\index{pipeline（工作流程）}
+
+一條 pipeline 實際跑完之後，留下的紀錄大概長這樣，工程師平常就是看這種畫面判斷「這次合併
+到底有沒有問題」：
+
+\begin{verbatim}
+[pipeline #482] trigger: merge into main
+[1/3] install packages.............. passed
+[2/3] run tests...................... failed (3 tests did not pass)
+[3/3] deploy to staging.............. skipped (previous stage failed)
+result: pipeline failed, not deployed
+\end{verbatim}
+
+由上往下讀：前兩關寫著「passed」，第三關「deploy to staging」寫著「skipped」，不是它自己也失敗了，
+是因為它的前一關（run tests）已經先失敗，系統判斷沒有必要再往下做，直接停在這裡。這正是這條
+「輸送帶」的重點：只要有一道關卡沒過，後面的關卡就不會執行，壞掉的程式碼不會有機會一路溜到
+production。工程師看到這種紀錄，會先點開「run tests」那一關的細節，找出是哪三項測試沒通過、
+為什麼沒通過，修好之後再重新觸發一次 pipeline。
+
+\keypoint{CI/CD 自動化的是「合併之後該做的重複性工作」，不是取代 code review。code review
+仍然需要人親自看過改動的邏輯合不合理；CI/CD 負責的是那些可以寫成規則、機械式檢查的部分
+（測試有沒有過、程式碼風格符不符合規範），兩者是互補的把關機制，不是二選一。}
+
+\begin{drills}[label=drills:cicd]
+\item 同事跟你說：「我剛剛 merge 的那次 pipeline 跑失敗了，我先去看一下。」請用白話翻譯這
+句話在說什麼。
+\item CI 跟 CD 各自處理的是「合併之後」流程裡的哪一段？
+\end{drills}
+
+\section{職場詞彙地圖：sprint、backlog、ticket}
+\label{sec:workplace-vocab}
+
+上一節看的是「軟體長什麼樣」，這一節把視角轉到「工程師團隊怎麼安排『這禮拜要做什麼』」，
+這是你開會時最常聽到、也最容易一頭霧水的一組詞彙。
+
+想像一個團隊共同維護一份待辦清單，上面記錄著所有「將來想做、但還沒排進行程」的事情：新
+功能的點子、使用者回報的 bug、需要優化的地方。這份清單，業界叫它 \textbf{backlog}：已經
+記錄下來、但還沒排進任何工作區間的待辦事項清單。
+\index{backlog}
+
+清單上每一件具體的事，會被寫成一張獨立的
+工作卡片，叫做 \textbf{ticket}，上面寫著要做什麼、可能還有誰負責、目前進度到哪裡，可能是
+一個新功能，也可能是要修的一個 bug。
+\index{ticket}
+
+團隊通常不會一次把 backlog 上的所有事做完，會每隔一段固定的時間（常見的是兩個星期），開會
+決定接下來這段時間要從 backlog 裡挑哪些 ticket 出來做，這段約定要完成一批工作的固定時間
+區間，叫做 \textbf{sprint}。sprint 結束時，團隊通常會檢視這段時間完成了什麼、還有什麼沒做
+完，沒做完的就退回 backlog，或排進下一個 sprint。
+\index{sprint}
+
+同一組詞彙，PM 跟工程師常用的語境會有點不一樣，整理成一張對照表，讓你以後開會聽到時能立刻
+對上：
+
+\begin{center}
+\begin{tabular}{@{}lp{4cm}p{4cm}@{}}
+\toprule
+詞彙 & PM／營運常見講法 & 工程師常見講法 \\
+\midrule
+backlog & 「這個先丟進 backlog，之後再排」 & 「這張票在 backlog 躺很久了」 \\
+sprint & 「這個 sprint 要交付什麼」 & 「這個 sprint 排不進去，下一輪再看」 \\
+ticket & 「我先開一張 ticket 追蹤這件事」 & 「這張 ticket 指派給我了，我這週處理」 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{drills}[label=drills:workplace-vocab]
+\item 同事在會議上說：「這張 ticket 我先丟回 backlog，這個 sprint 排不進去了。」這句話裡的
+ticket、backlog、sprint 分別在指什麼？
+\item 「這張 ticket 還躺在 backlog 裡」跟「這張 ticket 已經排進這個 sprint 了」，這兩句話
+在講的是同一張工作卡片的什麼差異？
+\end{drills}
+
+\section{情境模擬：聽懂會議裡的那句話}
+\label{sec:workplace-scenarios}
+
+這一章介紹了不少詞彙，這一節不再介紹新東西，是把它們放回真實的對話情境裡，看看你能不能
+聽懂。
+
+\textbf{情境一：「這支 PR 還在 review。」} 你可能在會議上聽過工程師這樣回你「這個功能做好
+了嗎」的問題。翻成白話，這句話代表程式碼已經寫完、已經提出 pull request，正在等別的工程師
+做 code review，還沒有人看完、確認沒問題，所以還沒 merge 回主線，當然也還沒開始跑後面
+CI/CD 那條自動化輸送帶，更不用說部署上線了。
+
+如果你想追問「大概還要多久」，比較有意義的問法
+通常是「已經有人開始看了嗎」或「大概還要等誰」，直接問「什麼時候寫完」常常問不出重點，因為
+程式碼可能早就寫完了，卡住的是「還沒有人看過」這一關。
+
+\textbf{情境二：「pipeline 跑失敗了，我在查。」} 如果工程師這樣回你，代表 \ref{sec:cicd} 節說的
+CI/CD 自動化流程在測試（或其他自動檢查）那一關卡住了，工程師正在排查是哪裡出了問題，不一
+定跟你關心的那個功能有關（也可能是別人改動的另一段程式碼恰好把測試弄壞了）。
+
+這種情況下追問
+「是不是我要的這個功能有 bug」通常問不出什麼，比較好的問法是「這次卡關會不會影響到我們原本
+排定的時間」。
+
+\textbf{情境三：PM 問「這個功能什麼時候能上線」，工程師回答「程式碼都寫完了，正在 staging
+上測試，確認沒問題就會 deploy」。} 翻成白話：程式碼已經寫完、也已經通過 code review 合併
+進主線了，目前正放在 staging（團隊內部測試用的環境）上做最後確認，一旦確認沒問題，就會
+deploy（部署），把程式正式送到使用者用得到的 production（正式環境）上線。
+
+這句話裡沒有一個
+字提到「還沒寫完」，卻常常被誤會成「還在寫」，聽懂 staging 跟 production 的差別，才不會
+反覆追問一個其實已經有明確答案的問題。
+
+\textbf{情境四：「這支 API 前端已經串好了，後端那邊資料庫欄位還沒改完。」} 對照 \ref{sec:software-anatomy} 節的
+餐廳比喻：API 對應點餐單，是前端跟後端之間傳遞請求的窗口；前端對應外場，是使用者看得到、
+互動的部分；後端對應內場廚房，處理邏輯的部分；資料庫對應食材儲藏室，是東西實際存放的地方。
+
+這句話合起來的意思是：畫面（前端）那一側已經準備好可以送出請求了，但廚房（後端）那一側要用
+的食材儲藏室（資料庫）的欄位結構還沒調整完，所以這個功能整體還不能真正動起來，卡的是後端跟
+資料庫，不是前端。
+
+走到這裡，整章其實可以串成一幅完整的畫面：有人先開了一張 \textbf{ticket}，描述要做的事；
+這張 ticket 被排進某個 \textbf{sprint}；負責的工程師從主線岔出一條 \textbf{branch}，動手
+改一個「正常專案」資料夾裡的檔案，過程中資料夾裡有些東西（像虛擬環境、暫存檔）刻意被
+\texttt{.gitignore} 排除在版本控制之外；
+
+改完之後發出 \textbf{pull request}，讓同事先
+\textbf{code review} 過；review 通過、merge 回主線之後，交給 \textbf{CI/CD} 這條自動化
+輸送帶跑測試、跑部署，經過 \textbf{staging} 的確認，最後 \textbf{deploy} 到
+\textbf{production}，使用者才真正用得到這個新功能或修好的 bug。
+
+你在職場上會聽到的每一句
+行話，說的都是這整幅畫面裡的某一小段，這一章的目標，就是讓你下次聽到時，能立刻在腦中對上
+是哪一段。
+
+\begin{drills}[label=drills:workplace-scenarios]
+\item PM 問工程師：「這個功能什麼時候能上線？」工程師回答：「程式碼都寫完了，正在 staging
+上測試，確認沒問題就會 deploy。」請用白話翻譯工程師這句回答在說什麼。
+\item 如果有人跟你說「這支 API 前端已經串好了，但後端那邊資料庫欄位還沒改完」，這句話裡
+API、前端、後端、資料庫，分別對應到 \ref{sec:software-anatomy} 節餐廳比喻裡的哪個角色？
+\item 同事說「這支 PR 還在 review」，跟同事說「pipeline 跑失敗了」，這兩句話卡住的分別是
+整個流程裡的哪一關（提示：一個發生在 merge 之前，一個發生在 merge 之後）？
+\end{drills}
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:terminal-location}~節}
+\begin{enumerate}
+\item \texttt{cd -}，會跳回你上一次所在的那個資料夾，不用重新打完整路徑。
+\item \texttt{cd \textasciitilde}，不管目前站在哪個資料夾，都會直接跳回自己的家目錄。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:cli-basics}~節}
+\begin{enumerate}
+\item \texttt{pwd}（macOS／Linux）或不加參數的 \texttt{cd}（Windows 命令提示字元，
+PowerShell 也可以打 \texttt{pwd}）。
+\item \texttt{ls}（macOS／Linux）或 \texttt{dir}（Windows）。
+\item \texttt{cp report.py report\_backup.py}。改用 \texttt{mv} 打同樣的指令
+（\texttt{mv report.py report\_backup.py}）的話，資料夾裡不會同時留下兩個檔案，
+\texttt{report.py} 會直接消失，只剩下改名後的 \texttt{report\_backup.py}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:project-anatomy}~節}
+\begin{enumerate}
+\item \texttt{README.md}，它是寫給人看的說明文件，用來快速知道這個專案在做什麼、怎麼執行；
+\texttt{src/} 跟 \texttt{tests/} 裡放的是程式碼本身，不看過 README 直接讀程式碼，通常比較
+難快速抓到整體脈絡。
+\item 寫給工程師自己用的，用來檢查專案裡的某段邏輯（例如分類函式）有沒有寫對，不是給使用者
+執行的程式。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:project-structure}~節}
+\begin{enumerate}
+\item 這個專案需要裝 \texttt{pandas} 這個套件，版本要是 2.1.0。別人（或你自己在另一台電腦
+上）想重建這個專案的執行環境時，照著這份清單裝，就能裝出一模一樣的套件版本。
+\item 算。\ref{sec:project-anatomy} 節說的「專案」，看的是有沒有一份說明文件、有沒有記錄清楚需要什麼套件這種
+完整程度，不是資料夾裡塞了幾支 \texttt{.py} 檔案。只有一支檔案、什麼說明都沒有，仍然可以是
+一個專案，只是還沒有具備「正常專案」該有的說明文件跟套件清單，比較不方便別人（或未來的自己）
+接手。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:gitignore}~節}
+\begin{enumerate}
+\item \texttt{venv} 資料夾跟 \texttt{\_\_pycache\_\_} 資料夾通常該放進
+\texttt{.gitignore}；\texttt{organize-and-backup.py} 是你自己寫的原始碼、
+\texttt{requirements.txt} 是給別人重建環境用的清單，這兩個都應該被版本控制記錄下來，不該
+排除。
+\item 版本控制系統會把 \texttt{venv}、\texttt{\_\_pycache\_\_} 這類龐大又可以重新產生的
+東西也整個記錄進每一次 commit，讓專案的紀錄變得又大又難管理；如果程式碼裡剛好寫死了帳號
+密碼或 API 金鑰，少了 \texttt{.gitignore} 排除機密設定檔，這些機密資訊也會被永久留在版本
+紀錄裡，就算之後刪掉也還找得到。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:version-control}~節}
+\begin{enumerate}
+\item pull request（簡稱 PR）。
+\item 讓自己可以放心實驗、修改，就算改到一半程式碼暫時是壞的，也不會影響主線、也不會影響
+其他人正在進行的工作。
+\item 不是同一件事。review 通過只代表「有人看過這些改動、覺得沒問題」，merge 才是「改動真的
+被接進主線」那個動作本身，通常是 review 通過之後才會發生 merge，但兩者是流程裡先後不同的
+兩個步驟。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:software-anatomy}~節}
+\begin{enumerate}
+\item 比較可能是後端或資料庫出問題。前端負責畫面顯示跟互動，看起來正常代表前端這一側大致
+沒問題；資料填了卻存不住，通常是後端處理資料的邏輯，或資料庫實際存放資料的那一步出了狀況。
+\item 看不到。staging 是團隊內部測試用的環境，不是使用者看得到的地方；使用者實際用的是
+production，這句話代表這個功能還沒 deploy 到 production，所以還沒有任何使用者看得到它。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:cicd}~節}
+\begin{enumerate}
+\item 這位同事剛剛把自己的改動 merge 進主線，但 CI/CD 自動跑的檢查（通常是測試）沒有通過，
+他正在查是哪裡出了問題，這件事目前還沒有解決。
+\item CI（持續整合）處理的是「merge 之後、自動確認這次改動有沒有把原本能動的功能弄壞」這一
+段，主要是跑測試；CD（持續交付／持續部署）處理的是「測試通過之後，怎麼把改動送到 staging
+甚至 production」這一段。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:workplace-vocab}~節}
+\begin{enumerate}
+\item ticket 是那件具體要做的工作（可能是新功能或 bug）；backlog 是「已經記錄下來、但還沒
+排進任何 sprint」的待辦清單，這張 ticket 現在被放回這份清單裡；sprint 是團隊約定要完成一批
+工作的固定時間區間，這張 ticket 沒能排進目前這一輪。
+\item 這是同一張 ticket 在時間安排上的兩種狀態：「躺在 backlog 裡」代表這件事已經被記錄
+下來，但還沒被排進任何一個具體的時間區間去做；「排進這個 sprint」代表團隊已經決定接下來這
+段固定時間要處理這件事了。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:workplace-scenarios}~節}
+\begin{enumerate}
+\item 程式碼已經寫完了，目前正放在 staging（團隊內部測試用的環境）上確認沒有問題；一旦
+確認沒問題，就會 deploy（部署），把程式正式送到使用者用得到的 production（正式環境）上線。
+\item API 對應點餐單（前端跟後端之間傳遞請求的窗口）；前端對應外場（使用者看得到、互動的
+部分）；後端對應內場廚房（處理邏輯的部分）；資料庫對應食材儲藏室（東西實際存放的地方）。
+\item 「這支 PR 還在 review」卡在 merge 之前，等的是有人先看過這些改動、確認沒問題；
+「pipeline 跑失敗了」發生在 merge 之後，是 merge 進主線之後 CI/CD 自動跑的檢查沒有通過。
+\end{enumerate}

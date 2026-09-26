@@ -1,0 +1,1025 @@
+\chapter{遞迴}
+\label{ch:recursion}
+
+第 \ref{ch:functions} 章第 \ref{sec:function-scope} 節的結尾留了一筆帳。那裡說：函式主體
+裡除了可以呼叫別的函式，也可以呼叫函式自己，這種寫法叫做遞迴；至於完整的討論——怎麼讓它
+停下來、什麼時候值得用它、什麼時候用迴圈更好——留到這一章。
+
+這一章就是來還這筆帳的。三個問題裡，看起來最不像問題的是第三個，但它其實才是這一章真正
+要交給你的東西。遞迴不是比較厲害的迴圈，也不是寫出來比較好看的迴圈；它是一種在特定形狀的
+問題上非常好用、在其他形狀的問題上只會把事情弄複雜的工具。這一章的目標，是讓你會寫它，
+更重要的是讓你看到一個問題的時候，知道這次該不該用它。
+
+這一章分三段推進：
+
+\begin{itemize}
+\item 第一段把遞迴看清楚：一個函式呼叫自己，它到底怎麼運作、又怎麼停下來，還有怎麼讓
+程式自己把「一層一層疊上去、又一層一層收回來」的過程印出來給你看
+（第 \ref{sec:recursion-basics}～\ref{sec:recursion-trace} 節）。
+\item 第二段用兩個經典的小例子練形狀：階乘與費氏數列。這兩個例子有個共同點——它們其實
+都用迴圈寫更好。它們留在這一章的理由只有一個：夠小，小到你可以把整個過程從頭追到尾
+（第 \ref{sec:recursion-return}～\ref{sec:fibonacci-cost} 節）。
+\item 第三段才是遞迴真正划算的場合：走訪巢狀資料、走訪資料夾樹，順帶看一眼標準函式庫
+替遞迴準備的一個小工具，最後收在一份「什麼時候該用、什麼時候不該用」的判準上
+（第 \ref{sec:nested-data-walk}～\ref{sec:recursion-or-loop} 節）。
+\end{itemize}
+
+\section{遞迴初探：函式呼叫自己}
+\label{sec:recursion-basics}
+
+先從一件跟程式完全無關的事說起。你決定把一個塞滿雜物的抽屜整理乾淨，做法很單純：東西一件
+一件拿出來歸位，筆放筆筒、單據丟掉、鑰匙掛起來。做到一半，你拿出一個鐵盒；打開鐵盒，裡面
+又是一堆沒整理的東西，而且裡面還有一個更小的盒子。
+
+這時候你不會為了「整理鐵盒」另外發明一套辦法。你會做的事跟整理抽屜完全一樣：東西一件一件
+拿出來歸位，碰到盒子就打開它，用同一套做法處理裡面的東西。而且你一點也不擔心整理不完——
+每打開一層，裡面的東西一定比外面少，總會有一個盒子，打開之後裡面沒有盒子了。
+
+「做著做著又碰到同一件事，於是用同一套做法再做一次」——這個形狀，就是這一章要講的東西。
+
+函式主體裡除了可以呼叫別的函式，其實也可以呼叫自己，這種寫法叫做遞迴（recursion）。第一
+次聽到「函式呼叫自己」通常會覺得這樣寫會不會永遠繞不出來，這一節就用一個小例子，看看遞迴
+實際上是怎麼運作、又怎麼停下來的。
+\index{遞迴}
+
+\begin{code}{python}{遞迴函式的基本形狀}
+def function_name(parameter):
+    if base_case_reached:
+        code (does not call itself again)
+        return
+    code
+    function_name(parameter closer to the base case)
+\end{code}
+
+\begin{example}{python}{(countdown.py) 倒數計時}
+def countdown(n):
+    if n <= 0:
+        print("Liftoff!")
+        return
+    print(n)
+    countdown(n - 1)
+
+
+countdown(3)
+\end{example}
+
+\iosample{}{3 \\ 2 \\ 1 \\ Liftoff! \\}
+
+追蹤這支程式實際發生的事：呼叫 \texttt{countdown(3)}，因為 \texttt{3 <= 0} 不成立，先
+印出 \texttt{3}，再呼叫 \texttt{countdown(2)}；\texttt{countdown(2)} 又印出
+\texttt{2}，再呼叫 \texttt{countdown(1)}；一路下去，直到呼叫 \texttt{countdown(0)}，
+這次 \texttt{0 <= 0} 成立，印出「Liftoff!」之後就 \texttt{return}，不再呼叫自己。整個過程
+總共呼叫了 \texttt{countdown} 四次（\texttt{n} 分別是 3、2、1、0），每次呼叫都有自己
+獨立的一份 \texttt{n}（呼應第 \ref{ch:functions} 章的作用域規則：每次呼叫都有自己的一份
+區域變數）。
+
+讓函式停止繼續呼叫自己的那個判斷（這裡是 \texttt{n <= 0}），叫做終止條件。
+\index{終止條件}
+每一個遞迴
+函式都一定要有終止條件，而且每次呼叫自己的時候，傳進去的參數都要比上一次更靠近終止條件
+（這裡是 \texttt{n} 每次都減 1，遲早會碰到 \texttt{n <= 0}）。如果忘了寫終止條件，會發生
+什麼事？
+
+\begin{example}{python}{(countdown-broken.py) 忘記寫終止條件}
+def countdown(n):
+    print(n)
+    countdown(n - 1)
+
+
+countdown(3)
+\end{example}
+
+\begin{verbatim}
+3
+2
+1
+0
+-1
+-2
+...
+  File "countdown-broken.py", line 3, in countdown
+    countdown(n - 1)
+  File "countdown-broken.py", line 3, in countdown
+    countdown(n - 1)
+  [Previous line repeated 996 more times]
+RecursionError: maximum recursion depth exceeded
+\end{verbatim}
+
+這支程式會一路印出 3、2、1、0、-1、-2……完全停不下來，因為沒有任何一個判斷會讓它
+\texttt{return} 而不再呼叫自己。Python 沒辦法讓函式無止盡地一直呼叫下去，每多呼叫一層
+就會多佔用一點電腦的資源，超過某個深度上限，Python 會直接放棄並丟出
+\texttt{RecursionError}，
+\index{RecursionError}
+訊息是「超過最大遞迴深度」，畫面上還會看到一長串重複的呼叫紀錄
+（上面的 \texttt{[Previous line repeated 996 more times]} 就是 Python 自己在說「這段
+重複了 996 次，不再一行一行列出來」）。
+
+\keypoint{寫遞迴函式一定要有終止條件，而且每次呼叫自己時，參數都要比上一次更靠近那個終止
+條件，不然函式會沒完沒了地呼叫下去，最後被 Python 自己的深度限制擋下來，丟出
+\texttt{RecursionError}。第 \ref{ch:loops} 章學過的 \texttt{for}／\texttt{while} 迴圈通常
+也能做到遞迴能做的事，遞迴只是多一種思考、拆解問題的方式，不是每個情境都非用不可。}
+
+\begin{drills}[label=drills:recursion-basics]
+\item 如果把 \texttt{countdown(3)} 改成呼叫 \texttt{countdown(0)}，會印出什麼？
+\item 有一個函式：
+\begin{verbatim}
+def count_up(n, limit):
+    if n > limit:
+        return
+    print(n)
+    count_up(n + 1, limit)
+\end{verbatim}
+如果呼叫 \texttt{count\_up(1, 4)}，會依序印出哪些數字？
+\item 這裡的 \texttt{count\_up} 函式，改用第 \ref{ch:loops} 章教過的 \texttt{for} 迴圈搭配
+\texttt{range()} 可以達到一樣的效果嗎？你會怎麼寫？
+\end{drills}
+
+\section{看見它一層一層疊上去，又一層一層收回來}
+\label{sec:recursion-trace}
+
+上一節那段「追蹤這支程式實際發生的事」，是這本書講給你聽的。講得再清楚，也還是別人告訴你
+的；真正能讓人放下心裡那個「它到底會不會停」的疑慮的，是自己親眼看到過程。
+
+這一節要做的事很單純：讓程式自己把過程印出來。方法只有一個小技巧——在遞迴函式裡多帶一個
+參數，記住「現在是第幾層」，用它決定要縮排幾格；進入函式的時候印一行，要離開之前再印
+一行。
+
+\begin{code}{python}{幫遞迴函式加上縮排追蹤}
+def function_name(parameter, depth=0):
+    indent = "    " * depth
+    print(indent + "進入這一層")
+    if base_case_reached:
+        print(indent + "離開這一層")
+        return
+    function_name(next_parameter, depth + 1)
+    print(indent + "離開這一層")
+\end{code}
+
+\texttt{depth} 的預設值是 \texttt{0}，所以最外面那次呼叫可以照舊寫
+\texttt{countdown(3)}，不用自己傳；只有函式呼叫自己的時候才會把 \texttt{depth + 1} 傳
+下去，於是每深一層就多縮四格。拿上一節那支 \texttt{countdown} 直接改（題目不換，這樣你
+只需要注意「多印了什麼」）：
+
+\begin{example}{python}{(countdown-trace.py) 把倒數的每一層印出來}
+def countdown(n, depth=0):
+    indent = "    " * depth
+    print(f"{indent}進入 countdown({n})")
+    if n <= 0:
+        print(f"{indent}Liftoff!")
+        print(f"{indent}離開 countdown({n})")
+        return
+    print(f"{indent}{n}")
+    countdown(n - 1, depth + 1)
+    print(f"{indent}離開 countdown({n})")
+
+
+countdown(3)
+\end{example}
+
+\iosample{}{進入 countdown(3) \\ 3 \\ ~~~~進入 countdown(2) \\ ~~~~2 \\
+~~~~~~~~進入 countdown(1) \\ ~~~~~~~~1 \\ ~~~~~~~~~~~~進入 countdown(0) \\
+~~~~~~~~~~~~Liftoff! \\ ~~~~~~~~~~~~離開 countdown(0) \\ ~~~~~~~~離開 countdown(1) \\
+~~~~離開 countdown(2) \\ 離開 countdown(3) \\}
+
+這個形狀就是這一節的重點，值得盯著看一會兒。輸出先一路往右縮排，縮到最深的那一層
+（\texttt{countdown(0)}）之後轉向，再一層一層往左退回來。往右走的那一半是「疊上去」：
+每一次呼叫自己，都是在上一層還沒做完的情況下，又開了新的一層。往左退的那一半是「收回
+來」：最裡面那一層 \texttt{return} 之後，控制權交回給呼叫它的那一層，那一層才把自己
+剩下的 \texttt{print} 做完，然後再交回給更外面一層。
+
+注意「離開 countdown(3)」是最後印出來的。最早開始的那一層，是最晚結束的——因為它一直
+在等裡面那一層做完。這件事講出來有點繞，但看著這個輸出就一目了然。
+
+還有一個一直被提到、但到現在才真正看得見的東西：\textbf{每一層的 \texttt{n} 是各自
+獨立的}。畫面上同時存在 \texttt{countdown(3)}、\texttt{countdown(2)}、
+\texttt{countdown(1)}、\texttt{countdown(0)} 四層，每一層印出來的 \texttt{n} 都不一樣，
+而且退回來的時候，每一層都還記得自己原本那個 \texttt{n}——「離開 countdown(2)」印的
+還是 \texttt{2}。用第 \ref{ch:functions} 章第 \ref{sec:function-nametag} 節的說法：這
+四個 \texttt{n} 是四組不同的名字牌，貼在四個不同的數字上；它們同名，但從來不是同一個
+東西。
+
+這種只在「想搞清楚程式在幹嘛」的時候才加、弄懂之後就會拿掉的程式碼，有個很貼切的稱呼：
+鷹架。
+\index{鷹架（scaffolding）}
+蓋房子的時候要搭，房子蓋好就拆掉。花五分鐘替一支遞迴函式搭一次鷹架，常常比盯著
+程式碼想半小時還快。
+
+\subsection*{traceback 也是一張堆疊的照片}
+
+回頭看第 \ref{sec:recursion-basics} 節那支 \texttt{countdown-broken.py} 丟出來的
+\texttt{RecursionError}。第 \ref{ch:debugging} 章第 \ref{sec:call-stack} 節已經教過怎麼
+讀這種有好幾組 \texttt{File}／\texttt{line} 的 traceback：由上到下就是呼叫發生的順序，
+最下面才是真正出錯的那一行。那一節的讀法在這裡完全適用，不用重學。
+
+這次唯一特別的地方是：那幾組 \texttt{File}／\texttt{line} 全部是同一個函式、同一行。
+換句話說，這串 traceback 印的不是「A 呼叫 B 呼叫 C」，是「\texttt{countdown} 呼叫
+\texttt{countdown} 呼叫 \texttt{countdown}……」。而
+\texttt{[Previous line repeated 996 more times]} 這一行，就是 Python 直接告訴你它疊了
+幾層——這是上面那個縮排輸出的另一種呈現，只是這一次是 Python 免費附贈的。
+
+順帶一提，Python 有辦法把那個深度上限調高（標準函式庫裡有個
+\texttt{sys.setrecursionlimit}），但幾乎沒有正當理由去動它。會撞到上限，絕大多數時候
+代表終止條件寫錯了或走不到，不是上限太小。
+
+\begin{drills}[label=drills:recursion-trace]
+\item 把 \texttt{countdown-trace.py} 最後一行改成 \texttt{countdown(2)}，輸出會長什麼
+樣子？縮排最深的是哪一行？
+\item 有人寫了下面這支程式，想從 10 開始每次減 2，數到 1 為止：
+\begin{verbatim}
+def shrink(n):
+    print(n)
+    if n == 1:
+        return
+    shrink(n - 2)
+
+
+shrink(10)
+\end{verbatim}
+執行之後畫面上先印出 \texttt{10}、\texttt{8}、\texttt{6}、\texttt{4}、\texttt{2}、
+\texttt{0}、\texttt{-2}……一路往負數跑，最後結束在：
+\begin{verbatim}
+  File "shrink.py", line 5, in shrink
+    shrink(n - 2)
+    ~~~~~~^^^^^^^
+  [Previous line repeated 996 more times]
+RecursionError: maximum recursion depth exceeded
+\end{verbatim}
+這個函式明明有終止條件，為什麼還是停不下來？從 traceback 看得出它大約疊了幾層嗎？
+\item 如果把 \texttt{countdown-trace.py} 裡「離開」那兩行 \texttt{print} 都刪掉，只留
+「進入」的那一行，輸出會少掉什麼？剩下的部分還看得出「一層一層收回來」嗎？
+\end{drills}
+
+\section{讓每一層把答案交回上一層：階乘}
+\label{sec:recursion-return}
+
+到目前為止的 \texttt{countdown} 只做一件事：印東西。印完就沒了，沒有人需要拿到任何結果。
+接下來這一步是新的：\textbf{每一層都要算出一個值，交回給呼叫它的那一層。}
+
+生活裡有對應的畫面。你想知道一件事，問了旁邊的人，他不知道，於是他去問他認識的人；那個人
+也不知道，再去問下一個……直到有人知道答案，答案才一個一個往回傳，最後傳到你手上。
+下去的是問題，上來的是答案。遞迴函式的回傳值就是那個「上來的答案」。
+
+拿階乘當例子。4 的階乘是 $4 \times 3 \times 2 \times 1$，也就是 24。用遞迴的
+角度看它，只需要一句話：\texttt{n} 的階乘，就是 \texttt{n} 乘上「\texttt{n - 1} 的
+階乘」。而 \texttt{0} 的階乘規定是 1，那就是終止條件。
+
+\begin{code}{python}{有回傳值的遞迴形狀}
+def function_name(parameter):
+    if base_case_reached:
+        return simple_answer
+    return combine(parameter, function_name(smaller_parameter))
+\end{code}
+
+跟第 \ref{sec:recursion-basics} 節那個片語比起來，形狀沒變，兩塊還是那兩塊：終止條件
+那一行不再呼叫自己，直接給出一個現成的答案；遞迴步驟那一行呼叫自己，然後拿它交回來的
+東西再加工一次。
+
+\begin{example}{python}{(factorial.py) 用遞迴算階乘}
+def factorial(n):
+    if n == 0:
+        return 1
+    return n * factorial(n - 1)
+
+
+print(factorial(4))
+print(factorial(0))
+\end{example}
+
+\iosample{}{24 \\ 1 \\}
+
+\texttt{if n == 0: return 1} 是終止條件，\texttt{return n * factorial(n - 1)} 是遞迴
+步驟。參數每次減 1，一定會走到 \texttt{0}。
+
+光看程式碼還是有點抽象，所以把上一節的鷹架搭上去——這次鷹架不是新東西，是拿來當工具用：
+
+\begin{example}{python}{(factorial-trace.py) 看清楚答案是怎麼一層一層交回來的}
+def factorial(n, depth=0):
+    indent = "    " * depth
+    print(f"{indent}進入 factorial({n})")
+    if n == 0:
+        print(f"{indent}回傳 1")
+        return 1
+    result = n * factorial(n - 1, depth + 1)
+    print(f"{indent}回傳 {result}")
+    return result
+
+
+print(factorial(4))
+\end{example}
+
+\iosample{}{進入 factorial(4) \\ ~~~~進入 factorial(3) \\ ~~~~~~~~進入 factorial(2) \\
+~~~~~~~~~~~~進入 factorial(1) \\ ~~~~~~~~~~~~~~~~進入 factorial(0) \\
+~~~~~~~~~~~~~~~~回傳 1 \\ ~~~~~~~~~~~~回傳 1 \\ ~~~~~~~~回傳 2 \\ ~~~~回傳 6 \\
+回傳 24 \\ 24 \\}
+
+跟 \texttt{countdown} 的追蹤比起來，往右的那一半幾乎一模一樣：五層呼叫一層一層疊上去，
+一路疊到 \texttt{factorial(0)}。差別全在往左退的那一半——這次每一層退回來的時候，手上
+都帶著一個數字：\texttt{1}、\texttt{1}、\texttt{2}、\texttt{6}、\texttt{24}。
+每一層拿到下一層交回來的答案，乘上自己的 \texttt{n}，再交給上一層。
+
+還有一件事值得注意：\texttt{factorial(4)} 這一層在寫下 \texttt{n * factorial(n - 1)}
+的時候，並不需要知道 \texttt{factorial(3)} 是怎麼算出來的，只要相信它會回傳正確的值就
+好。這是遞迴最省力的地方——你每次只需要想清楚「這一層要做什麼」，剩下的交給下一層。
+
+\subsection*{有終止條件，不代表走得到}
+
+第 \ref{sec:recursion-basics} 節的學習要點說了兩件事：要有終止條件，而且每次都要更靠近
+它。前面幾個例子都只示範了第一件事出問題的樣子。第二件事出問題，長得比較陰險——程式看
+起來完全正常，也真的有一行 \texttt{if} 寫著停，但就是永遠碰不到。
+
+\begin{example}{python}{(factorial-negative.py) 傳進一個永遠碰不到 0 的數}
+def factorial(n):
+    if n == 0:
+        return 1
+    return n * factorial(n - 1)
+
+
+print(factorial(-1))
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "factorial-negative.py", line 7, in <module>
+    print(factorial(-1))
+          ~~~~~~~~~^^^^
+  File "factorial-negative.py", line 4, in factorial
+    return n * factorial(n - 1)
+               ~~~~~~~~~^^^^^^^
+  File "factorial-negative.py", line 4, in factorial
+    return n * factorial(n - 1)
+               ~~~~~~~~~^^^^^^^
+  [Previous line repeated 996 more times]
+RecursionError: maximum recursion depth exceeded
+\end{verbatim}
+
+\texttt{-1} 減 1 是 \texttt{-2}，再減是 \texttt{-3}，永遠不會等於 \texttt{0}。終止條件
+明明就寫在那裡，卻是個擦身而過的目標。所以碰到 \texttt{RecursionError} 的時候，有一組
+固定的兩個問題可以問：有沒有終止條件？有的話，傳進去的參數保證走得到它嗎？把
+\texttt{if n == 0} 改成 \texttt{if n <= 0}，或是在函式開頭先擋掉負數，兩種修法都行。
+
+\subsection*{老實說：這個例子用迴圈寫更好}
+
+寫完了，該講實話。階乘用迴圈寫比較好：
+
+\begin{example}{python}{(factorial-loop.py) 同一件事的迴圈版}
+def factorial(n):
+    result = 1
+    for i in range(2, n + 1):
+        result = result * i
+    return result
+
+
+print(factorial(4))
+\end{example}
+
+\iosample{}{24 \\}
+
+迴圈版跟遞迴版一樣長、一樣好讀，但它不會疊層、不會有深度上限的問題，傳進去 \texttt{-1}
+也只是回傳 \texttt{1}，不會炸。如果哪天你在真正的專案裡要算階乘，寫這一版。
+
+那階乘為什麼還留在這一章？因為它夠小。小到你可以把整個過程從第一層追到最後一層，一行
+不漏，而這件事對「相信遞迴會停」非常有幫助。它是拿來看清楚形狀用的，不是拿來當範本用
+的。第 \ref{sec:nested-data-walk} 節與第 \ref{sec:folder-tree} 節會給你兩個反過來的
+例子：用迴圈寫會很痛苦，用遞迴寫剛剛好。
+
+\begin{drills}[label=drills:recursion-return]
+\item 把 \texttt{factorial-trace.py} 最後一行改成 \texttt{print(factorial(3))}，輸出會
+長什麼樣子？往左退回來的那幾行，數字依序是什麼？
+\item 有人把終止條件寫成 \texttt{if n == 1: return 1}（想說「1 的階乘就是 1」）。
+\texttt{factorial(4)} 還是算得出 24 嗎？那 \texttt{factorial(0)} 呢？會發生什麼事？
+\item 下面這個函式用遞迴把一份清單加總：
+\begin{verbatim}
+def total(numbers):
+    if len(numbers) == 0:
+        return 0
+    return numbers[0] + total(numbers[1:])
+\end{verbatim}
+\texttt{total([3, 1, 4, 1, 5])} 的結果是什麼？請把它改寫成 \texttt{for} 迴圈版。
+\end{drills}
+
+\section{費氏數列：形狀很漂亮，帳單很可怕}
+\label{sec:fibonacci-cost}
+
+費氏數列是這樣一串數字：0、1、1、2、3、5、8、13、21……規則是「每一項等於前兩項相加」，
+前兩項規定是 0 跟 1。這個規則翻成遞迴幾乎不用轉換，兩個終止條件、一個遞迴步驟，三行
+寫完：
+
+\begin{example}{python}{(fibonacci.py) 用遞迴算費氏數列}
+def fibonacci(n):
+    if n <= 1:
+        return n
+    return fibonacci(n - 1) + fibonacci(n - 2)
+
+
+for i in range(10):
+    print(i, fibonacci(i))
+\end{example}
+
+\iosample{}{0 0 \\ 1 1 \\ 2 1 \\ 3 2 \\ 4 3 \\ 5 5 \\ 6 8 \\ 7 13 \\ 8 21 \\ 9 34 \\}
+
+到這裡都很順，程式短、規則清楚、答案正確。問題藏在一個前面每個例子都沒有的地方：這個
+函式呼叫自己\textbf{兩次}。
+
+\subsection*{數數看它到底做了多少事}
+
+不用談任何理論，直接數。加一個計數器，每進入函式一次就加 1（\texttt{global} 是第
+\ref{ch:functions} 章教過的，用來表示「我要改的是函式外面那個變數」）：
+
+\begin{example}{python}{(fibonacci-count.py) 數它一共呼叫了自己幾次}
+call_count = 0
+
+
+def fibonacci(n):
+    global call_count
+    call_count = call_count + 1
+    if n <= 1:
+        return n
+    return fibonacci(n - 1) + fibonacci(n - 2)
+
+
+for target in [5, 10, 20, 30]:
+    call_count = 0
+    answer = fibonacci(target)
+    print(f"fibonacci({target}) = {answer}，一共呼叫了 {call_count} 次")
+\end{example}
+
+\iosample{}{fibonacci(5) = 5，一共呼叫了 15 次 \\ fibonacci(10) = 55，一共呼叫了 177 次 \\
+fibonacci(20) = 6765，一共呼叫了 21891 次 \\
+fibonacci(30) = 832040，一共呼叫了 2692537 次 \\}
+
+\texttt{n} 從 5 加到 30，只多了 25，呼叫次數卻從 15 次變成兩百六十九萬次。在作者的電腦
+上，\texttt{fibonacci(35)} 要跑將近一秒才會出來；再往上加幾，就要開始等了。
+
+為什麼會這樣？算第 5 項要先算第 4 項跟第 3 項；而算第 4 項的時候，又得再算一次第 3 項
+跟第 2 項。第 3 項被算了兩次，而且這兩次算出來的東西一模一樣。再往下，第 2 項被算了
+三次、第 1 項被算了五次……每往下一層，重複的份數就再翻一次，而且沒有任何人記得上一次
+算過。
+
+請注意問題出在哪裡：\textbf{不是遞迴本身有問題，是這個問題的形狀有問題。} 它每一步會
+岔成兩條路，而兩條路又長出一模一樣的子問題。\texttt{countdown} 跟 \texttt{factorial}
+都沒有這個毛病，因為它們每次只呼叫自己一次，一路往下就是一條線，四層就是四次呼叫。
+
+\keypoint{一個遞迴函式如果每次呼叫自己不只一次，要特別小心：重複的工作量不是用加的，
+是用乘的長大。看到一個遞迴函式的主體裡出現兩個以上的自我呼叫，先停下來想一想，同一件
+事會不會被算很多遍。}
+
+\subsection*{老實說：這個例子也用迴圈寫更好}
+
+跟階乘一樣，費氏數列在真正的程式裡該用迴圈寫。而且這次不只是「差不多好」，是明顯更好：
+
+\begin{example}{python}{(fibonacci-loop.py) 同一件事的迴圈版}
+def fibonacci(n):
+    previous = 0
+    current = 1
+    for i in range(n):
+        previous, current = current, previous + current
+    return previous
+
+
+for i in range(10):
+    print(i, fibonacci(i))
+\end{example}
+
+\iosample{}{0 0 \\ 1 1 \\ 2 1 \\ 3 2 \\ 4 3 \\ 5 5 \\ 6 8 \\ 7 13 \\ 8 21 \\ 9 34 \\}
+
+迴圈版從頭往上算一遍，每個值只算一次，\texttt{fibonacci(30)} 只跑 30 圈就結束，不是
+兩百多萬次。它甚至可以輕鬆算 \texttt{fibonacci(1000)}，遞迴版連試都不用試。
+
+那費氏數列為什麼還留在這一章？跟階乘一樣：它把「遞迴的形狀」照得非常清楚——規則怎麼寫，
+程式就怎麼寫，幾乎不用翻譯。它同時也是這一章最好的警告：程式寫得像規則本身，不代表
+它跑起來划算。
+
+不過，「同樣的事被重算了幾千次」這件事，其實還有另一種處理方式——不是改寫成迴圈，而是
+讓函式記得自己算過什麼。這個坑先挖在這裡，第 \ref{sec:lru-cache} 節回來填。
+
+\begin{drills}[label=drills:fibonacci-cost]
+\item 照 \texttt{fibonacci-count.py} 的做法，\texttt{fibonacci(5)} 一共會呼叫幾次
+\texttt{fibonacci}？（提示：輸出裡已經有答案了，但請試著自己在紙上把
+\texttt{fibonacci(5)} 岔出去的兩條路寫出來，數數看。）
+\item 為什麼 \texttt{countdown(30)} 完全沒有這個問題？它跟 \texttt{fibonacci(30)} 差在
+哪一個字？
+\item 不看課文，自己把費氏數列的迴圈版寫一次。寫完之後跟 \texttt{fibonacci-loop.py}
+對照，看看你的版本 \texttt{fibonacci(0)} 跟 \texttt{fibonacci(1)} 是不是也對。
+\end{drills}
+
+\section{遞迴真正划算的地方（一）：走訪巢狀資料}
+\label{sec:nested-data-walk}
+
+前面四節的遞迴函式，每一個都可以用迴圈寫得一樣好或更好。這一節開始不一樣了。
+
+先回想一下你已經做過的事。第 \ref{ch:csv} 章第 \ref{sec:json-basics} 節讀進一份 JSON
+之後，是這樣取值的：\texttt{student["contact"]["phone"]}；第 \ref{ch:api} 章第
+\ref{sec:parsing-json} 節從天氣 API 的回應裡挖資料，寫的是
+\texttt{data["current\_weather"]["temperature"]}。這種一路用中括號往下挖的寫法非常好用，
+但它有一個沒說出口的前提：\textbf{你事先就知道有幾層、每一層叫什麼名字。}
+
+那如果不知道呢？你拿到一份沒看過的 JSON，想先看看裡面到底有些什麼；或者資料本身就長得
+不整齊，有的成員多一層社團名單、有的成員沒有。這種時候你沒辦法先決定要寫幾層中括號，
+也沒辦法先決定要寫幾層 \texttt{for} 迴圈——因為層數是資料說了算，不是你說了算。
+
+這就是這一章開頭那個抽屜：你不知道盒子裡還有幾個盒子。
+
+\subsection*{一個新的形狀：迴圈包著遞迴}
+
+前面四個遞迴函式都是「一路往下一條線」：一層只往下開一個新的層。從這一節開始，形狀會變
+成另一種——\textbf{一層裡面有很多個東西}，要用迴圈跑過每一個，碰到還能再拆開的就遞迴
+下去：
+
+\begin{code}{python}{走訪「裡面還有同一種東西」的資料}
+def function_name(value):
+    for item in value:
+        if item is a container:
+            function_name(item)
+        else:
+            handle item directly
+\end{code}
+
+這個片語值得記起來，因為下一節的資料夾樹用的是\textbf{完全同一個骨架}，只是把「是不是
+容器」換成「是不是資料夾」而已。
+
+要問「這個東西是不是 dict」「是不是 list」，用內建函式
+\texttt{isinstance()}：\texttt{isinstance(x, dict)} 問的是「\texttt{x} 是不是一個
+dict」，回傳 \texttt{True} 或 \texttt{False}，\texttt{isinstance(x, list)} 同理。
+\index{isinstance()}
+
+這裡先擋一個可能的困惑。第 \ref{ch:files-exceptions} 章第 \ref{sec:lbyl-vs-eafp} 節說
+Python 偏好「先做，錯了再處理」，不要一路寫 \texttt{if} 檢查；這一節卻在用
+\texttt{isinstance()} 先檢查型別再決定怎麼做，看起來剛好相反。這兩件事不衝突——那一節
+講的是\textbf{本來就可能因為外部因素失敗}的操作（開檔案、連網路、轉換使用者輸入），
+那種時候先檢查沒有意義，因為狀態隨時會變。而「這個值是 dict 還是別的」是完全可預期、
+跟外界無關的邏輯分岔，本來就該用 \texttt{if}，跟「這個數是不是偶數」是同一類的判斷。
+
+\subsection*{把每一個值連同它的位置印出來}
+
+任務是：不管資料有幾層，把最底層的每一個值都印出來，而且順便告訴你它是從哪裡挖到的。
+
+\begin{example}{python}{(walk-nested-json.py) 印出巢狀資料裡的每一個值}
+import json
+
+text = '''
+{
+    "class": "8A",
+    "teacher": {
+        "name": "Wang",
+        "contact": {"phone": "0912345678", "email": "wang@example.com"}
+    },
+    "students": [
+        {"name": "Alice", "scores": {"math": 92, "english": 78}},
+        {"name": "Bob", "clubs": ["basketball", "coding"]}
+    ]
+}
+'''
+
+data = json.loads(text)
+
+
+def show_all(value, path):
+    if isinstance(value, dict):
+        for key in value:
+            show_all(value[key], path + "." + key)
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            show_all(item, path + "[" + str(index) + "]")
+    else:
+        print(path + ": " + str(value))
+
+
+show_all(data, "data")
+\end{example}
+
+\iosample{}{data.class: 8A \\ data.teacher.name: Wang \\ data.teacher.contact.phone: 0912345678 \\
+data.teacher.contact.email: wang@example.com \\ data.students[0].name: Alice \\
+data.students[0].scores.math: 92 \\ data.students[0].scores.english: 78 \\
+data.students[1].name: Bob \\ data.students[1].clubs[0]: basketball \\
+data.students[1].clubs[1]: coding \\}
+
+這十行輸出，直接就是那份資料的地圖。左邊那串路徑還可以照著翻成你在第 \ref{ch:csv} 章
+寫慣的中括號形式，例如最後一行：
+\begin{verbatim}
+data.students[1].clubs[1]            <- 程式印出來的路徑
+data["students"][1]["clubs"][1]      <- 對應的取值寫法
+\end{verbatim}
+也就是說，這支程式順便替你把「這份資料到底能怎麼取值」整份列了出來。
+
+還有一件事值得注意：兩位學生的深度根本不一樣（Alice 有 \texttt{scores}，Bob 有
+\texttt{clubs}），而這支程式從頭到尾不在意這件事。
+
+拆開來看，函式只有三個分支：
+
+\begin{itemize}
+\item 是 dict：對每一個 key，把對應的值再交給自己處理，路徑後面接上 \texttt{.key}。
+\item 是 list：對每一個項目，把項目再交給自己處理，路徑後面接上 \texttt{[索引]}。
+\item 都不是：那就是最底層的值了，印出來。
+\end{itemize}
+
+\textbf{終止條件在哪裡？} 這是這一節跟前面四節最不一樣的地方，一定要看清楚：這支程式
+裡沒有任何一行 \texttt{if} 寫著「停」。終止條件藏在最後那個 \texttt{else} 裡——碰到不是
+dict 也不是 list 的東西（一個字串、一個數字），就不再往下呼叫自己，直接印出來收工。
+
+那「每次要更靠近終止條件」呢？這裡變少的不是某個數字，是\textbf{還沒拆開的層數}。每
+遞迴一次，處理的就是更裡面一層的東西，而任何一份資料的層數都是有限的，所以一定會走到
+底。回到抽屜的比喻：每打開一個盒子，裡面的東西一定比外面少，總會有一個盒子裡沒有盒子。
+
+\subsection*{常見錯誤：想把結果收集起來，卻讓上一次的結果留了下來}
+
+上面的函式是邊走邊印。更常見的需求是「收集起來回傳」，例如把資料裡所有的數字挑出來。
+這時候有一種寫法會非常自然地浮現在腦中——用一個預設參數當收集用的袋子：
+
+\begin{example}{python}{(collect-numbers-bug.py) 用可變物件當預設參數的下場}
+def collect_numbers(value, found=[]):
+    if isinstance(value, dict):
+        for key in value:
+            collect_numbers(value[key], found)
+    elif isinstance(value, list):
+        for item in value:
+            collect_numbers(item, found)
+    elif isinstance(value, int):
+        found.append(value)
+    return found
+
+
+print(collect_numbers({"math": 92, "english": 78}))
+print(collect_numbers({"math": 65}))
+\end{example}
+
+\iosample{}{[92, 78] \\{} [92, 78, 65] \\}
+
+第二次呼叫傳的是一份全新的資料，卻拿回了上一次的 \texttt{92} 跟 \texttt{78}。這正是
+第 \ref{ch:functions} 章第 \ref{sec:mutable-default} 節那個購物車陷阱：\texttt{found=[]}
+只在 \texttt{def} 那一行執行的當下造了一次 list，之後每次沒自己傳 \texttt{found} 的
+呼叫，用的都是同一個物件。
+
+在遞迴裡踩到這個坑，比在購物車那個例子更難查——因為這支函式\textbf{本來就會不停地呼叫
+自己並共用同一個袋子}，那是設計上就要的行為。看到結果不對的時候，很容易懷疑是遞迴寫錯
+了，其實遞迴那部分完全正確，錯的是袋子從一開始就不是新的。
+
+修法有兩種。一種是照第 \ref{ch:functions} 章的做法把預設值換成 \texttt{None}，函式裡
+再判斷。另一種更適合遞迴：\textbf{乾脆不要共用袋子，讓每一層都回傳自己的一份清單，由
+上一層合併起來。}
+
+\begin{example}{python}{(collect-numbers-fixed.py) 每一層都給自己一個新袋子}
+def collect_numbers(value):
+    found = []
+    if isinstance(value, dict):
+        for key in value:
+            found.extend(collect_numbers(value[key]))
+    elif isinstance(value, list):
+        for item in value:
+            found.extend(collect_numbers(item))
+    elif isinstance(value, int):
+        found.append(value)
+    return found
+
+
+print(collect_numbers({"math": 92, "english": 78}))
+print(collect_numbers({"math": 65}))
+print(collect_numbers({"a": [1, {"b": 2}], "c": {"d": [3, 4]}}))
+\end{example}
+
+\iosample{}{[92, 78] \\{} [65] \\{} [1, 2, 3, 4] \\}
+
+\texttt{found = []} 現在寫在函式主體裡，每一次呼叫都會重新執行一次，所以每一層都有自己
+乾淨的一份；\texttt{extend()} 則是第 \ref{ch:lists} 章教過的，把下一層交回來的那份清單
+拆開來一項一項加進自己這份裡。這個版本沒有任何跨呼叫的共用狀態，怎麼呼叫都不會互相
+污染。
+
+\begin{drills}[label=drills:nested-data-walk]
+\item 用 \texttt{show\_all} 走訪下面這份資料，會依序印出哪幾行？
+\begin{verbatim}
+{"title": "note", "tags": ["work", "urgent"], "meta": {"author": "Amy"}}
+\end{verbatim}
+（呼叫方式是 \texttt{show\_all(data, "data")}。）
+\item 抓蟲：有人把 \texttt{show\_all} 裡處理 list 的那個 \texttt{elif} 整段刪掉了，
+只留下 dict 跟 \texttt{else} 兩個分支。用它走訪
+\texttt{\{"name": "Bob", "clubs": [\{"title": "coding"\}]\}} 會印出什麼？漏掉了什麼？
+\item 改寫：把 \texttt{show\_all} 改成只印出「值是數字」的那幾行，字串的部分跳過不印。
+（提示：最後那個 \texttt{else} 裡再加一層判斷。）
+\end{drills}
+
+\section{遞迴真正划算的地方（二）：走訪資料夾樹}
+\label{sec:folder-tree}
+
+上一節的骨架，這一節原封不動再用一次。差別只有兩個字：把「這個東西是不是容器」換成
+「這個東西是不是資料夾」。
+
+第 \ref{ch:modules} 章第 \ref{sec:os-and-sys} 節教過用
+\texttt{for name in sorted(os.listdir(folder))} 把一個資料夾裡的東西列出來，也教過
+\texttt{os.path.join()} 把資料夾位置跟名字接成完整路徑，還有
+\texttt{os.path.isdir()}／\texttt{os.path.isfile()} 用來問「這個路徑是資料夾還是檔案」。
+那一節特別提醒過：這兩個函式吃的是完整路徑，不是 \texttt{os.listdir()} 給你的那個名字，
+直接把名字丟進去會得到 \texttt{False}，而且不會報錯。
+
+那個列資料夾的程式有個限制，當時沒有說破：\textbf{它只走一層。} 如果資料夾裡面還有
+資料夾，它只會告訴你「這裡有一個叫 notes 的資料夾」，不會告訴你 notes 裡面有什麼。
+現在你有工具把那一半補上了。
+
+\begin{example}{python}{(walk-folder-tree.py) 把整棵資料夾樹印出來}
+import os
+
+
+def show_tree(folder, depth=0):
+    indent = "    " * depth
+    for name in sorted(os.listdir(folder)):
+        full_path = os.path.join(folder, name)
+        if os.path.isdir(full_path):
+            print(indent + name + "/")
+            show_tree(full_path, depth + 1)
+        else:
+            print(indent + name)
+
+
+show_tree("project")
+\end{example}
+
+假設 \texttt{project} 資料夾裡有一個 \texttt{README.txt}、一個 \texttt{notes} 資料夾
+（裡面有 \texttt{2026-01.txt} 跟一個 \texttt{meeting} 子資料夾）、還有一個
+\texttt{photos} 資料夾（裡面有 \texttt{cover.jpg} 跟一個 \texttt{trip} 子資料夾）：
+
+\iosample{}{README.txt \\ notes/ \\ ~~~~2026-01.txt \\ ~~~~meeting/ \\
+~~~~~~~~agenda.txt \\ photos/ \\ ~~~~cover.jpg \\ ~~~~trip/ \\ ~~~~~~~~beach.jpg \\}
+
+這支程式你其實早就會寫了，因為它就是上一節那一招。三個分支換成兩個，判斷式換一個函式，
+其他完全一樣：用迴圈跑過這一層的每一個東西，是資料夾就遞迴下去，不是就直接處理。
+\texttt{depth} 參數也還是第 \ref{sec:recursion-trace} 節那個鷹架——只是這一次它不是
+除錯用的臨時程式碼，縮排本身就是輸出的一部分，直接把樹的形狀畫了出來。
+
+順帶一提，\texttt{sorted()} 不是可有可無的裝飾。\texttt{os.listdir()} 交出來的順序不
+保證固定，不同的電腦、不同的檔案系統可能給你不一樣的排序；加上 \texttt{sorted()}，你
+在自己電腦上看到的結果才是穩定、可重現的。
+
+\subsection*{老實說：標準函式庫已經有這個功能了}
+
+Python 的 \texttt{os} 模組裡有一個叫 \texttt{os.walk()} 的函式，它已經幫你把整棵樹走完
+了，實務上多數人要處理整棵資料夾樹的時候，會直接用它，不會自己寫遞迴。
+
+那這一節在幹嘛？不是要取代 \texttt{os.walk()}，是要讓你看懂「走一棵樹」這件事到底在做
+什麼。而且更重要的是：下一次你碰到的樹沒有現成工具——例如上一節那種誰也不知道長幾層的
+JSON、或是一份「每個人底下可能還有下屬」的組織資料——你自己寫得出來。這一節跟上一節
+共用的那個骨架，才是要帶走的東西；資料夾只是它最好認的一個例子。
+
+\subsection*{只看，不動手}
+
+這一節的程式從頭到尾只印路徑，沒有任何刪除、搬移、改名的動作，這是刻意的。走訪整棵樹的
+程式一旦寫錯——例如遞迴的方向錯了、判斷式寫反了——它會錯得又快又廣。動手改動檔案之前，
+先讓程式把「它打算動哪些檔案」印出來給你看一遍，確認清單沒問題再說。
+
+還有一件事這一節沒做：真實世界的資料夾裡可能有你沒有權限打開的角落，
+\texttt{os.listdir()} 碰到那種資料夾會丟出例外，整支程式就停在那裡。那是第
+\ref{ch:files-exceptions} 章 \texttt{try}／\texttt{except} 的工作，這裡不展開，但你要
+知道拿去跑真實資料之前有這一關。
+
+\begin{drills}[label=drills:folder-tree]
+\item 有一個 \texttt{photos} 資料夾，裡面是：一個 \texttt{2025} 資料夾（裡面有
+\texttt{note.txt} 跟一個 \texttt{summer} 資料夾，\texttt{summer} 裡面只有
+\texttt{sea.jpg}），以及一個檔案 \texttt{cover.png}。執行
+\texttt{show\_tree("photos")} 會依序印出哪幾行？縮排各幾格？
+\item 抓蟲：有人把 \texttt{os.path.isdir(full\_path)} 寫成
+\texttt{os.path.isdir(name)}，遞迴呼叫也從 \texttt{show\_tree(full\_path, depth + 1)}
+改成 \texttt{show\_tree(name, depth + 1)}。這支程式會報錯嗎？輸出會變成什麼樣子？
+\item 改寫：把 \texttt{show\_tree} 改成只印出 \texttt{.txt} 檔案（資料夾的名字還是要
+印，不然看不出結構）。
+\end{drills}
+
+\section{一瞥：\texttt{functools.lru\_cache}}
+\label{sec:lru-cache}
+
+回頭填第 \ref{sec:fibonacci-cost} 節挖的坑。當時的結論是：遞迴版的費氏數列慢，是因為
+同樣的子問題被重複算了幾百萬次。既然如此，除了改寫成迴圈，還有另一條路——讓函式記得
+自己算過的答案。
+
+標準函式庫已經替你寫好了。從 \texttt{functools} 模組匯入 \texttt{lru\_cache}，在函式
+上面加一行：
+
+\begin{example}{python}{(fibonacci-cached.py) 加一行，讓函式記得算過的答案}
+from functools import lru_cache
+
+call_count = 0
+
+
+@lru_cache
+def fibonacci(n):
+    global call_count
+    call_count = call_count + 1
+    if n <= 1:
+        return n
+    return fibonacci(n - 1) + fibonacci(n - 2)
+
+
+answer = fibonacci(30)
+print(f"fibonacci(30) = {answer}，一共呼叫了 {call_count} 次")
+\end{example}
+
+\iosample{}{fibonacci(30) = 832040，一共呼叫了 31 次 \\}
+
+函式主體一個字都沒改，呼叫次數從兩百六十九萬次掉到 31 次。
+\index{functools.lru\_cache}
+
+\texttt{lru\_cache} 做的事一句話講得完：\textbf{它幫函式記住「這個參數算過的答案」，
+下次再拿同樣的參數來問，直接把答案拿出來，不再重算一遍。} 費氏數列之所以受益這麼大，
+正是因為它重複問的問題特別多。
+
+那個 \texttt{@} 符號你在第 \ref{ch:advanced-functions} 章第 \ref{sec:decorator} 節看過，
+就是那個「把函式包一層」的寫法。差別只在這次的裝飾器不是你自己寫的，是標準函式庫替你
+準備好的，直接拿來用就好。
+
+\subsection*{老實說：這沒有讓費氏該用遞迴變成對的}
+
+\texttt{lru\_cache} 讓一支慢的遞迴變快了，但第 \ref{sec:fibonacci-cost} 節那個迴圈版
+本來就又快又短，加了快取的遞迴版並沒有比它好。這一行不是「遞迴的萬用解藥」，加上去
+也不會讓一個本來就不該用遞迴的問題變得該用遞迴。
+
+它真正的用處是在另一種情境：\textbf{這個函式本來就該用遞迴，而且真的會重複算到同樣的
+東西}。那時候加這一行，才是拿它來解決問題，不是拿它來遮蓋問題。
+
+這一節到此為止，只到「知道有這個東西、看到別人用的時候看得懂那一行在做什麼」的程度。
+它還有一些可以調的選項，等你哪天真的需要了再去查——第 \ref{ch:modules} 章那套「打開
+文件、看簽名、看說明」的流程對它一樣管用。
+
+\section{所以，什麼時候該用遞迴？}
+\label{sec:recursion-or-loop}
+
+這一章走到這裡，五個遞迴函式都寫過了，該把判準收起來。判準只有兩句話：
+
+\begin{itemize}
+\item \textbf{資料是平的、次數是知道的} $\to$ 用迴圈。
+\item \textbf{東西裡面還有同一種東西，而且不知道有幾層} $\to$ 用遞迴。
+\end{itemize}
+
+拿這兩句話把這一章的五個例子重新排一次：
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+例子 & 該用遞迴嗎 & 為什麼 \\
+\midrule
+\texttt{countdown} & 不必 & 要跑幾次是知道的，\texttt{for} 就夠了 \\
+階乘 & 不必 & 同上；它的價值是形狀清楚，適合拿來看懂遞迴 \\
+費氏數列 & 不該 & 同上，而且遞迴版還會把同一件事重算幾百萬次 \\
+巢狀 JSON & 該用 & 不知道有幾層，用迴圈得先知道要寫幾層 \texttt{for} \\
+資料夾樹 & 該用 & 同上（不過實務上有現成的 \texttt{os.walk()}） \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+這張表最值得注意的地方是：前三個「不必／不該」的例子，正好是所有教遞迴的地方最常用的
+入門例子。它們不是壞例子，它們是好的\textbf{教材}，但不是好的\textbf{範本}。看懂形狀
+之後，請把它們留在教室裡。
+
+除了上面那條判準，還有三件實務上的事值得記住：
+
+\begin{itemize}
+\item \textbf{很深的資料不適合遞迴。} 每疊一層都要花資源，而且 Python 有深度上限
+（第 \ref{sec:recursion-trace} 節提過）。如果你的資料可能有幾萬層，遞迴會直接撞牆，
+那種時候得換寫法。
+\item \textbf{遞迴比較難用 \texttt{print} 追蹤}，因為同一行 \texttt{print} 會被跑很多
+次、而且分不出是哪一層印的。這就是第 \ref{sec:recursion-trace} 節那個縮排鷹架值得學
+起來的原因——它是遞迴專用的除錯手法。
+\item \textbf{寫不出來就不要硬寫。} 一個你自己都追蹤不完的遞迴函式，三個月後的你也讀
+不懂，而且到時候要改它的人多半就是你。能用迴圈清楚表達的事情，就用迴圈，沒有人會覺得
+你不夠厲害。
+\end{itemize}
+
+\stylepoint{Python 社群對遞迴的態度偏保守：能用迴圈或現成工具寫清楚的事，多數人不會
+特地寫成遞迴——這跟某些語言把遞迴當成預設寫法的文化不一樣。真正該用遞迴的訊號其實只有
+一個：\textbf{你要處理的東西，裡面還有一模一樣的東西，而且你不知道有幾層。} 看到這個
+訊號就放心用，沒看到就先寫迴圈。}
+
+這一章的主題說到底是一種節制：明明有一個很聰明的工具，卻要判斷什麼時候不該拿出來用。
+下一章談的是同一種節制的另一面——什麼樣的程式碼叫「寫得像 Python」，以及什麼時候
+「太 Pythonic」反而讓人讀不懂（第 \ref{ch:pythonic} 章）。
+
+\begin{drills}[label=drills:recursion-or-loop]
+\item 你要把一份成績 list 全部加總起來，例如 \texttt{[88, 76, 92, 65]}。用遞迴還是
+迴圈？為什麼？
+\item 你有一份公司的組織資料，每個人底下可能還有下屬，下屬底下可能又還有下屬，沒有人
+說得準最多幾層。你要把所有人的名字列出來。用遞迴還是迴圈？為什麼？
+\item 你要印出 1 到 100。用遞迴還是迴圈？如果硬要用遞迴，會有什麼問題？
+\end{drills}
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:recursion-basics}~節}
+\begin{enumerate}
+\item 只印出 \texttt{Liftoff!}：\texttt{n} 一開始就是 \texttt{0}，第一次呼叫就滿足終止條件
+\texttt{n <= 0}。
+\item 依序印出 \texttt{1}、\texttt{2}、\texttt{3}、\texttt{4}：每次呼叫 \texttt{n}
+加 1，直到 \texttt{n} 超過 \texttt{limit}（也就是 4）才停止。
+\item 可以，例如：
+\begin{verbatim}
+def count_up(n, limit):
+    for i in range(n, limit + 1):
+        print(i)
+\end{verbatim}
+用 \texttt{range(n, limit + 1)} 就能取代遞迴，一路數到 \texttt{limit}（含）為止。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:recursion-trace}~節}
+\begin{enumerate}
+\item 少一層，形狀一樣：\texttt{進入 countdown(2)} $\to$ \texttt{2} $\to$ 縮四格的
+\texttt{進入 countdown(1)} $\to$ \texttt{1} $\to$ 縮八格的 \texttt{進入 countdown(0)}、
+\texttt{Liftoff!}、\texttt{離開 countdown(0)} $\to$ 縮四格的 \texttt{離開 countdown(1)}
+$\to$ 不縮排的 \texttt{離開 countdown(2)}。縮排最深的是
+\texttt{countdown(0)} 那三行（八格）。
+\item 因為 \texttt{n} 從 10 開始每次減 2，走的是 10、8、6、4、2、0、-2、……全部是偶數，
+永遠不會剛好等於 \texttt{1}，終止條件寫在那裡卻碰不到。這正是「有終止條件」跟「保證走
+得到終止條件」的差別。把 \texttt{if n == 1} 改成 \texttt{if n <= 1} 就會停。從
+traceback 看：\texttt{[Previous line repeated 996 more times]} 加上前面明白列出來的那
+幾行，大約疊了一千層——那就是 Python 的深度上限。
+\item 會少掉「一層一層收回來」的那一半，只剩往右縮排一路變深的前半段。看不出每一層是
+什麼時候結束的，也看不出「最先開始的那一層最後才結束」這件事——而那正是遞迴最容易誤解
+的地方。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:recursion-return}~節}
+\begin{enumerate}
+\item 四層疊上去（\texttt{factorial(3)}、\texttt{factorial(2)}、\texttt{factorial(1)}、
+\texttt{factorial(0)}），再四層退回來，退回來的數字依序是 \texttt{1}、\texttt{1}、
+\texttt{2}、\texttt{6}，最後 \texttt{print} 再印一次 \texttt{6}。
+\item \texttt{factorial(4)} 還是 24：4、3、2 一路乘下去，走到 \texttt{n == 1} 就停，
+少乘的那個 1 不影響答案。但 \texttt{factorial(0)} 會出事——\texttt{0} 不等於 \texttt{1}，
+於是往下走 \texttt{-1}、\texttt{-2}、\texttt{-3}……永遠碰不到 \texttt{1}，最後丟出
+\texttt{RecursionError}。跟 \texttt{factorial(-1)} 是同一個病。
+\item 結果是 \texttt{14}。迴圈版例如：
+\begin{verbatim}
+def total(numbers):
+    result = 0
+    for number in numbers:
+        result = result + number
+    return result
+\end{verbatim}
+（其實直接寫 \texttt{sum(numbers)} 就好，這一題只是要你看出遞迴版在做的就是這件事。）
+\end{enumerate}
+
+\paragraph{第~\ref{sec:fibonacci-cost}~節}
+\begin{enumerate}
+\item 15 次。\texttt{fibonacci(5)} 岔成 \texttt{fibonacci(4)} 跟 \texttt{fibonacci(3)}，
+兩邊各自再岔下去，數到最後一共 15 次呼叫，其中 \texttt{fibonacci(1)} 被算了 5 次、
+\texttt{fibonacci(0)} 被算了 3 次。
+\item 因為 \texttt{countdown} 每次\textbf{只呼叫自己一次}，一路往下就是一條線，
+\texttt{countdown(30)} 就是 31 次呼叫。\texttt{fibonacci} 每次呼叫自己\textbf{兩次}，
+一條線變成一棵不斷分岔的樹，重複的工作用乘的長大。差別就在自我呼叫的次數。
+\item 對照 \texttt{fibonacci-loop.py}。最容易寫錯的是頭兩項：第 0 項要是 \texttt{0}、
+第 1 項要是 \texttt{1}。如果你的版本迴圈跑 \texttt{range(n)} 之後回傳
+\texttt{current} 而不是 \texttt{previous}，整串會往前偏一格。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:nested-data-walk}~節}
+\begin{enumerate}
+\item 依序四行：
+\begin{verbatim}
+data.title: note
+data.tags[0]: work
+data.tags[1]: urgent
+data.meta.author: Amy
+\end{verbatim}
+\item 不會報錯，會印出兩行：\texttt{data.name: Bob} 跟
+\texttt{data.clubs: [\{'title': 'coding'\}]}。因為少了 list 的分支，那份社團清單被當成
+「最底層的值」整個印出來了，裡面那個 dict 根本沒被拆開——這是最典型的「安靜的錯」，
+程式跑完了、看起來也有輸出，但少走了一整片資料。
+\item 把最後的 \texttt{else} 改成：
+\begin{verbatim}
+    else:
+        if isinstance(value, int):
+            print(path + ": " + str(value))
+\end{verbatim}
+（也可以直接寫成 \texttt{elif isinstance(value, int):}，效果一樣。）走訪課文那份資料的
+話，十行輸出只會剩下 Alice 那兩個分數：
+\begin{verbatim}
+data.students[0].scores.math: 92
+data.students[0].scores.english: 78
+\end{verbatim}
+\end{enumerate}
+
+\paragraph{第~\ref{sec:folder-tree}~節}
+\begin{enumerate}
+\item 依序是：\texttt{2025/}（不縮排）、\texttt{note.txt}（縮四格）、
+\texttt{summer/}（縮四格）、\texttt{sea.jpg}（縮八格）、\texttt{cover.png}（不縮排）。
+\texttt{2025} 排在 \texttt{cover.png} 前面，是因為 \texttt{sorted()} 按字串排序，
+數字開頭的名字排在字母前面。
+\item 不會報錯，這才是麻煩的地方。\texttt{os.path.isdir("notes")} 問的是「目前所在的
+資料夾底下有沒有一個叫 notes 的資料夾」，而 \texttt{notes} 其實在 \texttt{project}
+裡面，所以得到 \texttt{False}——每一個子資料夾都會被當成檔案印出來，程式一層都沒有
+遞迴下去，最後只印出最上層那三個名字。這就是第 \ref{ch:modules} 章提醒過的：
+\texttt{os.path.isdir()} 吃的是完整路徑，不是 \texttt{os.listdir()} 給你的名字。
+\item 把 \texttt{else} 那個分支加上副檔名判斷：
+\begin{verbatim}
+        elif name.endswith(".txt"):
+            print(indent + name)
+\end{verbatim}
+（也就是把原本的 \texttt{else:} 換成這一行。）資料夾的分支不動，樹的結構才留得住；
+沒有 \texttt{.txt} 的資料夾會印出名字但底下是空的。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:recursion-or-loop}~節}
+\begin{enumerate}
+\item 迴圈。資料是平的（一層 list，裡面就是數字），要跑幾次也很明確（就是清單的長度）。
+一個 \texttt{for} 迴圈，或直接 \texttt{sum()}。用遞迴不但沒有好處，還多了撞到深度上限
+的風險。
+\item 遞迴。「每個人底下可能還有下屬」就是「東西裡面還有同一種東西」，而且沒有人說得
+準最多幾層——這正是遞迴的招牌情境。用迴圈的話，你得事先知道要寫幾層巢狀 \texttt{for}，
+而這件事根本不知道。骨架就是第 \ref{sec:nested-data-walk} 節那個片語。
+\item 迴圈，\texttt{for i in range(1, 101)}。次數是知道的，資料是平的。硬要用遞迴的話
+它會疊 100 層，這次還撐得住，但同樣的寫法拿去印 1 到 10000 就會丟
+\texttt{RecursionError}——而迴圈版改個數字就沒事。
+\end{enumerate}

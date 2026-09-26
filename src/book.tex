@@ -1,0 +1,102 @@
+\documentclass[12pt]{report}
+
+% ---------------------------------------------------------------
+% 字型與中文排版
+% ---------------------------------------------------------------
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{Times New Roman}
+\setCJKmainfont{Songti TC}
+\setCJKsansfont{PingFang TC}
+% 等寬字改用 Latin Modern Mono，跟 exp2 參考檔案的排版字體一致
+% （它不是系統字型，只存在 TeXLive 樹裡，所以要用 Path 明確指定檔案位置）。
+\setmonofont{lmmono10-regular}[
+    Path = /usr/local/texlive/2024/texmf-dist/fonts/opentype/public/lm/,
+    Extension = .otf,
+    AutoFakeBold = 2.5,
+]
+
+% ---------------------------------------------------------------
+% 本書排版套件（packages/ 目錄）
+% ---------------------------------------------------------------
+\usepackage{sleek}
+\usepackage{sleek-theorems}
+\usepackage{sleek-code}
+\usepackage{sleek-diagrams}
+% 注意：sleek-listings.sty 不載入——它是舊版 lstlistings/inconsolata 排版套件，
+% 本書實際用的是 sleek-code.sty 的 minted 版 code/example 環境，兩者同時載入會讓
+% minted 抓不到 \setmonofont 設定的等寬字（回退成 Latin Modern Roman），
+% 且會讓程式碼裡的直引號被轉成全形彎引號。
+
+% 章節標題中文化：「第 N 章」
+\usepackage{titlesec}
+\titleformat{\chapter}{\normalfont\huge\bfseries}{第~\thechapter~章}{1em}{}
+\titlespacing*{\chapter}{0pt}{-20pt}{20pt}
+
+% 目錄的節編號欄位加寬：report 預設是 2.3em，放不下「10.10」這種兩位數章＋兩位數節的
+% 編號，會跟標題黏在一起（例如「10.10finally」）。放寬到 3em。
+\makeatletter
+\renewcommand{\l@section}{\@dottedtocline{1}{1.5em}{3em}}
+\makeatother
+
+% 書末索引：各章在術語第一次正式定義處加 \index{}，書末 \printindex 印出頁碼對照表。
+\usepackage{makeidx}
+\makeindex
+\renewcommand{\indexname}{索引}
+
+\title{Python 入門：從寫程式到看懂軟體世界}
+\author{}
+\date{2026}
+
+\begin{document}
+
+\maketitle
+\romantableofcontents
+
+\input{chapters/00_Preface/chapter}
+
+% ---------------------------------------------------------------
+% 各章節內容：每個單元的敘述式教材放在對應的
+% "chapters/<單元>/chapter.tex"，由 pipeline/chapters/<單元>/draft.tex
+% 促升而來（見 pipeline/book-bible.md 與 .claude/skills/python-book-author/）。
+% 每完成一章，在這裡加一行 \input，並依 pipeline/chapter-map.yaml
+% 的章節順序排列。
+% ---------------------------------------------------------------
+
+\input{chapters/01_Introduction/chapter}
+\input{chapters/02_VariablesAndTypes/chapter}
+\input{chapters/03_Strings/chapter}
+\input{chapters/04_Conditionals/chapter}
+\input{chapters/05_Loops/chapter}
+\input{chapters/06_Lists/chapter}
+\input{chapters/07_DictionariesAndSets/chapter}
+\input{chapters/08_Functions/chapter}
+\input{chapters/09_TuplesAndUnpacking/chapter}
+\input{chapters/10_FilesAndExceptions/chapter}
+\input{chapters/11_WorkingWithCSVData/chapter}
+\input{chapters/12_DataToolsGlimpse/chapter}
+\input{chapters/13_DebuggingAndErrors/chapter}
+\input{chapters/14_ModulesAndStandardLibrary/chapter}
+\input{chapters/15_AdvancedFunctions/chapter}
+\input{chapters/16_Comprehensions/chapter}
+\input{chapters/17_IteratorsAndGenerators/chapter}
+\input{chapters/18_Recursion/chapter}
+\input{chapters/19_PythonicIdiomsAndStyle/chapter}
+\input{chapters/20_ObjectsAndClasses/chapter}
+\input{chapters/21_InheritanceAndMoreOOP/chapter}
+\input{chapters/22_RegularExpressions/chapter}
+\input{chapters/23_AutomatingPracticalTasks/chapter}
+\input{chapters/24_SoftwareIndustryConcepts/chapter}
+\input{chapters/25_APIAndWebRequests/chapter}
+\input{chapters/26_Capstone/chapter}
+\input{chapters/27_WhereToGoNext/chapter}
+
+% 書末參考資料（不編章號，跟索引一樣屬於 back matter）
+\input{chapters/28_References/chapter}
+
+\clearpage
+\phantomsection
+\addcontentsline{toc}{chapter}{索引}
+\printindex
+
+\end{document}

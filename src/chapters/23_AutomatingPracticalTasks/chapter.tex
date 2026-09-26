@@ -1,0 +1,1360 @@
+\chapter{整合應用專案}
+\label{ch:automating}
+
+前面十七章，你已經一塊一塊學會了寫程式需要的零件：怎麼存資料、怎麼讓程式重複做事、
+怎麼讓程式自己判斷、怎麼把一段邏輯包成可以重複呼叫的函式、怎麼讀寫檔案、怎麼在事情
+出錯時不讓程式整個當掉。這一章不會教你任何新的語法，它要做的事情，是帶你把這些零件
+一次全部裝進同一台機器裡，看看它們接在一起會變成什麼樣子。
+
+這一章分三段推進。
+
+\begin{itemize}
+\item 第一段，我們從一個你我都有過的煩惱開始：桌面或下載資料夾裡堆滿了亂七八糟
+命名、亂七八糟分類的檔案，光用滑鼠一個一個整理，可能要花掉一整個下午。我們會先
+養成一個專業的習慣，寫程式去「動」使用者的檔案之前，先讓程式「假裝」動一次，只
+印出它打算做什麼，讓你在真的按下執行鍵之前，先看清楚後果；接著我們讓分類規則可以
+放進一份設定檔，不用改程式碼本身就能讓使用者自己調整規則。
+\item 第二段，我們把「假裝」升級成「真的做」，讓程式真的去分類、搬移、甚至幫你把
+整理好的檔案打包備份，過程中你會看到迴圈、條件判斷、函式、字串處理、例外處理怎麼
+像齒輪一樣咬合在一起，不再是各自孤立的知識點；這一段也會花不少篇幅處理「真實世界
+比想像中亂」這件事，例如兩個檔案剛好同名、或者處理到一半有個檔案不見了，一個像樣
+的工具得撐得住這些意外，不能一遇到就整個罷工。
+\item 第三段，我們把視野從你自己電腦裡的檔案，稍微往外拉一點，寫程式解決瑣事，也
+可以主動去網路上抓一點資料回來，變成你整理流程的一部分，而且一次抓好幾個檔案時，
+其中一個失敗也不該拖累其他檔案。這一段只是輕輕點一下，讓你有個印象「原來程式也
+可以伸手到網路上」，真正深入「軟體怎麼跟軟體對話」這件事，會留到後面第 \ref{ch:api} 章的
+API 小專案再展開。
+\end{itemize}
+
+這一章的重點始終是「把你已經會的東西串起來」，不是學新東西。
+
+翻到下一節之前先說一句：接下來看到的每一段程式碼，幾乎都是你在前面章節見過的東西
+重新排列組合，沒有一個是你沒學過的全新概念。如果讀到一半覺得眼熟，那是應該的。
+
+\section{把散亂的檔案分類列出來：先只印出，不要真的動手}
+\label{sec:list-preview}
+
+假設你的下載資料夾裡混著圖片、文件、音樂檔，命名也毫無規則，你想寫一支程式幫你看看
+「如果照副檔名分類，每個檔案該歸到哪一類」。這裡刻意先不去搬動任何檔案，只是把資料
+夾裡的檔案一個一個列出來，判斷它的副檔名，把「這個檔案應該歸到哪一類」印出來看看。
+
+這聽起來像是在偷懶，但其實是專業工程師處理任何會影響到使用者資料的操作時，共同的
+第一步：先看清楚程式打算做什麼，確認邏輯是對的，才放心讓它真的去動手。
+
+\begin{code}{python}{列出資料夾裡的檔案並判斷分類}
+import os
+
+for filename in sorted(os.listdir(folder_path)):
+    if filename.endswith(extension):
+        category = "category_name"
+    else:
+        category = "Other"
+    print(filename, "->", category)
+\end{code}
+
+\texttt{os.listdir(folder\_path)} 會回傳一個 list，裡面是這個資料夾底下所有檔案（跟
+子資料夾）的名字；外層再包一層 \texttt{sorted()}，是為了讓每次執行的順序都一樣，
+資料夾裡檔案的原始排列順序其實跟作業系統有關，不一定照你建立的先後順序，先排序過，
+你（跟這本書上印出來的結果）看到的順序才會是可預期的。
+
+\begin{example}{python}{(classify-preview.py) 預覽檔案分類結果}
+import os
+
+folder = "downloads_demo"
+
+for filename in sorted(os.listdir(folder)):
+    if filename.endswith(".jpg") or filename.endswith(".png"):
+        category = "Image"
+    elif filename.endswith(".pdf") or filename.endswith(".docx") \
+            or filename.endswith(".txt"):
+        category = "Document"
+    elif filename.endswith(".mp3") or filename.endswith(".wav"):
+        category = "Music"
+    else:
+        category = "Other"
+    print(f"{filename} -> {category}")
+\end{example}
+
+假設 \texttt{downloads\_demo} 資料夾裡有 \texttt{archive.zip}、\texttt{notes.txt}、
+\texttt{report.pdf}、\texttt{song.mp3}、\texttt{vacation.jpg} 這五個檔案：
+
+\iosample{}{archive.zip -> Other \\ notes.txt -> Document \\ report.pdf -> Document \\ song.mp3 -> Music \\ vacation.jpg -> Image \\}
+
+注意 \texttt{archive.zip} 沒有符合任何一個 \texttt{elif} 條件，掉進最後的
+\texttt{else}，被歸類成「Other」，這是故意設計的，不用每個副檔名都窮舉，沒對到的
+就先放進一個大分類，之後真的有需要再細分。
+
+\keypoint{先印出來看看、不真的動手，是處理任何「會影響使用者資料」的操作（搬移、
+刪除、覆寫檔案）之前的專業習慣，跟你是不是新手完全無關。等你以後寫的程式會刪除
+檔案、清空資料庫，這個「先乾跑一次確認邏輯，再打開真正執行的開關」的節奏，跟今天在
+這裡練的一模一樣。}
+
+\begin{drills}[label=drills:list-preview]
+\item 承接 \texttt{classify-preview.py} 的分類邏輯，如果 \texttt{downloads\_demo}
+資料夾裡的檔案換成 \texttt{clip.mp4}、\texttt{cover.pdf}、\texttt{photo.png}、
+\texttt{todo.txt} 這四個，這段程式會印出什麼（照 \texttt{sorted()} 之後的順序寫出
+完整四行）？
+\item 如果資料夾裡多了一個檔名整個是 \texttt{mystery}、完全沒有副檔名（連 \texttt{.}
+都沒有）的檔案，這段程式會把它歸類到哪一類？為什麼？
+\end{drills}
+
+\section{把分類邏輯包成函式，方便重複使用}
+\label{sec:classify-function}
+
+上一節的 \texttt{if}/\texttt{elif} 鏈能動，但如果類別變多，會愈疊愈長、愈來愈難讀；
+而且「判斷一個檔名該歸到哪一類」這件事，接下來這一章會反覆用到，把它包成一個函式，
+之後不管在哪裡都能直接呼叫，不用把同一段判斷邏輯重複貼好幾次。這裡換一種寫法，用
+一個對照表（dict）記錄「副檔名對應分類」，比一長串 \texttt{elif} 更容易增減項目。
+
+\begin{code}{python}{把分類邏輯包成函式}
+def function_name(filename):
+    extension = filename.split(".")[-1].lower()
+    return lookup_table.get(extension, "Other")
+\end{code}
+
+\texttt{filename.split(".")} 會把檔名以 \texttt{.} 為界切成好幾段，取最後一段
+（\texttt{[-1]}）就是副檔名；\texttt{.lower()} 是為了讓 \texttt{Photo.JPG} 這種
+大寫副檔名也能對到對照表裡的 \texttt{jpg}（對照表通常都用小寫存）。\texttt{lookup\_table.get(extension, "Other")} 是你在第 \ref{ch:dict-set} 章看過的寫法，查得到就回傳對應的分類，查不到
+就回傳預設值 \texttt{"Other"}，不用自己先寫 \texttt{if extension in lookup\_table} 再判斷。
+
+\begin{example}{python}{(classify-function.py) 用函式判斷檔案分類}
+import os
+
+EXTENSION_MAP = {
+    "jpg": "Image", "png": "Image",
+    "pdf": "Document", "docx": "Document", "txt": "Document",
+    "mp3": "Music", "wav": "Music",
+}
+
+
+def classify_file(filename):
+    extension = filename.split(".")[-1].lower()
+    return EXTENSION_MAP.get(extension, "Other")
+
+
+folder = "downloads_demo"
+
+for filename in sorted(os.listdir(folder)):
+    category = classify_file(filename)
+    print(f"{filename} -> {category}")
+\end{example}
+
+用同樣的五個檔案跑一次，結果跟上一節的 \texttt{classify-preview.py} 完全一樣，這
+是應該的，我們只是換了一種「寫」分類邏輯的方式，判斷的結果沒有改變：
+
+\iosample{}{archive.zip -> Other \\ notes.txt -> Document \\ report.pdf -> Document \\ song.mp3 -> Music \\ vacation.jpg -> Image \\}
+
+\stylepoint{像 \texttt{EXTENSION\_MAP} 這種「查表比一長串 \texttt{if}/\texttt{elif}
+好維護」的情境，在真實世界的程式碼裡很常見，之後如果想多支援一種副檔名，只要在
+dict 裡多加一行 \texttt{"gif": "Image"}，不用去改函式本體的邏輯，這也是把邏輯包成
+函式、資料另外放進 dict 的好處之一：程式的「規則」和「怎麼套用規則」分開放。}
+
+\begin{drills}[label=drills:classify-function]
+\item 如果想讓 \texttt{EXTENSION\_MAP} 多支援一種副檔名 \texttt{gif}、歸類成
+「Image」，只需要改動哪一行？需不需要改動 \texttt{classify\_file()} 函式本體？
+\item \texttt{classify\_file("REPORT.PDF")} 會回傳什麼？哪一行程式碼負責讓大寫
+副檔名也能正確分類？
+\end{drills}
+
+\section{用設定檔讓分類規則可以由使用者調整}
+\label{sec:config-file}
+
+上一節把分類規則放進 \texttt{EXTENSION\_MAP} 這個 dict，已經比一長串 \texttt{elif}
+好維護很多，但規則還是寫死在程式碼裡，想加一種新的副檔名，得打開 \texttt{.py} 檔案
+改程式碼、存檔、重新執行。如果這支工具以後要給不太熟 Python 的人用（例如同事、家人），
+你大概不希望他們為了多分類一種檔案，就得打開程式碼修改。這一節要做的事情，是把「規則」
+搬到程式碼外面，放進一份使用者自己就能編輯的設定檔。
+
+第 \ref{ch:csv} 章教過 JSON 是一種用巢狀 dict／list 表示資料的純文字格式，這裡剛好派上用場：
+我們讓使用者可以自己寫一份 \texttt{config.json}，裡面列出想額外加上的「副檔名對應
+分類」，程式啟動時把這份設定檔讀進來，跟原本內建的 \texttt{EXTENSION\_MAP} 合併。
+
+\begin{code}{text}{(config.json) 一份客製化的分類規則}
+{
+    "gif": "Image",
+    "csv": "Data File"
+}
+\end{code}
+
+這份設定檔的內容，讀者不需要懂任何 Python 語法就看得懂：它在說「副檔名是
+\texttt{gif} 的檔案，歸到『Image』；副檔名是 \texttt{csv} 的檔案，歸到『Data File』」，
+比起打開 \texttt{.py} 檔案改程式碼，這種格式對非工程背景的使用者友善得多。
+
+\begin{code}{python}{讀取設定檔並跟內建規則合併}
+import json
+
+def load_config():
+    try:
+        with open(config_path, "r") as f:
+            return json.loads(f.read())
+    except FileNotFoundError:
+        return {}
+
+
+for extension, category in load_config().items():
+    lookup_table[extension] = category
+\end{code}
+
+\texttt{load\_config()} 這個函式直接嘗試打開設定檔，不先用 \texttt{os.path.exists()}
+檢查存不存在，找不到檔案就讓 \texttt{try}/\texttt{except} 接住
+\texttt{FileNotFoundError}，回傳一個空的 dict。這正是第 \ref{ch:files-exceptions} 章教過的 EAFP 精神：
+設定檔本來就是「有也可以、沒有也可以」的東西，沒有的話就當作使用者沒有要客製化任何
+規則，程式照樣能跑，不用因為少了一份設定檔就整支程式當掉。
+
+讀進設定檔之後，用
+\texttt{for extension, category in load\_config().items()} 把裡面的每一組規則，一條一條
+寫進原本的 \texttt{lookup\_table}，跟第 \ref{ch:dict-set} 章教過的 dict 賦值語法完全一樣，只是這次新增的
+key 是從設定檔讀出來的，不是寫死在程式碼裡的常數。
+
+\begin{example}{python}{(config-classify.py) 讓分類規則可以被設定檔調整}
+import json
+import os
+
+CONFIG_PATH = "config.json"
+
+EXTENSION_MAP = {
+    "jpg": "Image", "png": "Image",
+    "pdf": "Document", "docx": "Document", "txt": "Document",
+    "mp3": "Music", "wav": "Music",
+}
+
+
+def load_config():
+    try:
+        with open(CONFIG_PATH, "r") as f:
+            return json.loads(f.read())
+    except FileNotFoundError:
+        return {}
+
+
+for extension, category in load_config().items():
+    EXTENSION_MAP[extension] = category
+
+
+def classify_file(filename):
+    extension = filename.split(".")[-1].lower()
+    return EXTENSION_MAP.get(extension, "Other")
+
+
+for filename in sorted(os.listdir("downloads_demo")):
+    print(f"{filename} -> {classify_file(filename)}")
+\end{example}
+
+假設 \texttt{downloads\_demo} 資料夾裡有 \texttt{archive.zip}、\texttt{cover.gif}、
+\texttt{data.csv}、\texttt{notes.txt} 四個檔案，跟上面那份 \texttt{config.json}
+放在同一個資料夾底下執行：
+
+\iosample{}{archive.zip -> Other \\ cover.gif -> Image \\ data.csv -> Data File \\ notes.txt -> Document \\}
+
+\texttt{cover.gif} 跟 \texttt{data.csv} 用的分類，都是 \texttt{config.json} 裡新增
+進來的規則；\texttt{archive.zip} 的副檔名沒有出現在設定檔或內建的
+\texttt{EXTENSION\_MAP} 裡，還是照舊掉進「Other」。如果把 \texttt{config.json} 整個
+刪掉再執行一次，\texttt{load\_config()} 會因為 \texttt{FileNotFoundError} 回傳空
+dict，\texttt{cover.gif} 跟 \texttt{data.csv} 就會一起變回「Other」，只有
+\texttt{notes.txt} 還維持內建規則的「Document」：
+
+\iosample{}{archive.zip -> Other \\ cover.gif -> Other \\ data.csv -> Other \\ notes.txt -> Document \\}
+
+\keypoint{把「規則」（設定檔）跟「怎麼套用規則」（程式邏輯）分開放，是一個很值得
+養成的設計習慣。程式邏輯（讀檔案、分類、搬移）通常不太需要常常改，但規則（哪個副
+檔名歸哪一類）常常要因人因時調整；分開放之後，調整規則不需要碰程式碼，也不太可能
+因為手滑改壞了原本能動的邏輯。}
+
+\begin{drills}[label=drills:config-file]
+\item 如果 \texttt{config.json} 的內容改成 \texttt{\{"txt": "Memo"\}}，重新執行
+\texttt{config-classify.py} 之後，\texttt{notes.txt} 會被歸類到哪一類？這說明了
+設定檔裡的規則跟內建 \texttt{EXTENSION\_MAP} 衝突時，哪一邊會贏？
+\item \texttt{load\_config()} 用 \texttt{try}/\texttt{except FileNotFoundError}
+接住「設定檔不存在」的狀況，而不是先用 \texttt{os.path.exists()} 檢查一次。這樣寫
+除了跟第 \ref{ch:files-exceptions} 章教過的 EAFP 風格一致之外，還有什麼實際好處（提示：想想檢查完到真正
+打開檔案之間，狀態可能發生什麼事）？
+\end{drills}
+
+\section{真的動手搬移檔案，並接住可能發生的錯誤}
+\label{sec:move-files}
+
+前面幾節都只是印出來看看，這一節要把「假裝」升級成「真的做」，用
+\texttt{shutil.move()} 把檔案真的搬到分類好的資料夾裡。但只要程式開始真的去動使用者
+的檔案，就一定會遇到「這件事可能失敗」的狀況：目的地資料夾可能還不存在、檔案可能正
+被別的程式開著占用。
+
+還記得第 \ref{ch:files-exceptions} 章教過的模型嗎，Python 比較習慣「先做，錯了再處理」
+（EAFP），跟「先檢查一輪，確定安全才動手」（LBYL）不一樣。這裡就是那個模型正式派上
+用場的地方：不用先寫一堆 \texttt{if} 檢查資料夾在不在，直接呼叫 \texttt{shutil.move()}，
+如果目的地資料夾不存在，Python 自己會告訴你，我們再用 \texttt{try}/\texttt{except}
+接住這個狀況。
+\index{shutil 模組／shutil.move()}
+
+\begin{code}{python}{搬移檔案並接住可能發生的錯誤}
+import shutil
+
+try:
+    shutil.move(source_path, dest_path)
+except FileNotFoundError:
+    os.makedirs(dest_folder)
+    shutil.move(source_path, dest_path)
+\end{code}
+
+\texttt{os.makedirs(路徑)} 是 \texttt{os} 模組另一個函式，用來建立一個原本不存在的
+新資料夾，如果路徑中間有好幾層資料夾都還不存在，它會一次全部建好，不用自己一層
+一層檢查、一層一層建。
+\index{os.makedirs()}
+
+如果你想要的是「複製一份、原本的檔案還留著」，而不是「搬過去、原地不留」，把
+\texttt{shutil.move()} 換成 \texttt{shutil.copy()} 就好，其他寫法完全一樣，這一章的
+整理情境比較適合用「搬移」，把檔案真正歸位，不留兩份佔空間。
+\index{shutil.copy()}
+
+\begin{example}{python}{(organize-files.py) 真的搬移檔案並統計結果}
+import os
+import shutil
+
+SOURCE_FOLDER = "downloads_demo"
+DEST_ROOT = "organized_demo"
+
+EXTENSION_MAP = {
+    "jpg": "Image", "png": "Image",
+    "pdf": "Document", "docx": "Document", "txt": "Document",
+    "mp3": "Music", "wav": "Music",
+}
+
+
+def classify_file(filename):
+    extension = filename.split(".")[-1].lower()
+    return EXTENSION_MAP.get(extension, "Other")
+
+
+def record_result(counts, category):
+    # counts 是呼叫端傳進來的同一個 dict，不是複製一份，
+    # 所以在這裡修改也會讓呼叫端看到。
+    counts[category] = counts.get(category, 0) + 1
+
+
+counts = {}
+
+for filename in sorted(os.listdir(SOURCE_FOLDER)):
+    source_path = os.path.join(SOURCE_FOLDER, filename)
+    category = classify_file(filename)
+    dest_folder = os.path.join(DEST_ROOT, category)
+    dest_path = os.path.join(dest_folder, filename)
+
+    try:
+        shutil.move(source_path, dest_path)
+    except FileNotFoundError:
+        # 目的地資料夾還不存在，所以先建立資料夾
+        # 再重試一次，而不是事先檢查。
+        os.makedirs(dest_folder)
+        shutil.move(source_path, dest_path)
+
+    record_result(counts, category)
+
+for category, count in counts.items():
+    print(f"{category}: {count} file(s)")
+\end{example}
+
+第一次執行時，\texttt{organized\_demo} 底下什麼分類資料夾都還沒有，每一種分類第一次
+用到都會先撞進 \texttt{except} 區塊、建好資料夾，再搬一次：
+
+\iosample{}{Other: 1 file(s) \\ Document: 2 file(s) \\ Music: 1 file(s) \\ Image: 1 file(s) \\}
+
+\stylepoint{這裡再次示範 Python 偏好「先做，錯了再處理」：直接呼叫
+\texttt{shutil.move()}，讓 Python 自己告訴你資料夾不存在，不是每次都先用
+\texttt{os.path.exists()} 檢查一輪才動手。檢查完到你真的搬檔案之間，狀態本來就可能
+已經變了（資料夾被刪、被搬走），先做再處理反而更可靠。}
+
+\texttt{record\_result()} 這個小函式也值得停下來看一眼：它接收 \texttt{counts} 這個
+dict，直接在裡面改東西，沒有 \texttt{return} 任何新的 dict 回去，呼叫端的
+\texttt{counts} 卻已經被改過了。這正是第 \ref{ch:functions} 章講過的「名字牌模型」：傳進函式的是同
+一個物件的名字牌，不是複製一份，函式內對它做的修改，呼叫端看得到。
+
+如果忘記包 \texttt{try}/\texttt{except}，直接寫 \texttt{shutil.move(source\_path,
+dest\_path)}，目的地資料夾又還不存在，會發生什麼事？我們老實示範一次：
+
+\begin{example}{python}{(broken-organize.py) 忘記接住錯誤會發生的事}
+import os
+import shutil
+
+SOURCE_FOLDER = "downloads_demo"
+DEST_ROOT = "organized_demo"
+
+EXTENSION_MAP = {
+    "jpg": "Image", "png": "Image",
+    "pdf": "Document", "docx": "Document", "txt": "Document",
+    "mp3": "Music", "wav": "Music",
+}
+
+
+def classify_file(filename):
+    extension = filename.split(".")[-1].lower()
+    return EXTENSION_MAP.get(extension, "Other")
+
+
+for filename in sorted(os.listdir(SOURCE_FOLDER)):
+    source_path = os.path.join(SOURCE_FOLDER, filename)
+    category = classify_file(filename)
+    dest_path = os.path.join(DEST_ROOT, category, filename)
+    shutil.move(source_path, dest_path)
+    print(f"Moved {filename}")
+\end{example}
+
+存檔執行後（\texttt{organized\_demo} 資料夾還是空的），螢幕上只印出一片紅字，一個
+檔案都沒有真的被搬到目的地，程式在第一個檔案就整個停住：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  ...（中間幾行是 shutil 內部呼叫的細節，可以先跳過）
+  File "broken_organize.py", line 21, in <module>
+    shutil.move(source_path, dest_path)
+FileNotFoundError: [Errno 2] No such file or directory:
+'organized_demo/Document/notes.txt'
+\end{verbatim}
+
+由下往上讀：最後一行 \texttt{FileNotFoundError} 說「找不到這個檔案或路徑」，真正的
+原因是目的地那條路徑裡的 \texttt{organized\_demo/Document} 這個資料夾根本還沒被建出來，
+\texttt{notes.txt} 這個來源檔案本身好好地在，Python 沒辦法把檔案搬進一個不存在的
+資料夾。這正是
+\texttt{organize-files.py} 用 \texttt{try}/\texttt{except} 接住、順手用
+\texttt{os.makedirs()} 補建資料夾要解決的問題；少了它，程式就直接在第一個檔案當掉，
+後面的檔案連試都沒試就整批放棄了。
+
+\begin{drills}[label=drills:move-files]
+\item 承接 \texttt{broken-organize.py}：如果 \texttt{organized\_demo} 資料夾（跟底下
+所有分類子資料夾）本來就已經存在，這段沒有 \texttt{try}/\texttt{except} 的程式碼還會
+出錯嗎？為什麼？
+\item 用 \texttt{organize-files.py} 的邏輯，如果 \texttt{downloads\_demo} 資料夾裡只有
+\texttt{a.txt}、\texttt{b.jpg}、\texttt{c.txt} 三個檔案，執行後會印出什麼（照
+\texttt{sorted()} 之後遇到的順序寫出完整幾行）？
+\item \texttt{record\_result()} 裡面用的是 \texttt{counts.get(category, 0) + 1}，
+不是先寫 \texttt{if category in counts: ... else: ...}。這兩種寫法哪一種比較接近
+這一章、也是第 \ref{ch:files-exceptions} 章教過的 Python 慣用風格？為什麼？
+\end{drills}
+
+\section{避免同名檔案被悄悄覆蓋}
+\label{sec:avoid-overwrite}
+
+上一節的 \texttt{organize-files.py} 有一個沒說出口的假設：每個要搬移的檔案，在目的
+地都還沒有同名的檔案存在。第一次整理一個乾淨的下載資料夾時，這個假設通常成立；但只
+要你不是只跑一次，這個假設就很容易被打破，例如你今天整理過一次，過幾天下載資料夾裡
+又多了一個檔名剛好也叫 \texttt{notes.txt} 的新檔案，再跑一次 \texttt{organize-files.py}
+會發生什麼事？我們老實測試一次。
+
+\begin{code}{python}{測試同名檔案會不會被覆蓋}
+import shutil
+
+shutil.move("downloads_demo/notes.txt", "organized_demo/Document/notes.txt")
+\end{code}
+
+假設目的地那份舊檔案 \texttt{organized\_demo/Document/notes.txt} 裡存的是「上次整理
+留下的舊檔案」，來源那份新檔案 \texttt{downloads\_demo/notes.txt} 裡存的是「這次新
+下載的檔案，剛好同名」。執行上面這一行之後，目的地的 \texttt{notes.txt} 會變成什麼
+內容？答案是新檔案的內容，舊檔案的內容直接消失，而且\textbf{沒有任何錯誤訊息}，
+程式安安靜靜地把舊檔案覆蓋掉了。
+
+這比前面幾節看到的 \texttt{FileNotFoundError} 危險
+得多：\texttt{try}/\texttt{except} 能接住的，是 Python 主動丟出來的例外，但覆蓋
+同名檔案這件事，Python 完全不覺得有問題，不會丟出任何例外讓你接，資料就這樣悄悄
+不見了。
+
+\keypoint{不是每一種「壞事」都會讓程式當掉、丟出例外讓你接住。覆蓋掉一份還有用的舊
+檔案，對 Python 來說是完全合法、成功執行的操作，沒有錯誤訊息不代表沒有問題。處理
+使用者資料的程式，除了要接住「會噴錯」的狀況，也要主動想清楚「會不會安靜地把東西
+弄丟」這種更難察覺的狀況。}
+
+解法是在真正搬移之前，先確認目的地會不會撞名，如果會，就自己想一個不會撞名的新
+檔名，例如在檔名後面加上一個編號，變成 \texttt{notes (1).txt}。這裡雖然是先「檢查」
+再決定檔名，但跟前面幾節不建議的 LBYL 檢查不太一樣：這不是在檢查「等一下這個操作
+會不會失敗」，是在計算「這個檔案最後應該叫什麼名字」，本身就是這個功能需要的邏輯，
+不是繞過 EAFP 的偷懶寫法。
+
+\begin{code}{python}{算出一個不會撞名的檔名}
+def unique_filename(dest_folder, filename):
+    if not os.path.exists(os.path.join(dest_folder, filename)):
+        return filename
+
+    parts = filename.split(".")
+    if len(parts) > 1:
+        name = ".".join(parts[:-1])
+        extension = "." + parts[-1]
+    else:
+        name, extension = filename, ""
+
+    counter = 1
+    while True:
+        candidate = f"{name} ({counter}){extension}"
+        if not os.path.exists(os.path.join(dest_folder, candidate)):
+            return candidate
+        counter += 1
+\end{code}
+
+先用 \texttt{os.path.exists()} 檢查目的地資料夾裡有沒有同名檔案，沒有的話直接回傳
+原本的檔名，什麼都不用改。有的話，用跟 \texttt{classify\_file()} 類似的手法把檔名
+拆成「名字」跟「副檔名」兩段（例如 \texttt{"notes.txt"} 拆成 \texttt{"notes"} 跟
+\texttt{".txt"}），用一個 \texttt{while True} 迴圈，從編號 1 開始一路往上試
+（\texttt{notes (1).txt}、\texttt{notes (2).txt}……），每次都檢查這個新檔名存不存
+在，第一個「不存在」的候選檔名，就是可以安全使用的新檔名。
+
+\begin{example}{python}{(organize-files-safe.py) 搬移檔案時避免覆蓋同名檔案}
+import os
+import shutil
+
+SOURCE_FOLDER = "downloads_demo"
+DEST_ROOT = "organized_demo"
+
+EXTENSION_MAP = {
+    "jpg": "Image", "png": "Image",
+    "pdf": "Document", "docx": "Document", "txt": "Document",
+    "mp3": "Music", "wav": "Music",
+}
+
+
+def classify_file(filename):
+    extension = filename.split(".")[-1].lower()
+    return EXTENSION_MAP.get(extension, "Other")
+
+
+def unique_filename(dest_folder, filename):
+    if not os.path.exists(os.path.join(dest_folder, filename)):
+        return filename
+
+    parts = filename.split(".")
+    if len(parts) > 1:
+        name = ".".join(parts[:-1])
+        extension = "." + parts[-1]
+    else:
+        name, extension = filename, ""
+
+    counter = 1
+    while True:
+        candidate = f"{name} ({counter}){extension}"
+        if not os.path.exists(os.path.join(dest_folder, candidate)):
+            return candidate
+        counter += 1
+
+
+for filename in sorted(os.listdir(SOURCE_FOLDER)):
+    source_path = os.path.join(SOURCE_FOLDER, filename)
+    category = classify_file(filename)
+    dest_folder = os.path.join(DEST_ROOT, category)
+
+    final_filename = unique_filename(dest_folder, filename)
+    if final_filename != filename:
+        print(f"{filename} already exists, saving as {final_filename}")
+    dest_path = os.path.join(dest_folder, final_filename)
+
+    try:
+        shutil.move(source_path, dest_path)
+    except FileNotFoundError:
+        os.makedirs(dest_folder)
+        shutil.move(source_path, dest_path)
+
+print("Done organizing")
+\end{example}
+
+延續前面「目的地已經有一個舊的 \texttt{notes.txt}」的情境，\texttt{downloads\_demo}
+裡這次還多了一個新的 \texttt{vacation.jpg}（目的地還沒有同名檔案）：
+
+\iosample{}{notes.txt already exists, saving as notes (1).txt \\ Done organizing \\}
+
+執行完之後，\texttt{organized\_demo/Document} 底下會同時有 \texttt{notes.txt}（舊檔案，
+內容沒被動過）跟 \texttt{notes (1).txt}（這次新搬過去的檔案），兩份內容都保留了下
+來，沒有任何一份被悄悄蓋掉。
+
+\begin{drills}[label=drills:avoid-overwrite]
+\item 如果目的地資料夾裡已經同時有 \texttt{notes.txt} 跟 \texttt{notes (1).txt}，
+這次又要搬一個新的 \texttt{notes.txt} 過去，\texttt{unique\_filename()} 最後會回傳
+什麼檔名？
+\item \texttt{unique\_filename()} 一開始用 \texttt{os.path.exists()} 檢查檔案存不
+存在，這是不是違反了本章前面一直強調的 EAFP 原則？為什麼？
+\end{drills}
+
+\section{一個檔案的失敗，不該讓整批當機}
+\label{sec:robust-errors}
+
+\ref{sec:move-files}~節的 \texttt{organize-files.py} 已經會用 \texttt{try}/
+\texttt{except} 接住「目的地資料夾不存在」這一種狀況，但那個 \texttt{except}
+區塊背後藏著一個沒有明講的假設：只要看到 \texttt{FileNotFoundError}，就一定是
+「目的地資料夾不存在」造成的。
+
+如果同一種例外，其實是別的原因造成的呢？例如，處理
+到一半，其中一個來源檔案剛好被別的程式（或別的使用者）搬走或刪除了，這時候
+\texttt{shutil.move()} 一樣會丟出 \texttt{FileNotFoundError}，但原因完全不是資料
+夾不存在。我們示範一次這個情境會怎麼拖垮整支程式。
+
+\begin{example}{python}{(organize-race-broken.py) 同一種例外，兩種完全不同的原因}
+import os
+import shutil
+
+SOURCE_FOLDER = "downloads_demo"
+DEST_ROOT = "organized_demo"
+
+EXTENSION_MAP = {
+    "jpg": "Image", "png": "Image",
+    "pdf": "Document", "docx": "Document", "txt": "Document",
+    "mp3": "Music", "wav": "Music",
+}
+
+
+def classify_file(filename):
+    extension = filename.split(".")[-1].lower()
+    return EXTENSION_MAP.get(extension, "Other")
+
+
+for filename in sorted(os.listdir(SOURCE_FOLDER)):
+    source_path = os.path.join(SOURCE_FOLDER, filename)
+    category = classify_file(filename)
+    dest_folder = os.path.join(DEST_ROOT, category)
+    dest_path = os.path.join(dest_folder, filename)
+
+    if filename == "song.mp3":
+        # 模擬：另一個程式已經先把這個檔案搬走或刪除了
+        os.remove(source_path)
+
+    try:
+        shutil.move(source_path, dest_path)
+    except FileNotFoundError:
+        os.makedirs(dest_folder)
+        shutil.move(source_path, dest_path)
+
+    print(f"Moved {filename}")
+\end{example}
+
+延續前面用過的五個檔案，這裡故意在程式跑到 \texttt{song.mp3} 之前，就先把它從
+\texttt{downloads\_demo} 資料夾裡刪掉，模擬「檔案在處理前就消失了」：
+
+\begin{verbatim}
+Moved archive.zip
+Moved notes.txt
+Moved report.pdf
+Traceback (most recent call last):
+  ...（中間有好幾層「處理某個錯誤的過程中，又發生了新的錯誤」的訊息，
+      都是 shutil 內部呼叫的細節，可以先跳過）
+  File "organize_race_broken.py", line 20, in <module>
+    shutil.move(source_path, dest_path)
+FileNotFoundError: [Errno 2] No such file or directory: 'downloads_demo/song.mp3'
+\end{verbatim}
+
+\texttt{archive.zip}、\texttt{notes.txt}、\texttt{report.pdf} 都順利搬完了，輪到
+\texttt{song.mp3} 時，第一次 \texttt{shutil.move()} 因為來源檔案不見了而丟出
+\texttt{FileNotFoundError}，程式照原本的邏輯認定「這一定是資料夾不存在」，呼叫
+\texttt{os.makedirs()} 補建資料夾之後重試，但重試的這一次還是失敗，這次的問題根本
+出在來源檔案本身，跟資料夾無關。這次的 \texttt{FileNotFoundError} 沒有被任何
+\texttt{except} 接住，整支程式就在這裡中止，剩下還沒處理的 \texttt{vacation.jpg}
+連試都沒試就被放棄了，跟本章一開始那個完全沒包 \texttt{try}/\texttt{except} 的
+\texttt{broken-organize.py} 落到一樣的下場。
+
+這裡的教訓是：光靠例外的「類型」判斷該怎麼處理是不夠的，同一個
+\texttt{FileNotFoundError} 背後可能是完全不同的原因。修正方式有兩個重點：
+
+\begin{itemize}
+\item 把第二次嘗試也包進 \texttt{try}/\texttt{except}，這次如果還是失敗，代表問題
+出在來源檔案，記錄下來就好，不用再重試。
+\item 把整段搬移邏輯放進迴圈本身的錯誤處理裡，讓一個檔案的失敗只影響那一個檔案，
+用 \texttt{continue} 跳到下一輪，繼續處理其他檔案，不要讓整支程式因為一個檔案而
+停擺。
+\end{itemize}
+
+\begin{example}{python}{(organize-robust.py) 一個檔案失敗不影響其他檔案}
+import os
+import shutil
+
+SOURCE_FOLDER = "downloads_demo"
+DEST_ROOT = "organized_demo"
+
+EXTENSION_MAP = {
+    "jpg": "Image", "png": "Image",
+    "pdf": "Document", "docx": "Document", "txt": "Document",
+    "mp3": "Music", "wav": "Music",
+}
+
+
+def classify_file(filename):
+    extension = filename.split(".")[-1].lower()
+    return EXTENSION_MAP.get(extension, "Other")
+
+
+def record_result(counts, category):
+    counts[category] = counts.get(category, 0) + 1
+
+
+def record_error(errors, filename, reason):
+    errors.append((filename, reason))
+
+
+counts = {}
+errors = []
+
+for filename in sorted(os.listdir(SOURCE_FOLDER)):
+    source_path = os.path.join(SOURCE_FOLDER, filename)
+    category = classify_file(filename)
+    dest_folder = os.path.join(DEST_ROOT, category)
+    dest_path = os.path.join(dest_folder, filename)
+
+    if filename == "song.mp3":
+        os.remove(source_path)  # 模擬檔案在搬移前就消失了
+
+    try:
+        shutil.move(source_path, dest_path)
+    except FileNotFoundError:
+        try:
+            os.makedirs(dest_folder)
+            shutil.move(source_path, dest_path)
+        except FileNotFoundError:
+            record_error(errors, filename, "source file disappeared before it could be moved")
+            continue
+
+    record_result(counts, category)
+
+for category, count in counts.items():
+    print(f"{category}: {count} file(s)")
+
+if errors:
+    print(f"{len(errors)} file(s) failed to move:")
+    for filename, reason in errors:
+        print(f"  {filename}: {reason}")
+\end{example}
+
+\iosample{}{Other: 1 file(s) \\ Document: 2 file(s) \\ Image: 1 file(s) \\ 1 file(s) failed to move: \\ \ \ song.mp3: source file disappeared before it could be moved \\}
+
+這次 \texttt{song.mp3} 失敗了，但 \texttt{archive.zip}、\texttt{notes.txt}、
+\texttt{report.pdf}、\texttt{vacation.jpg} 全部都正常整理完成，程式最後還老實印出
+一份「哪些檔案失敗了、為什麼失敗」的清單，讓使用者知道要自己去確認那個檔案的下落，
+而不是打開一片 Traceback 卻完全不知道整理到哪裡就停了。
+
+\texttt{record\_error()} 這個函式跟 \ref{sec:move-files}~節的 \texttt{record\_result()}
+是同一種寫法：接收一個 list，直接在裡面加東西，不用回傳新的 list。這裡的巢狀
+\texttt{try}/\texttt{except} 也值得停下來看一眼：外層 \texttt{try} 對應「第一次嘗試
+搬移」，內層 \texttt{try} 對應「補建資料夾之後再試一次」，兩層各自處理各自可能發生
+的 \texttt{FileNotFoundError}，內層失敗才是真正束手無策的狀況，這時候才記錄錯誤、
+放棄這個檔案。
+
+\stylepoint{程式裡的 \texttt{except FileNotFoundError} 一直都寫得很明確，指名要接
+的是哪一種例外，不是籠統地寫一個空白的 \texttt{except:} 把所有錯誤都吞掉。籠統接住
+所有錯誤聽起來很安全，實際上很危險：它連你自己程式碼裡打錯字造成的 \texttt{NameError}
+都會一起吞掉，讓你以為程式「沒問題」，其實是某個地方悄悄壞掉了卻沒人發現。只接你真
+的預期會發生、也知道怎麼處理的例外類型，其他的讓它照樣噴出來，你才看得到。}
+
+\begin{drills}[label=drills:robust-errors]
+\item \texttt{organize-robust.py} 裡的內層 \texttt{try}/\texttt{except} 如果拿掉，
+直接讓內層的 \texttt{os.makedirs()} 跟 \texttt{shutil.move()} 兩行沒有包在任何
+\texttt{try} 裡面，重跑一次會發生什麼事？
+\item 如果 \texttt{downloads\_demo} 資料夾裡有兩個檔案在處理前就消失了（例如
+\texttt{song.mp3} 跟 \texttt{vacation.jpg}），\texttt{organize-robust.py} 執行完
+之後，\texttt{errors} 這個 list 裡會有幾筆紀錄？
+\end{drills}
+
+\section{把整理結果打包備份}
+\label{sec:backup-zip}
+
+檔案整理到一半，很多人會多做一件事，把整理好的成果打包成一份備份，避免之後不小心
+弄丟。Python 標準函式庫的 \texttt{zipfile} 模組可以直接在程式裡建立一個 ZIP 壓縮檔，
+不用另外開檔案總管手動壓縮。這裡只示範最常用的寫法：建立一個新的 ZIP 檔，把資料夾
+裡的檔案一個一個加進去；\texttt{zipfile} 其實還有解壓縮、讀取既有 ZIP 內容等其他功能，
+用得到的時候查文件就好，不用在這裡一次學完。
+\index{zipfile 模組／zipfile.ZipFile()}
+
+\begin{code}{python}{用 zipfile 打包資料夾}
+import zipfile
+
+with zipfile.ZipFile(zip_name, "w") as zip_file:
+    for filename in os.listdir(folder_path):
+        zip_file.write(os.path.join(folder_path, filename))
+\end{code}
+
+跟第 \ref{ch:files-exceptions} 章讀寫檔案時一樣，這裡也用 \texttt{with} 包住整個操作，離開 \texttt{with}
+區塊時，Python 會自動幫你把 ZIP 檔正確收尾關好，不用自己記得呼叫關檔的方法。
+
+\begin{example}{python}{(backup-zip.py) 打包整理好的資料夾}
+import os
+import zipfile
+
+SOURCE_FOLDER = "organized_demo"
+ZIP_NAME = "organized_backup.zip"
+
+with zipfile.ZipFile(ZIP_NAME, "w") as backup_zip:
+    for category in sorted(os.listdir(SOURCE_FOLDER)):
+        category_folder = os.path.join(SOURCE_FOLDER, category)
+        for filename in sorted(os.listdir(category_folder)):
+            file_path = os.path.join(category_folder, filename)
+            backup_zip.write(file_path)
+            print(f"Added to backup: {file_path}")
+
+print(f"Backup complete: {ZIP_NAME}")
+\end{example}
+
+承接前面整理好的 \texttt{organized\_demo} 資料夾（裡面已經分好「Document」「Image」
+「Music」「Other」四個子資料夾）：
+
+\iosample{}{Added to backup: organized\_demo/Document/notes.txt \\ Added to backup: organized\_demo/Document/report.pdf \\ Added to backup: organized\_demo/Image/vacation.jpg \\ Added to backup: organized\_demo/Music/song.mp3 \\ Added to backup: organized\_demo/Other/archive.zip \\ Backup complete: organized\_backup.zip \\}
+
+這裡刻意用兩層 \texttt{os.listdir()}（先列出分類資料夾，再列出每個分類資料夾裡的
+檔案），不是因為 \texttt{os} 模組沒有更直接的寫法，它其實還有一個
+\texttt{os.walk()} 可以一次走訪整棵資料夾樹，但這一章只會用到兩層深度，先用你已經
+會的 \texttt{os.listdir()} 疊兩層就夠了，不用為了這一個場景多學一個新函式。
+
+\begin{drills}[label=drills:backup-zip]
+\item 如果 \texttt{organized\_demo} 底下有一個分類資料夾是空的（一個檔案都沒有），
+\texttt{backup-zip.py} 執行時會不會出錯？備份檔裡會不會有這個分類的紀錄？
+\end{drills}
+
+\section{避免每次備份互相覆蓋}
+\label{sec:backup-timestamp}
+
+上一節的 \texttt{backup-zip.py} 每次都把備份存成同一個檔名
+\texttt{organized\_backup.zip}，如果你今天整理一次、備份一次，過幾天又整理一次、
+又備份一次，第二次的備份會直接把第一次的備份整個覆蓋掉，跟 \ref{sec:avoid-overwrite}~
+節看到的問題一樣：Python 不會因為覆蓋一個舊的 ZIP 檔而丟出任何例外，你可能過了很久
+才發現，早就想留著的那份舊備份，其實已經不在了。
+
+第 \ref{ch:modules} 章教過的 \texttt{datetime} 模組這裡剛好能派上用場：把今天的日期放進備份檔名
+裡，每天最多產生一份同名的備份檔，不同天的備份自然不會互相覆蓋。
+
+\begin{code}{python}{把日期放進備份檔名}
+import datetime
+
+today = datetime.date.today()
+zip_name = f"organized_backup_{today}.zip"
+\end{code}
+
+\texttt{datetime.date.today()} 回傳一個代表「今天」的日期物件，直接放進 f-string
+裡，會自動印成 \texttt{YYYY-MM-DD} 的格式，例如 \texttt{2026-09-02}，剛好可以當成
+檔名的一部分，不用自己再手動組字串。
+
+\begin{example}{python}{(backup-zip-dated.py) 幫每次備份加上日期}
+import datetime
+import os
+import zipfile
+
+SOURCE_FOLDER = "organized_demo"
+
+today = datetime.date.today()
+zip_name = f"organized_backup_{today}.zip"
+
+with zipfile.ZipFile(zip_name, "w") as backup_zip:
+    for category in sorted(os.listdir(SOURCE_FOLDER)):
+        category_folder = os.path.join(SOURCE_FOLDER, category)
+        for filename in sorted(os.listdir(category_folder)):
+            backup_zip.write(os.path.join(category_folder, filename))
+
+print(f"Backup complete: {zip_name}")
+\end{example}
+
+下面是作者示範當下（2026 年 9 月 2 日）執行的結果，你自己執行時看到的日期，會是你
+執行當天的日期：
+
+\iosample{}{Backup complete: organized\_backup\_2026-09-02.zip \\}
+
+\keypoint{這裡刻意檢查了「輸出裡有沒有隨執行當下改變的內容」這件事：日期一定會隨著
+你執行的那一天而不同，展示這種範例時，最好像這裡一樣講清楚「這是作者示範當下看到的
+結果」，讀者自己執行時看到不一樣的日期是正常的，不是程式壞了。}
+
+\begin{drills}[label=drills:backup-timestamp]
+\item 如果同一天執行了兩次 \texttt{backup-zip-dated.py}，會發生什麼事？這樣的檔名
+規則有沒有辦法完全避免同一天的兩次備份互相覆蓋？（提示：可以參考
+\ref{sec:avoid-overwrite}~節的做法。）
+\end{drills}
+
+\section{把視野拉到網路上：用 requests.get() 下載檔案}
+\label{sec:requests-download}
+
+到目前為止，程式處理的都是你電腦裡本來就有的檔案。但寫程式解決瑣事，除了處理硬碟
+裡已經有的東西，也可以主動去網路上抓一點資料回來，變成整理流程的一部分。這裡只示
+範最基本的用法：用 \texttt{requests} 套件發一個請求，把下載回來的內容存成本機檔案。
+
+至於伺服器回傳的狀態碼代表什麼、怎麼跟一個正式的 API 對話，這些留給第 \ref{ch:api} 章的專案
+再展開，這裡只是讓你有個印象「原來程式也可以伸手到網路上」。
+\index{requests 套件／requests.get()}
+
+\begin{code}{python}{用 requests.get() 下載檔案}
+import requests
+
+try:
+    response = requests.get(url, timeout=5)
+except requests.exceptions.RequestException as e:
+    print("Download failed:", e)
+else:
+    with open(save_filename, "wb") as f:
+        f.write(response.content)
+\end{code}
+
+跟前面幾節接住檔案操作錯誤的道理一樣，網路請求也是一種「跟外部世界打交道、本來就
+可能失敗」的操作，網址可能打錯字、對方伺服器可能沒回應、你的網路可能剛好斷線。
+一樣不用先想辦法「檢查網路正不正常」，直接發請求，失敗了讓 \texttt{try}/
+\texttt{except} 接住就好。
+
+這裡的 \texttt{except 例外類型 as e} 多做了一件事：
+\texttt{as e} 會把捕捉到的這個例外物件存進一個叫 \texttt{e} 的變數裡，之後可以用
+\texttt{print(e)} 印出更詳細的錯誤訊息，不只是知道「出錯了」，還能看到 Python
+具體回報了什麼。
+\index{except ... as e}
+
+注意這裡開檔案用的是 \texttt{"wb"} 模式（\texttt{w} 是
+寫入、\texttt{b} 代表二進位），跟你在第 \ref{ch:files-exceptions} 章看過的純文字 \texttt{"w"} 不一樣，
+下載回來的內容不一定是純文字（圖片、壓縮檔都不是），用 \texttt{"wb"} 才不會把資料
+寫壞。
+
+\begin{example}{python}{(download-file.py) 下載一張圖片存到本機}
+import requests
+
+URL = "https://www.python.org/static/img/python-logo.png"
+FILENAME = "python-logo.png"
+
+try:
+    response = requests.get(URL, timeout=5)
+except requests.exceptions.RequestException as e:
+    print("Download failed:", e)
+else:
+    with open(FILENAME, "wb") as f:
+        f.write(response.content)
+    print(f"Downloaded {FILENAME}, size {len(response.content)} bytes")
+\end{example}
+
+\iosample{}{Downloaded python-logo.png, size 15770 bytes \\}
+
+下載回來的 \texttt{python-logo.png} 存進資料夾之後，就是一個跟其他檔案沒有兩樣的
+本機檔案，你完全可以把它丟進前面 \ref{sec:classify-function}、\ref{sec:backup-zip}~
+節建立的分類、整理流程裡，跟其他檔案一起被分類、搬移、打包備份。這也是這一節故意
+做得很淺的原因：它只負責「把網路上的東西變成一個本機檔案」，剩下的整理工作，交給你
+已經會的技巧接手就好。
+
+\begin{drills}[label=drills:requests-download]
+\item 如果把 \texttt{download-file.py} 的 \texttt{try}/\texttt{except} 拿掉，直接寫
+\texttt{response = requests.get(URL, timeout=5)}，而這次 \texttt{URL} 打錯字（指向
+一個根本不存在的網址），執行後會發生什麼事？跟前面 \ref{sec:move-files}~節忘記包
+\texttt{try}/\texttt{except} 時看到的情況，有什麼共同點？
+\end{drills}
+
+\section{一次下載好幾個檔案，個別失敗不影響其他檔案}
+\label{sec:download-multiple}
+
+上一節只下載了一個檔案，但真實情境裡，你常常一次要抓好幾個檔案回來，例如好幾張圖片、
+好幾份報表。如果把上一節的寫法直接放進一個迴圈，逐一下載一份清單裡的每個網址，會遇到
+跟 \ref{sec:robust-errors}~節一樣的問題：只要其中一個網址失敗，整支程式就會在那裡
+中止，後面清單裡還沒下載的網址，連試都沒試就被放棄了。
+
+這一節示範怎麼讓下載這件事也
+擁有跟搬移檔案一樣的韌性：一個網址失敗，跳過它，繼續處理下一個。
+
+\begin{example}{python}{(download-multiple.py) 依序下載多個檔案，個別失敗就跳過}
+import os
+import requests
+
+DOWNLOAD_URLS = [
+    "https://www.python.org/static/img/python-logo.png",
+    "https://no-such-site.invalid/x.png",
+    "https://www.python.org/static/favicon.ico",
+]
+DEST_FOLDER = "downloads_demo"
+
+
+def download_file(url, dest_folder):
+    filename = url.split("/")[-1]
+    dest_path = os.path.join(dest_folder, filename)
+    response = requests.get(url, timeout=5)
+    with open(dest_path, "wb") as f:
+        f.write(response.content)
+    return dest_path
+
+
+downloaded = 0
+skipped = 0
+
+for url in DOWNLOAD_URLS:
+    try:
+        dest_path = download_file(url, DEST_FOLDER)
+    except requests.exceptions.RequestException as e:
+        print(f"Download failed, skipping {url} ({type(e).__name__})")
+        skipped += 1
+        continue
+    print(f"Downloaded {dest_path}")
+    downloaded += 1
+
+print(f"Done: {downloaded} succeeded, {skipped} skipped")
+\end{example}
+
+\iosample{}{Downloaded downloads\_demo/python-logo.png \\ Download failed, skipping https://no-such-site.invalid/x.png (ConnectionError) \\ Downloaded downloads\_demo/favicon.ico \\ Done: 2 succeeded, 1 skipped \\}
+
+清單裡第二個網址刻意寫錯，\texttt{requests.get()} 連不上去，會丟出一種叫
+\texttt{ConnectionError} 的例外。這裡的 \texttt{except} 接的是比較廣的
+\texttt{requests.exceptions.RequestException}，第 \ref{ch:api} 章會再提到，
+\texttt{ConnectionError} 只是 \texttt{RequestException} 底下好幾種更具體的錯誤
+之一，用比較廣的類型接住，可以一次涵蓋連線失敗、逾時等好幾種網路相關的錯誤。這裡
+印錯誤訊息時用的是 \texttt{type(e).\_\_name\_\_}（例外物件的型別名稱），不是把
+整段冗長的錯誤細節都印出來，讓輸出保持簡短好讀，同時還是能看出「是哪一種錯誤」。
+\index{type(e).\_\_name\_\_}
+
+\begin{drills}[label=drills:download-multiple]
+\item 如果 \texttt{DOWNLOAD\_URLS} 這份清單裡有三個網址全部都連不上，
+\texttt{download-multiple.py} 執行完之後，\texttt{downloaded} 跟 \texttt{skipped}
+分別會是多少？
+\item \texttt{download\_file()} 函式本身沒有包任何 \texttt{try}/\texttt{except}，
+是呼叫它的迴圈負責接住錯誤。這樣設計跟把 \texttt{try}/\texttt{except} 直接寫進
+\texttt{download\_file()} 函式內部相比，有什麼好處？
+\end{drills}
+
+\section{完整走一次：把所有片段串成一支程式}
+\label{sec:full-integration}
+
+這一節不教任何新技巧，只是把前面幾節的片段接起來，讓你看看整套流程真正跑起來長什麼
+樣子：先去網路上抓一個檔案回來，放進待整理的資料夾；把資料夾裡所有檔案分類、搬移，
+順手統計每一類有幾個檔案；最後把整理好的結果打包成一份備份。
+
+\begin{example}{python}{(organize-and-backup.py) 完整的檔案整理流程}
+import os
+import shutil
+import zipfile
+import requests
+
+DOWNLOAD_URL = "https://www.python.org/static/img/python-logo.png"
+SOURCE_FOLDER = "downloads_demo"
+DEST_ROOT = "organized_demo"
+ZIP_NAME = "organized_backup.zip"
+
+EXTENSION_MAP = {
+    "jpg": "Image", "png": "Image",
+    "pdf": "Document", "docx": "Document", "txt": "Document",
+    "mp3": "Music", "wav": "Music",
+}
+
+
+def classify_file(filename):
+    extension = filename.split(".")[-1].lower()
+    return EXTENSION_MAP.get(extension, "Other")
+
+
+def record_result(counts, category):
+    counts[category] = counts.get(category, 0) + 1
+
+
+# 第一步：先從網路上下載一個檔案，加進待整理的資料夾
+try:
+    response = requests.get(DOWNLOAD_URL, timeout=5)
+except requests.exceptions.RequestException as e:
+    print("Download failed, skipping this file:", e)
+else:
+    downloaded_path = os.path.join(SOURCE_FOLDER, "python-logo.png")
+    with open(downloaded_path, "wb") as f:
+        f.write(response.content)
+    print(f"Downloaded {downloaded_path}")
+
+# 第二步：把資料夾裡所有檔案分類、搬移，並統計結果
+counts = {}
+
+for filename in sorted(os.listdir(SOURCE_FOLDER)):
+    source_path = os.path.join(SOURCE_FOLDER, filename)
+    category = classify_file(filename)
+    dest_folder = os.path.join(DEST_ROOT, category)
+    dest_path = os.path.join(dest_folder, filename)
+
+    try:
+        shutil.move(source_path, dest_path)
+    except FileNotFoundError:
+        os.makedirs(dest_folder)
+        shutil.move(source_path, dest_path)
+
+    record_result(counts, category)
+
+for category, count in counts.items():
+    print(f"{category}: {count} file(s)")
+
+# 第三步：把整理好的結果打包成備份
+with zipfile.ZipFile(ZIP_NAME, "w") as backup_zip:
+    for category in sorted(os.listdir(DEST_ROOT)):
+        category_folder = os.path.join(DEST_ROOT, category)
+        for filename in sorted(os.listdir(category_folder)):
+            backup_zip.write(os.path.join(category_folder, filename))
+
+print(f"Backup complete: {ZIP_NAME}")
+\end{example}
+
+假設一開始 \texttt{downloads\_demo} 資料夾裡有 \texttt{vacation.jpg}、
+\texttt{notes.txt}、\texttt{report.pdf}、\texttt{song.mp3} 四個檔案：
+
+\iosample{}{Downloaded downloads\_demo/python-logo.png \\ Document: 2 file(s) \\ Image: 2 file(s) \\ Music: 1 file(s) \\ Backup complete: organized\_backup.zip \\}
+
+從頭看一遍會發現：這支程式裡沒有一行是這一章第一次出現的全新語法，迴圈、條件判斷、
+函式、字串方法、\texttt{try}/\texttt{except}、\texttt{with}，全部都是前面某一章教過
+的東西，只是這次它們一起解決同一個真實的任務，不再是各自獨立示範。這就是這一章
+真正想讓你看到的畫面：你已經有的技巧，接在一起可以做到比任何單一技巧看起來都更完整
+的事情。
+
+\section{進階版：把新學到的韌性也一起裝進去}
+\label{sec:advanced-integration}
+
+上一節的 \texttt{organize-and-backup.py} 已經是一個完整能動的工具，但這一章後半段
+額外學到的三件事，設定檔客製化、避免同名覆蓋、單一檔案失敗不拖累整批，都還沒被放
+進這支完整流程裡。這一節做最後一次整合：在保留原本三步驟骨架的前提下，把這一章學到
+的所有加強都疊上去，順便也把 \ref{sec:download-multiple}~節「一次下載好幾個檔案」的
+能力接進來，變成一個更貼近真實世界會怎麼寫的版本。
+
+\begin{example}{python}{(organize-and-backup-plus.py) 整合所有新功能的完整流程}
+import datetime
+import json
+import os
+import shutil
+import zipfile
+
+import requests
+
+DOWNLOAD_URLS = [
+    "https://www.python.org/static/img/python-logo.png",
+    "https://no-such-site.invalid/x.png",
+]
+SOURCE_FOLDER = "downloads_demo"
+DEST_ROOT = "organized_demo"
+CONFIG_PATH = "config.json"
+
+EXTENSION_MAP = {
+    "jpg": "Image", "png": "Image",
+    "pdf": "Document", "docx": "Document", "txt": "Document",
+    "mp3": "Music", "wav": "Music",
+}
+
+
+def load_config():
+    try:
+        with open(CONFIG_PATH, "r") as f:
+            return json.loads(f.read())
+    except FileNotFoundError:
+        return {}
+
+
+for extension, category in load_config().items():
+    EXTENSION_MAP[extension] = category
+
+
+def classify_file(filename):
+    extension = filename.split(".")[-1].lower()
+    return EXTENSION_MAP.get(extension, "Other")
+
+
+def unique_filename(dest_folder, filename):
+    if not os.path.exists(os.path.join(dest_folder, filename)):
+        return filename
+    parts = filename.split(".")
+    if len(parts) > 1:
+        name = ".".join(parts[:-1])
+        extension = "." + parts[-1]
+    else:
+        name, extension = filename, ""
+    counter = 1
+    while True:
+        candidate = f"{name} ({counter}){extension}"
+        if not os.path.exists(os.path.join(dest_folder, candidate)):
+            return candidate
+        counter += 1
+
+
+def record_result(counts, category):
+    counts[category] = counts.get(category, 0) + 1
+
+
+def record_error(errors, filename, reason):
+    errors.append((filename, reason))
+
+
+def download_file(url, dest_folder):
+    filename = url.split("/")[-1]
+    dest_path = os.path.join(dest_folder, filename)
+    response = requests.get(url, timeout=5)
+    with open(dest_path, "wb") as f:
+        f.write(response.content)
+    return dest_path
+
+
+# 第一步：下載要處理的檔案，單一失敗不影響其他檔案
+for url in DOWNLOAD_URLS:
+    try:
+        downloaded_path = download_file(url, SOURCE_FOLDER)
+    except requests.exceptions.RequestException as e:
+        print(f"Download failed, skipping {url} ({type(e).__name__})")
+        continue
+    print(f"Downloaded {downloaded_path}")
+
+# 第二步：分類並搬移，避免覆蓋同名檔案，且單一檔案失敗不影響其他檔案
+counts = {}
+errors = []
+
+for filename in sorted(os.listdir(SOURCE_FOLDER)):
+    source_path = os.path.join(SOURCE_FOLDER, filename)
+    category = classify_file(filename)
+    dest_folder = os.path.join(DEST_ROOT, category)
+
+    final_filename = unique_filename(dest_folder, filename)
+    dest_path = os.path.join(dest_folder, final_filename)
+
+    try:
+        shutil.move(source_path, dest_path)
+    except FileNotFoundError:
+        try:
+            os.makedirs(dest_folder)
+            shutil.move(source_path, dest_path)
+        except FileNotFoundError:
+            record_error(errors, filename, "source file disappeared before it could be moved")
+            continue
+
+    record_result(counts, category)
+
+for category, count in counts.items():
+    print(f"{category}: {count} file(s)")
+
+if errors:
+    print(f"{len(errors)} file(s) failed to move:")
+    for filename, reason in errors:
+        print(f"  {filename}: {reason}")
+
+# 第三步：把整理好的結果打包成有日期的備份，避免覆蓋前一次的備份
+today = datetime.date.today()
+zip_name = f"organized_backup_{today}.zip"
+
+with zipfile.ZipFile(zip_name, "w") as backup_zip:
+    for category in sorted(os.listdir(DEST_ROOT)):
+        category_folder = os.path.join(DEST_ROOT, category)
+        for filename in sorted(os.listdir(category_folder)):
+            backup_zip.write(os.path.join(category_folder, filename))
+
+print(f"Backup complete: {zip_name}")
+\end{example}
+
+假設 \texttt{downloads\_demo} 資料夾裡一開始有 \texttt{vacation.jpg}、
+\texttt{notes.txt}、\texttt{report.pdf}、\texttt{song.mp3} 四個檔案，目的地資料夾
+還沒有任何同名檔案，下面是作者示範當下（2026 年 9 月 2 日）執行的結果：
+
+\iosample{}{Downloaded downloads\_demo/python-logo.png \\ Download failed, skipping https://no-such-site.invalid/x.png (ConnectionError) \\ Document: 2 file(s) \\ Image: 2 file(s) \\ Music: 1 file(s) \\ Backup complete: organized\_backup\_2026-09-02.zip \\}
+
+比較這支程式跟上一節的 \texttt{organize-and-backup.py}，骨架完全沒有變，一樣是「先
+下載、再分類搬移、最後打包備份」三步驟，變的只是每一步底下多墊了幾層防護：
+
+\begin{itemize}
+\item 下載那一步現在能處理一份清單、個別失敗不影響其他網址。
+\item 分類搬移那一步現在會避開同名覆蓋、單一檔案失敗也不會拖累整批。
+\item 打包備份那一步現在會自動避開覆蓋前一天的備份。
+\end{itemize}
+
+這正是這一章從頭到尾想傳達的重點：一個能用的工具，跟一個經得起現實世界各種意外考驗的工具，中間
+的差距通常不是全新的知識，是願不願意多花力氣，把「萬一發生了呢」一項一項想過、接住。
+
+\begin{drills}[label=drills:advanced-integration]
+\item 如果 \texttt{organized\_demo} 資料夾裡已經有一個 \texttt{vacation.jpg}（跟這次
+要下載並整理的檔案剛好同名），\texttt{organize-and-backup-plus.py} 執行後，這個檔案
+最後會被存成什麼名字？
+\item 這支程式跟 \ref{sec:full-integration}~節的 \texttt{organize-and-backup.py}
+相比，多用到了哪三個本章新學的函式？各自對應解決哪一種「真實世界比較亂」的狀況？
+\end{drills}
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:list-preview}~節}
+\begin{enumerate}
+\item 照 \texttt{sorted()} 之後的順序（\texttt{clip.mp4}、\texttt{cover.pdf}、
+\texttt{photo.png}、\texttt{todo.txt}），會印出：\texttt{clip.mp4 -> Other}、
+\texttt{cover.pdf -> Document}、\texttt{photo.png -> Image}、\texttt{todo.txt -> Document}。
+\item 會被歸類到「Other」，因為 \texttt{mystery} 這個檔名沒有結尾符合
+\texttt{.jpg}／\texttt{.png}／\texttt{.pdf}／\texttt{.docx}／\texttt{.txt}／
+\texttt{.mp3}／\texttt{.wav} 任何一個，程式一路掉進最後的 \texttt{else}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:classify-function}~節}
+\begin{enumerate}
+\item 只需要在 \texttt{EXTENSION\_MAP} 這個 dict 裡多加一行 \texttt{"gif": "Image",}，
+不用改動 \texttt{classify\_file()} 函式本體，這正是把規則放進 dict、邏輯放進函式
+分開處理的好處。
+\item 會回傳 \texttt{"Document"}。負責的是 \texttt{extension = filename.split(".")[-1]
+.lower()} 這一行裡的 \texttt{.lower()}，把切出來的副檔名統一轉成小寫，才能對到
+\texttt{EXTENSION\_MAP} 裡小寫的 key。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:config-file}~節}
+\begin{enumerate}
+\item 會被歸類到「Memo」。設定檔的規則是在內建的 \texttt{EXTENSION\_MAP} 建立好之
+後才用 \texttt{for} 迴圈一條一條寫進去，同一個 key（這裡是 \texttt{"txt"}）後寫入的
+值會覆蓋掉先前的值，所以設定檔的規則會贏過內建規則。
+\item 好處是就算設定檔在檢查完到真正打開之間被刪除（例如使用者手滑刪掉了），程式也
+不會因為一個檢查和實際操作之間的時間差而出錯，直接嘗試打開、失敗了再處理，比先檢查
+一次更可靠。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:move-files}~節}
+\begin{enumerate}
+\item 不會出錯，\texttt{FileNotFoundError} 只有在目的地資料夾（例如
+\texttt{organized\_demo/Document}）不存在時才會發生；如果所有分類子資料夾都已經先建好，
+\texttt{shutil.move()} 每次都能直接成功，程式會正常跑完，只是少了自動補建資料夾這個
+保險。
+\item 依序處理 \texttt{a.txt}（Document）、\texttt{b.jpg}（Image）、\texttt{c.txt}
+（Document），會印出：\texttt{Document: 2 file(s)}、\texttt{Image: 1 file(s)}。
+\item \texttt{counts.get(category, 0) + 1} 比較接近 Python 慣用風格，這是 EAFP
+精神的另一種展現，把「查得到就用，查不到就用預設值」包成一個方法呼叫，不用自己先寫
+\texttt{if category in counts} 再分兩條路徑處理。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:avoid-overwrite}~節}
+\begin{enumerate}
+\item 會回傳 \texttt{"notes (2).txt"}，因為 \texttt{unique\_filename()} 用
+\texttt{while True} 從編號 1 開始一路往上試，\texttt{notes (1).txt} 已經被佔用了，
+下一個沒被佔用的候選就是編號 2。
+\item 不算違反。EAFP 原則要避免的，是用檢查來「猜測」某個本來就可能失敗的操作會不會
+成功；這裡的檢查不是為了猜測會不會失敗，是這個功能本身需要的邏輯，用來計算出一個
+還沒被使用過的檔名，跟避免失敗無關。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:robust-errors}~節}
+\begin{enumerate}
+\item 內層的 \texttt{os.makedirs()} 或 \texttt{shutil.move()} 如果再次失敗，會丟出
+沒有被任何 \texttt{except} 接住的例外，程式會在處理 \texttt{song.mp3} 時整個中止，
+跟本節一開始的 \texttt{organize-race-broken.py} 一樣，\texttt{vacation.jpg} 也不會
+被處理到。
+\item 會有兩筆紀錄，一筆是 \texttt{song.mp3}，一筆是 \texttt{vacation.jpg}，因為
+每個檔案的搬移都各自包在自己的 \texttt{try}/\texttt{except} 裡，一個檔案失敗只會
+讓那一個檔案被記進 \texttt{errors}、用 \texttt{continue} 跳過，不會影響其他檔案繼續
+被正常處理。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:backup-zip}~節}
+\begin{enumerate}
+\item 不會出錯，內層的 \texttt{for filename in sorted(os.listdir(category\_folder))}
+在空資料夾裡就是跑零次，直接跳過；備份檔裡不會有這個分類資料夾的任何紀錄，因為
+\texttt{zipfile} 只會寫入你明確呼叫 \texttt{.write()} 加進去的檔案，沒有檔案就沒有
+東西可以加。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:backup-timestamp}~節}
+\begin{enumerate}
+\item 同一天執行兩次，兩次算出來的 \texttt{today} 是同一個日期，檔名
+\texttt{organized\_backup\_2026-09-02.zip} 完全相同，第二次還是會把第一次的備份
+整個覆蓋掉。這個檔名規則只能避免「不同天」的備份互相覆蓋，沒辦法避免「同一天」的多次
+備份互相覆蓋；真的要完全避免，可以搭配 \ref{sec:avoid-overwrite}~節教的
+\texttt{unique\_filename()}，讓同一天的第二次備份自動變成
+\texttt{organized\_backup\_2026-09-02 (1).zip}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:requests-download}~節}
+\begin{enumerate}
+\item 程式會在 \texttt{requests.get()} 那一行丟出一個沒被接住的例外（例如連線失敗
+相關的錯誤），螢幕上出現一片 Traceback，程式直接中止，後面統計、備份的程式碼完全不
+會被執行到。這跟 \ref{sec:move-files}~節忘記包 \texttt{try}/\texttt{except} 時的
+狀況一樣：只要是「跟外部世界打交道、本來就可能失敗」的操作，沒有用 \texttt{try}/
+\texttt{except} 接住，一失敗就會讓整支程式當場停擺，不會只是那一步失敗、其他部分
+照跑。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:download-multiple}~節}
+\begin{enumerate}
+\item \texttt{downloaded} 會是 \texttt{0}，\texttt{skipped} 會是 \texttt{3}，三個
+網址都會各自被 \texttt{except} 接住、印出失敗訊息、\texttt{skipped} 累加，最後迴圈
+正常跑完，不會中途中止。
+\item 好處是 \texttt{download\_file()} 保持單純，只負責「下載這一個檔案」，不用管
+「失敗了要怎麼辦」；決定失敗後要跳過、記錄還是重試，是呼叫端（迴圈）依情境決定的
+策略，同一個 \texttt{download\_file()} 函式可以被不同的呼叫端用不同方式處理錯誤，
+不用為了不同情境寫好幾個版本的下載函式。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:advanced-integration}~節}
+\begin{enumerate}
+\item 會被存成 \texttt{vacation (1).jpg}，因為 \texttt{unique\_filename()} 發現
+\texttt{organized\_demo/Image} 底下已經有同名的 \texttt{vacation.jpg}，改用加了編號
+的新檔名，不會覆蓋掉原本已經存在的檔案。
+\item 多用到 \texttt{load\_config()}（讓分類規則可以被 \texttt{config.json} 客製化，
+對應 \ref{sec:config-file}~節）、\texttt{unique\_filename()}（避免同名檔案被悄悄
+覆蓋，對應 \ref{sec:avoid-overwrite}~節）、\texttt{record\_error()}（讓單一檔案的
+搬移失敗不拖累整批、還能留下紀錄，對應 \ref{sec:robust-errors}~節）。
+\end{enumerate}

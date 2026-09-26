@@ -1,0 +1,942 @@
+\chapter{Comprehension 與內建工具函式}
+\label{ch:comprehensions}
+
+請人幫忙的時候，你講的是「我要什麼」，不是「你的手要怎麼動」。把一疊報名表推過去，你會說
+「幫我把及格的挑出來」——一句話，講完了。你不會說：「先拿一張空白紙放旁邊，然後從第一張
+開始，一張一張看，看到及格的就抄到那張紙上，抄完再翻下一張。」後面這一串話每個步驟都沒
+錯，做出來的結果也一模一樣，只是聽的人得撐到最後一句，才知道你到底要什麼。
+
+程式碼也有這兩種講法，而你已經寫過後面那一種了。回頭看第 \ref{sec:csv-dict} 節那支篩選
+及格名單的 \texttt{filter-and-write-passed.py}：為了從一份成績檔案裡挑出及格的人，中間
+這四行是這樣寫的：
+
+\begin{code}{python}{你在成績檔案那一章親手打過的四行}
+passed_students = []
+for row in reader:
+    if row["passed"] == "Yes":
+        passed_students.append(row)
+\end{code}
+
+這四行到底在說什麼？答案是「我要及格的那些」。但這句話並沒有寫在任何一行裡——它散在四行
+之間，你得先看到有人造了一份空清單，再看到有個迴圈在走，再看到一個判斷，最後看到
+\texttt{append}，把這四件事在腦子裡合起來，才拼得出那句話。
+
+同一件事，還可以這樣寫：
+
+\begin{code}{python}{同一件事的一行版}
+passed_students = [row for row in reader if row["passed"] == "Yes"]
+\end{code}
+
+這一行從左讀到右，就是「我要每一個 \texttt{row}，從 \texttt{reader} 裡面來，條件是它的
+\texttt{passed} 欄位等於 Yes」。方括號本身就先告訴你「結果是一份清單」，剩下的只是填空。
+這個寫法你在第 \ref{sec:list-comprehension} 節見過最陽春的版本，當時說「這裡只教最簡單的
+形式，不帶條件式、也不是雙層迴圈，那些之後有需要再說」——現在就是之後。
+
+這一章分四段推進：
+
+\begin{itemize}
+\item 第一段把 comprehension 本身補到完整：在原本的骨架上依序裝三個零件——後面的
+\texttt{if}（挑掉一些）、前面的 \texttt{if}／\texttt{else}（每一項換個值）、第二個
+\texttt{for}（多走一層）（第 \ref{sec:comp-filter}～\ref{sec:comp-nested} 節）。
+\item 第二段把鏡頭拉遠，看「comprehension 這個形狀本身」：同樣的內容換一副括號，拿到的
+東西就不一樣了——大括號給你 dict 或 set，小括號給你一種你還沒見過的東西
+（第 \ref{sec:comp-dict-set}～\ref{sec:genexp-glimpse} 節）。
+\item 第三段反過來問：如果你根本不想要那個新容器呢？有一組內建函式吃進一整串東西、只吐
+一個答案，另一組則是改造「你要走訪的那一串」本身
+（第 \ref{sec:reducing-builtins}～\ref{sec:zip-walk} 節）。
+\item 第四段是煞車。學會一個好用的寫法之後，同樣重要的是知道什麼時候不要用它
+（第 \ref{sec:comp-limits} 節）。
+\end{itemize}
+
+\section{加上條件：只留下要的那些}
+\label{sec:comp-filter}
+
+先把第 \ref{sec:list-comprehension} 節那個骨架喚回來：\texttt{[expression for item in
+iterable]}，意思是「把 \texttt{iterable} 裡的每一項各拿去算一次 \texttt{expression}，
+算出來的結果收成一份新清單」。那一節的版本有一個限制——來幾項就收幾項，一項都不能少。
+
+現在把第一個零件裝上去：在最後面補一個 \texttt{if}。
+
+\begin{code}{python}{帶條件的 list comprehension}
+[expression for item in iterable if condition]
+\end{code}
+\index{帶條件的 comprehension}
+
+多出來的 \texttt{if condition} 是一道關卡：每一項都要先通過它，通過的才會被收下來，沒通過
+的直接跳過。所以這種寫法造出來的清單，長度通常會比原本那份短。
+
+\begin{example}{python}{(passed-scores.py) 挑出及格的分數：兩種寫法並排}
+scores = [88, 76, 92, 65, 79]
+
+# 傳統寫法：造一份空清單、跑迴圈、符合條件才 append
+passed = []
+for score in scores:
+    if score >= 70:
+        passed.append(score)
+print(passed)
+
+# comprehension 寫法：同一件事，一行
+passed_v2 = [score for score in scores if score >= 70]
+print(passed_v2)
+\end{example}
+
+\iosample{}{[88, 76, 92, 79] \\{} [88, 76, 92, 79] \\}
+
+這份分數就是第 \ref{ch:csv} 章那份 \texttt{quiz\_scores.csv} 裡的五個人（Alice、Bob、
+Taylor、Charlie、David），及格線也沿用第 \ref{sec:csv-module-write} 節的 70 分，所以
+Charlie 的 65 分被擋在外面。兩段程式的輸出一模一樣，而下面那一行跟上面那五行的對應關係
+很整齊：\texttt{for score in scores} 就是原本的迴圈標頭，\texttt{if score >= 70} 就是原本
+那個判斷，最前面那個 \texttt{score} 就是原本 \texttt{append} 進去的東西。位置換了，內容
+一個也沒少。
+
+真正好用的是——這兩格可以同時派上用場，而且互不干涉：\textbf{最前面那一格負責「變成
+什麼」，最後面那一格負責「留不留」}。從檔案讀進來的資料通常又髒又亂，正好兩件事都要做。
+
+\begin{example}{python}{(clean-scores.py) 一邊過濾髒資料，一邊轉成整數}
+raw = ["88", "76", "", "92", "n/a", "65", "79"]
+
+numbers = [int(s) for s in raw if s.isdigit()]
+
+print(numbers)
+print(len(raw), "->", len(numbers))
+\end{example}
+
+\iosample{}{[88, 76, 92, 65, 79] \\{} 7 -> 5 \\}
+
+\texttt{raw} 裡有七項，其中一項是空字串、一項是 \texttt{"n/a"}，這兩個丟給
+\texttt{int()} 都會出事。\texttt{if s.isdigit()} 這道關卡先把它們擋下來（\texttt{isdigit()}
+是字串的方法，回答「這串字是不是每個字元都是數字」），通過的五項才輪到最前面的
+\texttt{int(s)} 做轉換。順序上，Python 一定是先過關卡、再做轉換，所以那兩個壞資料根本沒有
+機會被 \texttt{int()} 碰到。
+
+\subsection*{常見錯誤：把 \texttt{if} 搬到前面去}
+
+看多了之後，很多人會產生一種印象：\texttt{if} 好像放哪裡都行。試試看把它挪到最前面：
+
+\begin{example}{python}{(filter-oops.py) 把 if 挪到 for 前面}
+raw = ["88", "", "76"]
+
+numbers = [s if s.isdigit() for s in raw]
+print(numbers)
+\end{example}
+
+\begin{verbatim}
+  File "filter-oops.py", line 3
+    numbers = [s if s.isdigit() for s in raw]
+               ^^^^^^^^^^^^^^^^
+SyntaxError: expected 'else' after 'if' expression
+\end{verbatim}
+
+程式連跑都沒開始跑就被擋下來了。這次的錯誤訊息很不客氣，但也很好懂：「\texttt{if} 這個
+式子後面應該要有一個 \texttt{else}」。這句話其實透露了一件重要的事——\texttt{if} 放到前面
+去，Python 讀到的\textbf{不是}原本那個過濾用的 \texttt{if}，而是另一種完全不同的寫法，
+而且那種寫法一定要配 \texttt{else}。下一節就講它。
+
+\begin{drills}[label=drills:comp-filter]
+\item 預測輸出：\texttt{nums = [3, 8, 1, 10, 6]}，那麼
+\texttt{print([n for n in nums if n > 5])} 會印出什麼？
+\item 改寫題：把下面這段迴圈改寫成一行 comprehension。
+\begin{verbatim}
+words = ["apple", "fig", "banana", "kiwi"]
+long_words = []
+for w in words:
+    if len(w) > 4:
+        long_words.append(w.upper())
+\end{verbatim}
+\item 抓蟲：有人想從 \texttt{words} 裡挑出長度大於 3 的字，寫成
+\texttt{[w if len(w) > 3 for w in words]}，執行時直接報錯。錯在哪裡？該怎麼改？
+\end{drills}
+
+\section{前面的 \texttt{if}：兩個結果選一個}
+\label{sec:conditional-expression}
+
+上一節最後那個 \texttt{SyntaxError} 說「\texttt{if} 這個式子後面應該要有一個
+\texttt{else}」。先把 comprehension 整個放到一邊，單獨把那個東西看清楚。
+
+你早就會寫這種程式：依照一個條件，決定某個變數要拿到兩個值裡的哪一個。
+
+\begin{code}{python}{你熟悉的四行寫法}
+if score >= 70:
+    label = "Pass"
+else:
+    label = "Fail"
+\end{code}
+
+這四行做的事其實只有一件：\textbf{算出一個值，指定給 \texttt{label}}。Python 準備了一個
+專門寫這種情況的簡短寫法，叫做\textbf{條件運算式}。
+\index{條件運算式（conditional expression）}
+
+\begin{code}{python}{條件運算式：兩個值裡選一個}
+value_if_true if condition else value_if_false
+\end{code}
+
+順序看起來有點怪，但照著字面朗讀一次就順了：「\texttt{label} 拿到 \texttt{"Pass"}，
+如果分數大於等於 70；否則拿到 \texttt{"Fail"}。」中文講「如果……就……」，這個寫法講的是
+「就……如果……否則……」，把結果擺在最前面。
+
+\begin{example}{python}{(pass-label.py) 四行與一行，做的是同一件事}
+score = 88
+
+if score >= 70:
+    label = "Pass"
+else:
+    label = "Fail"
+print(label)
+
+label = "Pass" if score >= 70 else "Fail"
+print(label)
+\end{example}
+
+\iosample{}{Pass \\ Pass \\}
+
+這個寫法你其實見過一次。第 \ref{sec:csv-module-write} 節那支
+\texttt{write-quiz-results.py} 裡，替每個人算出「及格與否」那一欄的，就是
+\texttt{passed = "Yes" if score >= 70 else "No"} 這一行——當時沒有特別停下來解釋，現在
+你知道它是什麼了。
+
+有一條界線要先講清楚：條件運算式的兩邊都只能是「算得出一個值的東西」。只要有一邊要做別的
+事——印東西、把資料 \texttt{append} 進某份清單、開檔案——就得乖乖寫回四行的
+\texttt{if}／\texttt{else}。這條限制跟第 \ref{sec:lambda} 節的 \texttt{lambda} 是同一個
+道理：\textbf{式子算值，敘述做事，兩者不能混著用}。
+
+現在把它裝進 comprehension 的第一格：
+
+\begin{example}{python}{(score-labels.py) 兩種 if 放在一起比較}
+scores = [88, 76, 92, 65, 79]
+
+labels = [("Pass" if score >= 70 else "Fail") for score in scores]
+passed_only = [score for score in scores if score >= 70]
+
+print(labels)
+print(passed_only)
+print(len(scores), len(labels), len(passed_only))
+\end{example}
+
+\iosample{}{['Pass', 'Pass', 'Pass', 'Fail', 'Pass'] \\{} [88, 76, 92, 79] \\{} 5 5 4 \\}
+
+\texttt{("Pass" if score >= 70 else "Fail")} 外面那對括號不是必要的，拿掉照樣能跑；加上去
+只是為了讓「這一整串是第一格的內容」看得更清楚。剛開始寫的時候建議加，等眼睛習慣了再說。
+
+最後那一行是這一節的重點：原本五項，貼標籤的版本還是五項，過濾的版本剩四項。
+
+\keypoint{同一個 \texttt{if}，放的位置不同，做的事完全不同。
+\texttt{[x for x in items if condition]}——\texttt{if} 在\textbf{後面}，是\textbf{過濾}，
+每一項要嘛原封不動被收下、要嘛整個消失，所以結果\textbf{會變短}。
+\texttt{[A if condition else B for x in items]}——\texttt{if} 在\textbf{前面}，是
+\textbf{選值}，一項都不會少，結果的長度\textbf{跟原本一樣}，只是每一項變成 A 或 B。
+判斷的方法很簡單：看 \texttt{for} 在哪裡。\texttt{for} 前面的東西是「收下什麼」，
+\texttt{for} 後面的 \texttt{if} 才是「收不收」。}
+
+\subsection*{常見錯誤：兩種 \texttt{if} 混在一起}
+
+這兩種寫法各有各的規矩，混起來用兩個方向都會被擋下來。想過濾卻把 \texttt{if} 寫到前面，
+就是上一節那個錯誤，現在可以正式解釋了：
+
+\begin{example}{python}{(label-oops.py) 想過濾，卻把 if 寫到前面}
+scores = [88, 65, 92]
+
+labels = [score if score >= 70 for score in scores]
+print(labels)
+\end{example}
+
+\begin{verbatim}
+  File "label-oops.py", line 3
+    labels = [score if score >= 70 for score in scores]
+              ^^^^^^^^^^^^^^^^^^^^
+SyntaxError: expected 'else' after 'if' expression
+\end{verbatim}
+
+Python 看到第一格裡有 \texttt{if}，就認定你要寫的是條件運算式，於是等著看 \texttt{else}
+——結果等到的是 \texttt{for}。想過濾的話，這個 \texttt{if} 應該搬到最後面去。
+
+反過來，想選值卻把 \texttt{else} 掛在後面那個 \texttt{if} 上：
+
+\begin{example}{python}{(filter-oops2.py) 想選值，卻把 else 掛在後面的 if 上}
+scores = [88, 65, 92]
+
+passed = [score for score in scores if score >= 70 else 0]
+print(passed)
+\end{example}
+
+\begin{verbatim}
+  File "filter-oops2.py", line 3
+    passed = [score for score in scores if score >= 70 else 0]
+                                                       ^^^^
+SyntaxError: invalid syntax
+\end{verbatim}
+
+這次的訊息只說「文法不對」，比較不友善，但箭頭指得很準——問題就在那個 \texttt{else}。
+後面那個 \texttt{if} 是關卡，關卡只回答「過或不過」，沒有第二條路可以走，所以它後面不接
+\texttt{else}。要讓不及格的變成 0，得把整串搬到最前面去：
+\texttt{[score if score >= 70 else 0 for score in scores]}。
+
+\begin{drills}[label=drills:conditional-expression]
+\item 有 \texttt{nums = [4, 9, 2, 7]}。下面兩行各自印出什麼？印出來的清單各有幾項？
+\begin{verbatim}
+print([n for n in nums if n > 5])
+print([n if n > 5 else 0 for n in nums])
+\end{verbatim}
+\item 填空：有 \texttt{temps = [18, 25, 30]}，想得到
+\texttt{['cool', 'warm', 'warm']}（25 度以上算 warm），下面這行該怎麼填？
+\begin{verbatim}
+labels = [______ for t in temps]
+\end{verbatim}
+\end{drills}
+
+\section{兩層 \texttt{for}：走訪有層次的資料}
+\label{sec:comp-nested}
+
+第三個零件是「多走一層」。動手之前要先分清楚兩種長得很像、但不是同一回事的東西。
+
+第 \ref{sec:list-comprehension} 節那支 \texttt{comprehension-grid.py} 寫的是
+\texttt{[[0 for \_ in range(3)] for \_ in range(3)]}——注意裡面那一整串 comprehension
+是被包在\textbf{最前面那一格}裡的，它是「每繞一圈就重新造一份新的內層清單」，做出來的
+結果是一份清單中的清單。這一節要講的是另一種：\textbf{兩個 \texttt{for} 排在同一組
+方括號裡}，做出來的結果是一份平的清單。前者是往下長，後者是往外攤。
+
+\begin{code}{python}{兩層 for 的 comprehension}
+[expression for outer in outers for inner in outer]
+\end{code}
+
+最常見的用途就是「攤平」：手上有一份第 \ref{sec:nested-list} 節那種清單中的清單，你想把
+所有最裡層的東西倒進同一份清單裡。
+
+\begin{example}{python}{(flatten-scores.py) 把每班一份的成績攤成一份}
+class_scores = [[88, 92], [76], [95, 60, 71]]
+
+# 兩層迴圈版
+all_scores = []
+for one_class in class_scores:
+    for score in one_class:
+        all_scores.append(score)
+print(all_scores)
+
+# comprehension 版：兩個 for 排在同一組方括號裡
+all_scores_v2 = [score for one_class in class_scores for score in one_class]
+print(all_scores_v2)
+\end{example}
+
+\iosample{}{[88, 92, 76, 95, 60, 71] \\{} [88, 92, 76, 95, 60, 71] \\}
+
+兩份輸出一模一樣，連順序都一樣。把兩種寫法對著看，會發現一件事：\textbf{comprehension 裡
+兩個 \texttt{for} 的先後順序，跟寫成巢狀迴圈時由外到內的順序完全一致}——外層的
+\texttt{for one\_class in class\_scores} 在前，內層的 \texttt{for score in one\_class}
+在後，一個字都沒調換。
+
+那為什麼這種寫法常被說「順序很反直覺」？反直覺的不是兩個 \texttt{for}，是被搬到最前面
+那一格的 \texttt{score}。它在迴圈版裡明明是最後才出現的（在最裡層的 \texttt{append}
+裡），在 comprehension 裡卻跑到了整串的最前面。
+
+\keypoint{讀一段兩層的 comprehension，眼睛不要從最左邊開始讀。先跳過第一格，從第一個
+\texttt{for} 開始由左往右讀完，最後再回頭看最前面那一格。
+\texttt{[score for one\_class in class\_scores for score in one\_class]} 要讀成：
+「for one\_class in class\_scores $\to$ for score in one\_class $\to$ 收下 score」。
+先走外層，再走內層，最後才是「收下什麼」——這個順序，就是你寫巢狀迴圈時本來的順序。}
+
+順序不能亂調換，這件事與其抽象地講，不如直接跑一次給你看。把兩個 \texttt{for} 對調：
+
+\begin{example}{python}{(flatten-swapped.py) 故意把兩個 for 對調}
+class_scores = [[88, 92], [76], [95, 60, 71]]
+
+all_scores = [score for score in one_class for one_class in class_scores]
+print(all_scores)
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "flatten-swapped.py", line 3, in <module>
+    all_scores = [score for score in one_class for one_class in class_scores]
+                                     ^^^^^^^^^
+NameError: name 'one_class' is not defined
+\end{verbatim}
+
+\texttt{NameError: name 'one\_class' is not defined} 直譯是「\texttt{one\_class} 這個名字
+沒有被定義過」。原因很單純：照剛才那個讀法由左往右讀，第一個 \texttt{for} 就要拿
+\texttt{one\_class} 來走訪，可是負責產生 \texttt{one\_class} 的那個 \texttt{for} 排在
+它後面，還沒輪到。這跟你寫巢狀迴圈時不可能把內層迴圈寫在外層前面，是同一件事。
+
+最後說清楚這一節的定位：\textbf{兩層 comprehension 你要讀得懂，但不必急著自己寫}。看到
+別人的兩層版本，能在腦子裡翻譯回巢狀迴圈就算過關；輪到自己寫的時候，寫成兩層縮排的
+\texttt{for} 迴圈一點也不丟臉，很多時候還更好讀——第 \ref{sec:comp-limits} 節會把這件事
+講成一條明確的規則。另外，這一章只教到兩層；真的需要三層以上，那就是「該寫回迴圈」的
+訊號，不是「該再多塞一個 \texttt{for}」的訊號。
+
+\begin{drills}[label=drills:comp-nested]
+\item 翻譯題：把 \texttt{[c for word in words for c in word]} 改寫成兩層縮排的
+\texttt{for} 迴圈（含 \texttt{append}）。如果 \texttt{words = ["ab", "cd"]}，結果會是
+什麼？
+\item 預測輸出：\texttt{rows = [[1, 2], [3, 4]]}，那麼
+\texttt{print([n * 10 for row in rows for n in row])} 會印出什麼？特別注意順序。
+\end{drills}
+
+\section{換成大括號：dict 與 set comprehension}
+\label{sec:comp-dict-set}
+
+前三節都在拆解「方括號裡面」有哪些零件。這一節換個方向：零件不動，只換掉外面那副括號。
+
+第 \ref{sec:comprehension} 節已經給過語法了，一句話喚回來就好：把方括號換成大括號，
+\textbf{沒有冒號}就得到一個 set，\textbf{有冒號}把 key 跟 value 分開就得到一個 dict。
+那一節說「你現在看得懂、知道長什麼樣子就好」，這一節要把它升級成「寫得出來」——加上剛學會
+的條件，換一個你真的會遇到的情境。
+
+\begin{code}{python}{dict comprehension 與 set comprehension（都可以帶條件）}
+{key_expr: value_expr for item in iterable if condition}
+{expression for item in iterable if condition}
+\end{code}
+
+dict comprehension 在真實程式碼裡最常見的用途只有一個，而且你在第 \ref{ch:csv} 章已經
+吃過對應的苦頭：用 \texttt{DictReader} 讀進來的資料是「一列一列」的，每一列是一個 dict。
+這種形狀很適合從頭走到尾，但只要你想問「Taylor 考幾分」，就得重跑一次迴圈去找。
+一行 dict comprehension 可以把它翻成一張\textbf{查找表}。
+
+\begin{example}{python}{(score-lookup.py) 把一列一列的資料變成一張查找表}
+rows = [
+    {"name": "Alice", "score": "88"},
+    {"name": "Bob", "score": "76"},
+    {"name": "Taylor", "score": "92"},
+    {"name": "Charlie", "score": "65"},
+    {"name": "David", "score": "79"},
+]
+
+score_of = {row["name"]: int(row["score"]) for row in rows}
+
+print(score_of)
+print(score_of["Taylor"])
+print(score_of.get("Ivy", 0))
+\end{example}
+
+\iosample{}{\{'Alice': 88, 'Bob': 76, 'Taylor': 92, 'Charlie': 65, 'David': 79\} \\ 92 \\ 0 \\}
+
+冒號左邊的 \texttt{row["name"]} 決定這一筆的 key，右邊的 \texttt{int(row["score"])} 決定
+value——順便把字串轉成整數，這樣之後拿來計算就不用再轉一次。造好之後，
+\texttt{score\_of["Taylor"]} 直接就是 92，不用再跑迴圈找人。最後一行用的是第
+\ref{sec:dict-get} 節的 \texttt{.get(name, 0)}：名單裡沒有 Ivy 這個人，但這樣寫不會炸，
+會拿到你指定的預設值 0。
+
+順帶提醒一件第 \ref{sec:comprehension} 節講過的事：如果 \texttt{rows} 裡有兩筆同名的
+資料，後面那筆會安靜地蓋掉前面那筆，不會報錯。查找表造出來的筆數比原始資料少，通常就是
+這個原因。
+
+set comprehension 則適合「去重複順便整理」。第 \ref{sec:set-ops} 節那個
+\texttt{set(signups)} 只能原封不動去重複，如果資料本身大小寫不一致，就得先跑一趟迴圈
+整理好、再丟進 \texttt{set()}。用 comprehension 一步到位：
+
+\begin{example}{python}{(clean-tags.py) 標籤去重複，順手統一成小寫}
+tags = ["Python", "csv", "CSV", "python", "JSON", "json", "csv"]
+
+unique_tags = {tag.lower() for tag in tags}
+
+print(len(tags), "->", len(unique_tags))
+print(sorted(unique_tags))
+\end{example}
+
+\iosample{}{7 -> 3 \\{} ['csv', 'json', 'python'] \\}
+
+七個標籤變成三個。這裡最後印的是 \texttt{sorted(unique\_tags)} 而不是 set 本身，因為第
+\ref{ch:dict-set} 章說過 set 沒有順序，直接印出來每次執行的排列可能都不一樣，排過再印
+才看得清楚內容。
+
+\subsection*{常見錯誤：忘了冒號，拿到的是 set}
+
+這一節唯一的坑，也是整章最陰險的一個——因為它不會給你任何錯誤訊息，只會給你錯的東西。
+
+\begin{example}{python}{(dict-or-set.py) 有冒號跟沒冒號，差在哪裡}
+rows = [
+    {"name": "Alice", "score": "88"},
+    {"name": "Bob", "score": "76"},
+]
+
+no_colon = {row["name"] for row in rows}
+with_colon = {row["name"]: int(row["score"]) for row in rows}
+
+print(type(no_colon))
+print(type(with_colon))
+print(sorted(no_colon))
+print(with_colon["Alice"])
+\end{example}
+
+\iosample{}{<class 'set'> \\ <class 'dict'> \\{} ['Alice', 'Bob'] \\ 88 \\}
+
+\texttt{\{row["name"] for row in rows\}} 一樣用大括號、一樣能跑、一樣印得出東西，但
+\texttt{type()} 老實告訴你那是一個 \texttt{set}——一堆名字，不是查找表。它要到你寫
+\texttt{no\_colon["Alice"]} 的時候才會爆炸，而那可能已經是好幾十行以後的事了。
+\textbf{大括號裡有沒有那個冒號，決定你拿到的是兩種完全不同的東西}，寫完順手用
+\texttt{type()} 確認一次，比事後回頭找便宜得多。
+
+\begin{drills}[label=drills:comp-dict-set]
+\item 預測輸出：\texttt{words = ["fig", "kiwi", "fig"]}，那麼
+\texttt{print(\{w: len(w) for w in words\})} 會印出什麼？（注意有幾筆。）
+\item 判斷題：下面這一行執行完，\texttt{result} 是一個 dict 還是一個 set？為什麼？
+\begin{verbatim}
+result = {row["name"] for row in rows}
+\end{verbatim}
+\item 造表題：有
+\texttt{rows = [\{"name": "Amy", "score": "91"\}, \{"name": "Ben", "score": "58"\}]}，
+寫一行 dict comprehension 造出「名字對應到整數分數」的查找表，並只收下 70 分以上的人。
+\end{drills}
+
+\section{換成小括號：你會拿到別的東西}
+\label{sec:genexp-glimpse}
+
+方括號給你 list，大括號給你 dict 或 set。那小括號呢？照這個規律推下去，答案應該是
+tuple——第 \ref{ch:tuples} 章那種「定死了不能改」的容器。合理的猜測，可惜猜錯了。
+
+\begin{example}{python}{(genexp-glimpse.py) 同樣的內容，換成小括號}
+numbers = [1, 2, 3, 4]
+
+squares_list = [n ** 2 for n in numbers]
+squares = (n ** 2 for n in numbers)
+
+print(squares_list)
+print(squares)
+
+for value in squares:
+    print(value)
+
+print(list(n ** 2 for n in numbers))
+print(sum(n ** 2 for n in numbers))
+\end{example}
+
+\iosample{}{[1, 4, 9, 16] \\ <generator object <genexpr> at 0x104e769b0> \\{} 1 \\ 4 \\ 9 \\ 16 \\{} [1, 4, 9, 16] \\ 30 \\}
+
+（那串十六進位數字是它在記憶體裡的位置，每次執行都不一樣，不用管它。）
+
+方括號版本印出來就是你要的清單；小括號版本印出來卻是一個看不出內容的東西，叫做
+\textbf{generator}（產生器）。這個畫面你在第 \ref{sec:map-filter} 節見過類似的——那時候
+\texttt{print(map(int, prices))} 印出來的是 \texttt{<map object at ...>}，同樣是一個
+「看不到內容」的東西。
+\index{generator（產生器）}
+
+關於它，這一章只講三件事：
+
+\begin{enumerate}
+\item \textbf{Python 沒有 tuple comprehension。} 小括號的位置被 generator 佔走了。真的
+想要一個 tuple，就用 \texttt{tuple(...)} 把整串包起來。
+\item \textbf{它不會馬上把結果算好給你。} 它先不動手，等你真的要用的時候才一個一個吐出
+來。所以你可以把它直接丟進 \texttt{for} 走一次（上面那四行 1、4、9、16 就是這樣印出來
+的），也可以用 \texttt{list(...)} 把它整個攤開成清單——跟 \texttt{map} 要用
+\texttt{list()} 包起來才看得到內容，是同一個道理。
+\item \textbf{當它是某個函式的唯一引數時，外層那對小括號可以省略。} 上面最後一行
+\texttt{sum(n ** 2 for n in numbers)} 就是這樣寫的——本來應該是
+\texttt{sum((n ** 2 for n in numbers))}，兩對括號疊在一起太醜，Python 允許你少寫一對。
+\end{enumerate}
+
+第三件事看起來只是省括號的小事，卻是下一節的入場券：它讓你可以寫出
+\texttt{sum(...\ for ...\ in ...)} 這種「不先造出清單，直接要答案」的形狀。
+
+至於 generator 為什麼要設計成「先不動手」、這樣做換到了什麼好處、用它的時候要注意什麼，
+第 \ref{ch:iterators-generators} 章會完整回答。這一節你只要認得出來就好：看到小括號版本，
+知道「這不是 tuple，也不是一份算好的清單」。
+
+\section{一整串值，換一個答案：\texttt{sum}／\texttt{any}／\texttt{all}}
+\label{sec:reducing-builtins}
+
+前面幾節做的都是同一件事：造一個新的東西出來。這一節問反過來的問題——如果你要的根本不是
+容器，是一個答案呢？
+
+Python 有一組內建函式專門做這件事：吃進一整串東西，吐出一個答案。你手上已經有一個了。
+
+\begin{code}{python}{吃一整串，吐一個答案}
+sum(iterable)
+any(iterable)
+all(iterable)
+\end{code}
+
+\texttt{sum} 你在第 \ref{sec:list-tools} 節見過，當時跟 \texttt{min()}、\texttt{max()}
+擺在一起，一句話帶過「拿總和」。現在要幫它升級：它不只能吃一份現成的清單，還可以直接吃
+上一節那個「還沒算好的東西」。這一升級的威力，拿第 \ref{sec:csv-manual-average} 節那支
+\texttt{average-quiz-score.py} 來比就很清楚——那裡為了算出總分，先用一個迴圈把分數收成
+清單，再用一個累加器迴圈把它們加起來，前後六行。
+
+\begin{example}{python}{(total-with-sum.py) 把兩個迴圈換成一行}
+rows = [
+    {"name": "Alice", "score": "88"},
+    {"name": "Bob", "score": "76"},
+    {"name": "Taylor", "score": "92"},
+    {"name": "Charlie", "score": "65"},
+    {"name": "David", "score": "79"},
+]
+
+total = sum(int(row["score"]) for row in rows)
+average = total / len(rows)
+
+print("Total:", total)
+print("Average score:", average)
+\end{example}
+
+\iosample{}{Total: 400 \\{} Average score: 80.0 \\}
+
+輸出跟第 \ref{sec:csv-manual-average} 節那支程式一模一樣，只是中間那六行變成一行。
+\texttt{int(row["score"]) for row in rows} 是上一節那個「先不動手」的東西，
+\texttt{sum} 收下它、一項一項跟它要值、邊要邊加，全程沒有任何一份中間清單被造出來。
+
+不過第 \ref{sec:csv-manual-average} 節那個「\texttt{total = 0} $\to$ 迴圈裡 \texttt{+=} $\to$
+最後除以數量」的樣板不是白學的：\texttt{sum} 只會做加法，一旦你要邊走邊做別的判斷、
+或是同時累積好幾個東西，那個手寫樣板還是你的主力。
+
+另外兩個是新面孔，它們回答的不是「總共多少」，而是是非題。\texttt{any} 問「\textbf{有沒有
+任何一個}成立」，\texttt{all} 問「\textbf{是不是每一個都}成立」。這兩個問題你在第
+\ref{ch:csv} 章一定遇過：讀進來的資料到底有沒有缺值？是不是每一筆都真的是數字？
+
+\begin{example}{python}{(check-data.py) 這批資料有沒有問題}
+rows = [
+    {"name": "Alice", "score": "88"},
+    {"name": "Bob", "score": ""},
+    {"name": "Taylor", "score": "92"},
+]
+
+# 傳統寫法：有沒有哪一筆缺分數？
+has_blank = False
+for row in rows:
+    if row["score"] == "":
+        has_blank = True
+        break
+print(has_blank)
+
+# 一行版
+print(any(row["score"] == "" for row in rows))
+print(all(row["score"].isdigit() for row in rows))
+
+print(all([]))
+print(any([]))
+\end{example}
+
+\iosample{}{True \\ True \\ False \\ True \\ False \\}
+
+前面那五行迴圈跟後面那一行 \texttt{any(...)} 給的答案一樣，都是 \texttt{True}——Bob 那筆
+的分數是空字串。\texttt{all(row["score"].isdigit() for row in rows)} 是
+\texttt{False}，因為並不是每一筆都是純數字。順帶一提，\texttt{any} 跟迴圈版一樣聰明：
+找到第一個成立的就停手，不會把整串走完。
+
+\texttt{any} 跟 \texttt{all} 判斷的是第 \ref{ch:conditionals} 章那套 truthy／falsy 規則
+——不是只有 \texttt{True}／\texttt{False} 才算數，空字串、0、空清單在它們眼裡也都是
+「不成立」。所以 \texttt{any(row["score"] for row in rows)} 其實也能問出「有沒有哪一筆
+是有東西的」，不用另外寫比較。
+
+最後兩行是這一節的重頭戲，也是最容易答錯的一題。
+
+\keypoint{對一個\textbf{空的}東西，\texttt{all} 回 \texttt{True}，\texttt{any} 回
+\texttt{False}。「一個都沒有，怎麼會是『全部都符合』？」——關鍵在於 \texttt{all} 真正問的
+是「\textbf{有沒有任何一個不符合}」。裡面一個東西都沒有，當然找不出不符合的，所以答
+\texttt{True}。\texttt{any} 反過來，問的是「有沒有找到任何一個符合的」，空的東西裡什麼
+都找不到，所以答 \texttt{False}。這個邊界在處理資料時很容易踩到：檔案剛好是空的、篩選
+完剛好一筆都不剩，\texttt{all(...)} 就會回一個看起來「全部都通過檢查」的 \texttt{True}。}
+
+\begin{drills}[label=drills:reducing-builtins]
+\item 預測輸出：\texttt{nums = [2, 4, 6]}，下面四行各印出什麼？
+\begin{verbatim}
+print(sum(n for n in nums if n > 3))
+print(all(n % 2 == 0 for n in nums))
+print(any(n > 10 for n in nums))
+print(all(n > 100 for n in []))
+\end{verbatim}
+\item 改寫題：把下面這段改寫成一行。
+\begin{verbatim}
+total = 0
+for row in rows:
+    total += int(row["score"])
+\end{verbatim}
+\end{drills}
+
+\section{換一種走訪方式：\texttt{zip}}
+\label{sec:zip-walk}
+
+上一節那組工具，是把一整串壓成一個答案。這一節是另一類工具，它們\textbf{不改變你要做的
+事，只改變「你走訪的那一串東西」長什麼樣子}。
+
+這個定位一講出來，有一個工具就自動歸位了——\texttt{enumerate()}。第 \ref{sec:enumerate}
+節教過它：你要位置又要內容的時候，不要自己造一個計數器手動累加，讓 \texttt{enumerate()}
+一次給你兩個。它做的事正是「改造你走訪的那一串」：本來一項一項給你內容，包上
+\texttt{enumerate()} 之後，變成一組一組給你「位置跟內容」。
+
+那時候你只在 \texttt{for} 迴圈裡用過它。既然 comprehension 的第二格就是一個
+\texttt{for}，它當然也能放進去，而且很好用——例如造一份帶編號的清單：
+
+\begin{example}{python}{(numbered-list.py) 用 enumerate 造一份帶編號的清單}
+names = ["Alice", "Bob", "Taylor"]
+
+lines = [f"{i + 1}. {name}" for i, name in enumerate(names)]
+
+for line in lines:
+    print(line)
+\end{example}
+
+\iosample{}{1. Alice \\ 2. Bob \\ 3. Taylor \\}
+
+\texttt{for i, name in enumerate(names)} 這一段跟你在 \texttt{for} 迴圈裡寫的完全一樣，
+一次接住兩個名字；差別只在它現在被塞進了方括號裡，而最前面那一格用 f-string 把編號跟
+名字組成一行字。編號寫 \texttt{i + 1} 是因為 \texttt{enumerate()} 從 0 開始數，這也是
+第 \ref{sec:enumerate} 節的老招。
+
+\subsection*{兩份資料要一起走：\texttt{zip}}
+
+\texttt{enumerate} 解決的是「內容之外還要位置」。另一個很常見的需求是：你手上有\textbf{兩
+份平行的資料}，第一份的第一項對應第二份的第一項，以此類推。從檔案裡分欄讀資料很容易造出
+這種形狀——名字收成一份、分數收成一份。
+
+\begin{code}{python}{用 zip 一次走兩份資料}
+zip(iterable_a, iterable_b)
+\end{code}
+\index{zip()}
+
+\begin{example}{python}{(walk-two-lists.py) 同時走訪名字與分數}
+names = ["Alice", "Bob", "Taylor", "Charlie", "David"]
+scores = [88, 76, 92, 65, 79]
+
+for name, score in zip(names, scores):
+    print(name, score)
+
+print(zip(names, scores))
+\end{example}
+
+\iosample{}{Alice 88 \\ Bob 76 \\ Taylor 92 \\ Charlie 65 \\ David 79 \\ <zip object at 0x1051a27c0> \\}
+
+\texttt{zip(names, scores)} 把兩份清單按位置配成一組一組，\texttt{for name, score in ...}
+一次接住兩個名字——跟 \texttt{enumerate} 完全同一個手法，只是這次的第一個值不是位置編號，
+而是另一份資料裡對應的那一項。
+
+沒有 \texttt{zip} 的話，你只能寫 \texttt{for i in range(len(names))}，再用
+\texttt{names[i]} 跟 \texttt{scores[i]} 分別去兩份清單裡取值。那樣寫能動，但你得自己管
+索引，而且一不小心就會寫錯一份的名字。
+
+最後那一行印出 \texttt{<zip object at ...>}，看不到內容——又是同一類的東西。跟上一節那個
+generator 一樣，它也不會馬上把結果算好給你，想看內容就用 \texttt{list()} 包起來。
+
+\texttt{zip} 最順手的一個用法，是一行造出查找表：
+
+\begin{example}{python}{(zip-lookup.py) 一行造查找表，順便看看長度不一樣會怎樣}
+names = ["Alice", "Bob", "Taylor"]
+scores = [88, 76, 92]
+
+score_of = dict(zip(names, scores))
+print(score_of)
+print(score_of["Bob"])
+
+short_names = ["Alice", "Bob"]
+pairs = [f"{name}={score}" for name, score in zip(short_names, scores)]
+print(pairs)
+\end{example}
+
+\iosample{}{\{'Alice': 88, 'Bob': 76, 'Taylor': 92\} \\ 76 \\{} ['Alice=88', 'Bob=76'] \\}
+
+前三行跟第 \ref{sec:comp-dict-set} 節那個 \texttt{score-lookup.py} 得到的是同一種東西
+——一張用名字查分數的表——但走的是完全不同的路：那邊的原始資料是「一列一列的 dict」，
+所以用 dict comprehension；這邊的原始資料是「兩份平行的清單」，所以用
+\texttt{dict(zip(...))}。\textbf{資料原本長什麼形狀，決定你該走哪一條路。}
+
+後面那三行藏著一個坑。\texttt{short\_names} 只有兩項，\texttt{scores} 有三項，
+\texttt{zip} 走到\textbf{短的那一份用完就停}，Taylor 的 92 分就這樣安靜地消失了——沒有
+報錯，沒有警告，只有結果少一筆。這種問題比報錯難抓得多，因為程式看起來完全正常。兩份
+資料如果理論上該一樣長，配對之前先確認一次
+（\texttt{len(names) == len(scores)}）不算多此一舉。
+
+\stylepoint{要位置就用 \texttt{enumerate}，要平行走兩份就用 \texttt{zip}，這兩種情況都
+不要寫 \texttt{for i in range(len(items))} 再自己去索引取值。第 \ref{sec:enumerate} 節
+對 \texttt{enumerate} 已經講過半句，這裡把 \texttt{zip} 補上：\texttt{range(len(...))}
+在 Python 裡幾乎永遠有更好的替代寫法，看到它就先想想是不是這兩個之一。}
+
+\begin{drills}[label=drills:zip-walk]
+\item 有 \texttt{names = ["a", "b", "c"]} 跟 \texttt{scores = [1, 2, 3, 4, 5]}。下面這個
+迴圈會印出幾行？沒被印到的那幾項會怎麼樣？
+\begin{verbatim}
+for n, s in zip(names, scores):
+    print(n, s)
+\end{verbatim}
+\item 預測輸出：\texttt{print(dict(zip(["a", "b"], [1, 2, 3])))} 會印出什麼？
+\end{drills}
+
+\section{什麼時候該用、什麼時候不要用}
+\label{sec:comp-limits}
+
+前面七節都在教你怎麼寫。這一節不教任何新語法，只做一件事：幫你建立「該不該用」的判斷力。
+前半支持，後半反對，兩半合起來才完整。
+
+\subsection*{前半：為什麼 comprehension 通常比較好讀}
+
+第 \ref{sec:map-filter} 節結尾留了一個伏筆：那裡說「Python 圈子普遍覺得 comprehension
+比較好讀」，但只給了立場，沒給理由。現在把理由補上，一共三條。三條都不需要你重新學
+\texttt{map}／\texttt{filter} 怎麼用，只要把兩段程式碼並排看就好。
+
+\textbf{第一條，意圖明確。} \texttt{for} 迴圈是萬用工具：它可能在數東西、可能在算總和、
+可能在印東西、可能在改一份既有的清單。你得把整個迴圈讀完，才知道它到底想做什麼。
+comprehension 只做一件事——\textbf{造一個新的容器出來}。看到方括號，你在讀懂內容之前就
+已經知道結果是一份清單了；看到大括號有冒號，就知道是一張表。這正是這一章開場那個對比：
+「說你要什麼」跟「一步一步交代怎麼做」的差別。
+
+\textbf{第二條，讀的方向。} 兩段做同一件事的程式碼：
+
+\begin{code}{python}{同一件事，兩種讀法}
+numbers = list(map(int, filter(lambda s: s.isdigit(), raw)))
+
+numbers = [int(s) for s in raw if s.isdigit()]
+\end{code}
+
+上面那行要由內往外讀：先找到最裡面的 \texttt{filter}（先過濾），再看外面的
+\texttt{map}（再轉換），再看最外面的 \texttt{list}（最後收成清單）。眼睛得先跳到中間、
+再往兩邊擴散。下面那行由左往右讀一遍就完了。這裡不多解釋，兩行並排放著，你自己看得出來
+差別。
+
+\textbf{第三條，少一個東西要學。} 注意下面那行裡 \texttt{lambda} 整個消失了。條件直接
+寫成 \texttt{s.isdigit()}，不需要先包成一個匿名函式再交出去。
+
+\stylepoint{這三條理由不代表 \texttt{map}／\texttt{filter} 是錯的或過時的。它們是好好的
+內建函式，你在別人的程式碼裡還是會看到，第 \ref{sec:map-filter} 節的定位維持不變：
+\textbf{看得懂就好}。這一節只是把「為什麼輪到自己寫的時候優先選 comprehension」這個理由
+補齊，不是要你去改別人的程式碼。}
+
+\subsection*{後半：三條煞車}
+
+好用的東西都有被用過頭的風險，comprehension 尤其容易——因為「把好幾行縮成一行」這件事
+本身很有成就感。以下三條，只要踩到任何一條，就該寫回 \texttt{for} 迴圈。
+
+\textbf{第一條：超過兩層就拆開。} 第 \ref{sec:comp-nested} 節說過這一章只教到兩層，這裡
+把它收成規則。一個更好記的門檻是：\textbf{一段 comprehension 如果寫出來超過兩行，就該
+考慮改回迴圈}。一行讀完是它最大的優點，一旦要折行、要往右捲，這個優點就沒了。
+
+\textbf{第二條：你不要那份結果清單的時候，就不該用它。} comprehension 存在的理由是
+「造一個新容器」。如果你只是想「做某件事」，那就寫迴圈。這個誤用很常見，而且它不會報錯：
+
+\begin{example}{python}{(print-comprehension.py) 用 comprehension 來印東西}
+names = ["Alice", "Bob", "Taylor"]
+
+result = [print(name) for name in names]
+
+print(result)
+\end{example}
+
+\iosample{}{Alice \\ Bob \\ Taylor \\{} [None, None, None] \\}
+
+三個名字確實印出來了，看起來一切正常。但最後一行揭穿了它：那份 comprehension 老老實實
+造了一份清單交給 \texttt{result}，裡面裝著三個 \texttt{None}——因為 \texttt{print()} 這個
+函式沒有回傳值，呼叫它拿到的就是 \texttt{None}（第 \ref{ch:functions} 章講過）。你完全
+不需要這份清單，它卻被造了出來、佔著記憶體，而且沒有任何人會去看它。
+
+判準只有一句話：\textbf{你不要那個結果清單的時候，就不該用這個語法}。這裡該寫的是
+\texttt{for name in names: print(name)}，兩行，而且誠實。
+
+\textbf{第三條：comprehension 裡放不進 \texttt{try}／\texttt{except}。} 這一條會讓你有點
+不舒服，因為它讓你剛學會的兩個好習慣正面衝突。第 \ref{sec:lbyl-vs-eafp} 節教過：可能失敗
+的操作，Python 的作風是先做、錯了再用 \texttt{try}／\texttt{except} 接住。而從檔案讀進來
+的東西一律是字串，\texttt{int()} 隨時可能踩到空字串或髒資料。
+
+問題是，comprehension 裡\textbf{沒有地方能放 \texttt{try}}。它整串是一個式子，而
+\texttt{try}／\texttt{except} 是敘述——這正是第 \ref{sec:conditional-expression} 節那條
+界線的又一次應用。所以下面這行遇到髒資料時，你只能眼睜睜看它整個倒下：
+
+\begin{code}{python}{沒有地方能接住錯誤的一行}
+scores = {row["name"]: int(row["score"]) for row in raw_rows}
+\end{code}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "dirty-comprehension.py", line 6, in <module>
+    scores = {row["name"]: int(row["score"]) for row in raw_rows}
+                           ~~~^^^^^^^^^^^^^^
+ValueError: invalid literal for int() with base 10: ''
+\end{verbatim}
+
+整串倒下，前面已經處理好的資料也一起沒了。這種時候答案很乾淨：\textbf{寫回 \texttt{for}
+迴圈}。
+
+\begin{example}{python}{(clean-dirty-scores.py) 需要接住錯誤，就寫回迴圈}
+raw_rows = [
+    {"name": "Alice", "score": "88"},
+    {"name": "Bob", "score": ""},
+    {"name": "Taylor", "score": "92分"},
+    {"name": "David", "score": "79"},
+]
+
+scores = {}
+for row in raw_rows:
+    try:
+        scores[row["name"]] = int(row["score"])
+    except ValueError:
+        print("skipped", row["name"])
+
+print(scores)
+\end{example}
+
+\iosample{}{skipped Bob \\ skipped Taylor \\ \{'Alice': 88, 'David': 79\} \\}
+
+四筆資料，兩筆有問題，程式沒有倒，好的兩筆照樣收進表裡，壞的兩筆還留下了紀錄。這段程式
+比一行版長了很多，但它是對的，而一行版不是。
+
+\stylepoint{三條煞車一起記：\textbf{超過兩層（或超過兩行）就拆開}；\textbf{只是想做某件
+事、不要那份結果清單的時候不要用}；\textbf{需要接住錯誤的時候不要用}。這三條的共同精神
+跟第 \ref{sec:lbyl-vs-eafp} 節那條提醒是一樣的——一個寫法再怎麼慣用，也不是每個地方都該
+用。判斷力比語法值錢。}
+
+\begin{drills}[label=drills:comp-limits]
+\item 判斷題：有人寫了 \texttt{[send\_email(user) for user in users]} 來寄一輪通知信，
+\texttt{send\_email()} 只負責寄信、沒有回傳值。這樣寫該不該？為什麼？
+\item 判斷題：一份從 CSV 讀進來的資料，分數欄位偶爾會是空字串、或夾著文字（例如
+\texttt{"92分"}），你要把它們轉成整數收成一份清單。這個工作該不該寫成 comprehension？
+為什麼？
+\end{drills}
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:comp-filter}~節}
+\begin{enumerate}
+\item 印出 \texttt{[8, 10, 6]}：只有大於 5 的三項通過關卡，順序維持原本的順序。
+\item \texttt{long\_words = [w.upper() for w in words if len(w) > 4]}，結果是
+\texttt{['APPLE', 'BANANA']}。最前面那格負責「變成什麼」（轉大寫），最後面那格負責
+「留不留」。
+\item \texttt{if} 是過濾用的，必須放在最後面：\texttt{[w for w in words if len(w) > 3]}。
+放在前面 Python 會以為你要寫條件運算式，於是要求你補一個 \texttt{else}，丟出
+\texttt{SyntaxError: expected 'else' after 'if' expression}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:conditional-expression}~節}
+\begin{enumerate}
+\item 第一行印出 \texttt{[9, 7]}，兩項；第二行印出 \texttt{[0, 9, 0, 7]}，四項。
+\texttt{if} 在 \texttt{for} 後面是過濾，會變短；在 \texttt{for} 前面是選值，長度跟原本
+一樣。
+\item \texttt{labels = ["warm" if t >= 25 else "cool" for t in temps]}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:comp-nested}~節}
+\begin{enumerate}
+\item 翻譯成：\texttt{result = []} $\to$ \texttt{for word in words:} $\to$ 縮排一層
+\texttt{for c in word:} $\to$ 再縮排一層 \texttt{result.append(c)}。兩個 \texttt{for} 的
+順序跟 comprehension 裡完全一樣。結果是 \texttt{['a', 'b', 'c', 'd']}。
+\item 印出 \texttt{[10, 20, 30, 40]}。先走完第一列 \texttt{[1, 2]} 才換到第二列，跟兩層
+縮排迴圈的順序一致。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:comp-dict-set}~節}
+\begin{enumerate}
+\item 印出 \texttt{\{'fig': 3, 'kiwi': 4\}}，只有兩筆——\texttt{"fig"} 出現兩次，但同一個
+key 後面那次會蓋掉前面那次。
+\item 是 set。大括號裡\textbf{沒有冒號}，Python 只看到「一個式子」，就造 set 給你；要
+dict 必須寫成 \texttt{\{row["name"]: 某個值 for row in rows\}}。這個錯不會報錯，要用
+\texttt{type()} 或後面存取出錯時才發現得了。
+\item \texttt{\{row["name"]: int(row["score"]) for row in rows if int(row["score"]) >= 70\}}，
+結果是 \texttt{\{'Amy': 91\}}。（Ben 只有 58 分，被關卡擋下來。）
+\end{enumerate}
+
+\paragraph{第~\ref{sec:reducing-builtins}~節}
+\begin{enumerate}
+\item 依序印出 \texttt{10}（只加 4 跟 6）、\texttt{True}（三個都是偶數）、
+\texttt{False}（沒有任何一個大於 10）、\texttt{True}（空的東西丟給 \texttt{all} 一律回
+\texttt{True}）。
+\item \texttt{total = sum(int(row["score"]) for row in rows)}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:zip-walk}~節}
+\begin{enumerate}
+\item 跑 3 輪、印 3 行。\texttt{zip} 走到短的那一份用完就停，\texttt{scores} 多出來的
+\texttt{4} 跟 \texttt{5} 會被安靜地丟掉，不會報錯。
+\item 印出 \texttt{\{'a': 1, 'b': 2\}}。理由同上：只配到兩組，\texttt{3} 被丟掉了。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:comp-limits}~節}
+\begin{enumerate}
+\item 不該。這裡的目的是「寄信」這件事本身，不是要一份結果清單，而
+\texttt{send\_email()} 沒有回傳值，所以會白白造出一份裝滿 \texttt{None} 的清單。應該寫成
+\texttt{for user in users: send\_email(user)}。
+\item 不該。髒資料表示 \texttt{int()} 隨時可能丟出 \texttt{ValueError}，而 comprehension
+裡沒有地方能放 \texttt{try}／\texttt{except}，一筆壞資料就會讓整串倒下、連前面處理好的
+也一起沒了。要能接住錯誤、跳過壞資料繼續做，就得寫回 \texttt{for} 迴圈。
+\end{enumerate}

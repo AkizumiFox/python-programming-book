@@ -1,0 +1,1050 @@
+\chapter{繼承與更多 OOP}
+\label{ch:inheritance}
+
+上一章你已經學會怎麼用 class 打造自己的物件，寫 \texttt{\_\_init\_\_}、定義屬性、寫方法。這
+一章接著問幾個很自然會冒出來的問題。第一個問題是：如果你已經寫好一個 class，現在想要一個
+「幾乎一樣、只是多一點東西」的新 class，難道要把整段程式碼複製貼上再改嗎？這一章前幾節要教你
+一個更好的做法，這就是「繼承」，讓一個新 class 直接站在既有 class 的肩膀上，只寫「多出來、不
+一樣」的那一部分；順便你也會看到繼承其實可以疊好幾層，還會認識另一種跟繼承並列、常常拿來互相
+比較的做法，叫做「組合」。
+
+第二個問題是：你有沒有發現，把自己寫的物件直接 \texttt{print()} 出
+來，結果常常長得很奇怪，看不出裡面裝了什麼？接下來兩節要教你兩個特殊方法，讓物件學會「自我
+介紹」：一種是講給一般使用者聽的版本，一種是講給寫程式的人（包括未來的你自己）聽、方便除錯的
+版本。
+
+最後，這一章要帶你回頭重新看一次第 \ref{ch:variables} 章講過的「名字牌模型」。物件比第 \ref{ch:variables} 章的數字、字串
+複雜得多，複製一個物件、比較兩個物件是不是「一樣」，這些問題在物件的世界裡有一些新的細節值得
+留意，最後一節會用一個你在第 \ref{ch:functions} 章就見過的老朋友（購物車）重新示範一次。
+
+整章的份量刻意抓得比較
+輕，這是點到為止的一章，不是要把你訓練成 OOP 專家，你只要知道這些工具存在、大概什麼時候會用
+到就夠了，之後如果工作上真的需要深入某一塊，再回頭查資料也不遲。
+
+\section{繼承：新 class 自動擁有父類別的一切}
+\label{sec:inheritance-intro}
+
+想像你已經用第 \ref{ch:objects} 章學的方式，定義好一個 \texttt{Animal} class，裡面存了動物的名字、也有一個
+\texttt{speak()} 方法讓動物「發出聲音」。現在你想再定義一個 \texttt{Dog} class，狗當然也是
+動物，也有名字、也會發出聲音，但狗還有一些自己專屬的行為（例如去把球撿回來）。如果把
+\texttt{Animal} 整段程式碼複製一份、貼進 \texttt{Dog}、再手動加東西，你等於在維護兩份幾乎一
+模一樣的程式碼，以後 \texttt{Animal} 改一個地方，你得記得兩邊都要改，這是很容易漏掉的坑。
+
+Python 給了一個更好的做法，叫做「繼承」（inheritance）：讓 \texttt{Dog} 直接站在
+\texttt{Animal} 的肩膀上，寫一次「\texttt{Dog} 是一種 \texttt{Animal}」，\texttt{Dog} 就自動
+擁有 \texttt{Animal} 已經有的一切，你完全不用重寫。
+\index{繼承}
+
+\begin{code}{python}{定義子類別}
+class ParentClass:
+    def __init__(self, param):
+        self.attr = param
+
+    def method(self):
+        print(self.attr)
+
+
+class ChildClass(ParentClass):
+    pass
+\end{code}
+
+括號裡放的是「父類別」（parent class，也叫 base class）的名字，這一行的意思是「\texttt{Child
+Class} 繼承自 \texttt{ParentClass}」。
+\index{父類別}
+反過來，\texttt{ChildClass} 就叫「子類別」（child
+class，也叫 derived class）：繼承自父類別、可以使用父類別的屬性和方法，也可以新增或覆寫。
+\index{子類別}
+上面這個 \texttt{ChildClass} 裡面除了一個
+\texttt{pass}（表示「這裡先什麼都不做」）之外什麼都沒寫，但因為它繼承了 \texttt{ParentClass}，
+它自動擁有 \texttt{ParentClass} 的 \texttt{\_\_init\_\_} 跟 \texttt{method}，一行都不用自己
+重寫。
+
+\begin{example}{python}{(dog-inherit.py) 狗是一種動物}
+class Animal:
+    def __init__(self, name):
+        self.name = name
+
+    def speak(self):
+        print(f"{self.name} made a sound.")
+
+
+class Dog(Animal):
+    pass
+
+
+dog = Dog("Max")
+dog.speak()
+\end{example}
+
+\iosample{}{Max made a sound. \\}
+
+\texttt{Dog} class 的本體裡只有一個 \texttt{pass}，沒有寫任何 \texttt{\_\_init\_\_}、也沒有
+寫任何 \texttt{speak()}，但 \texttt{Dog("Max")} 一樣能正常建立物件、\texttt{dog.speak()} 一樣
+能正常執行。這是因為 \texttt{class Dog(Animal):} 這一行，已經讓 \texttt{Dog} 把 \texttt{Animal}
+的 \texttt{\_\_init\_\_} 跟 \texttt{speak()} 全部「白拿」過來了。
+
+\keypoint{繼承的第一印象請記住這句話：「什麼都不用寫，子類別就自動擁有父類別的一切。」之後
+你會學到子類別可以覆寫、可以新增自己的東西，但那些都是「額外做的事」，不是繼承本身要求你做的
+事。繼承本身，就是白拿。}
+
+\section{覆寫與 \texttt{super()}：讓子類別做點不一樣的事}
+\label{sec:inheritance-basics}
+
+光是「白拿」還不夠，你想要的通常是「大部分一樣，但有幾個地方不一樣」的 \texttt{Dog}：狗的
+叫聲跟一般動物不一樣，狗還有自己專屬的行為（撿球），而且狗在建立的時候，除了名字之外可能還
+想多記一個「品種」。這一節要教你三件事：怎麼覆寫（override）父類別的方法、怎麼在子類別裡
+新增父類別沒有的方法、還有子類別自己定義 \texttt{\_\_init\_\_} 時該怎麼處理。
+
+\begin{code}{python}{覆寫方法、新增方法}
+class ChildClass(ParentClass):
+    def __init__(self, param1, param2):
+        super().__init__(param1)
+        self.extra = param2
+
+    def method(self):        # 覆寫父類別的同名方法
+        print("the child class's own behavior")
+
+    def extra_method(self):  # 父類別沒有的新方法
+        print(self.extra)
+\end{code}
+
+\texttt{def method(self):} 這一段名字跟父類別的方法一模一樣，Python 的規則很直接：子類別
+如果定義了跟父類別同名的方法，呼叫的時候一律以子類別自己這份為準，這就叫「覆寫」。
+\index{覆寫}
+至於
+\texttt{extra\_method}，父類別根本沒有這個方法，這純粹是子類別自己多出來的東西。比較特別的是
+\texttt{\_\_init\_\_} 裡的 \texttt{super().\_\_init\_\_(param1)}：\texttt{super()} 代表「父
+類別」，這一行的意思是「先照父類別原本的 \texttt{\_\_init\_\_} 做一次該做的事」，之後
+才接著做子類別自己想額外做的事（這裡是多存一個 \texttt{extra}）。
+\index{super()}
+
+\begin{example}{python}{(dog-override.py) 狗有自己的叫法跟拿手絕活}
+class Animal:
+    def __init__(self, name):
+        self.name = name
+
+    def speak(self):
+        print(f"{self.name} made a sound.")
+
+
+class Dog(Animal):
+    def __init__(self, name, breed):
+        super().__init__(name)
+        self.breed = breed
+
+    def speak(self):
+        print(f"{self.name} barked!")
+
+    def fetch(self):
+        print(f"{self.name} ran off to fetch the ball.")
+
+
+dog = Dog("Max", "Shiba Inu")
+dog.speak()
+dog.fetch()
+print(dog.breed)
+\end{example}
+
+\iosample{}{Max barked! \\ Max ran off to fetch the ball. \\ Shiba Inu \\}
+
+留意 \texttt{Dog.\_\_init\_\_} 接收 \texttt{name} 跟 \texttt{breed} 兩個參數，但只把
+\texttt{name} 這一個丟給 \texttt{super().\_\_init\_\_(name)}，這一行實際上就是在跑
+\texttt{Animal.\_\_init\_\_(self, name)}，幫你把 \texttt{self.name = name} 設好，
+\texttt{self.breed = breed} 才是 \texttt{Dog} 自己額外多做的事。
+
+\keypoint{\texttt{super().\_\_init\_\_(...)} 不是「順便」，是「你要，還是要跑一次父類別的
+設定」的明確表態。如果子類別自己定義了 \texttt{\_\_init\_\_}，卻沒有呼叫
+\texttt{super().\_\_init\_\_()}，父類別原本 \texttt{\_\_init\_\_} 裡做的事就\textbf{完全不會
+執行}。很多初學者會誤以為「反正是繼承，父類別的初始化應該會自動疊上去」，但 Python 不會
+幫你這樣猜，子類別的 \texttt{\_\_init\_\_} 一旦自己定義，就整個蓋過父類別那一份，除非你自己
+明講「還要跑一次」。}
+
+如果不小心漏寫了 \texttt{super().\_\_init\_\_()}，會發生什麼事？
+
+\begin{example}{python}{(dog-broken.py) 忘記呼叫 super().\_\_init\_\_()}
+class Animal:
+    def __init__(self, name):
+        self.name = name
+
+    def speak(self):
+        print(f"{self.name} made a sound.")
+
+
+class Dog(Animal):
+    def __init__(self, breed):
+        self.breed = breed  # 忘記呼叫 super().__init__()，name 永遠不會被設定
+
+
+dog = Dog("Shiba Inu")
+dog.speak()
+\end{example}
+
+存檔執行後，程式不會印出叫聲，而是直接跳出以下這樣的錯誤：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "dog-broken.py", line 12, in <module>
+    dog.speak()
+  File "dog-broken.py", line 5, in speak
+    print(f"{self.name} made a sound.")
+AttributeError: 'Dog' object has no attribute 'name'
+\end{verbatim}
+
+由下往上讀：\texttt{AttributeError: 'Dog' object has no attribute 'name'} 是說「這個
+\texttt{Dog} 物件身上根本沒有 \texttt{name} 這個屬性」，因為 \texttt{Dog.\_\_init\_\_} 只
+設定了 \texttt{self.breed}，從來沒有跑到 \texttt{Animal.\_\_init\_\_} 裡
+\texttt{self.name = name} 那一行，物件建立完之後身上自然沒有 \texttt{name}。修法很直接：在
+\texttt{Dog.\_\_init\_\_} 裡補上 \texttt{super().\_\_init\_\_(name)}（別忘了 \texttt{Dog}
+的 \texttt{\_\_init\_\_} 參數列也要加回 \texttt{name}）。
+
+順帶一提，如果你手上有一個 list，裡面同時裝著幾隻 \texttt{Dog} 跟幾隻普通的 \texttt{Animal}，
+你可以用同一段迴圈，對每個元素都呼叫 \texttt{.speak()}，不用管每一個實際上是哪個 class，只
+要它們都有同名的 \texttt{speak()} 方法，Python 就會自動呼叫到各自正確的那一份（狗會汪汪叫、
+一般動物會發出「一些聲音」）。這個好處以後你會經常用到，這裡先知道它存在就好。
+
+\begin{drills}[label=drills:inheritance-basics]
+\item 承接上面的 \texttt{Animal}／\texttt{Dog}，如果再定義一個
+\texttt{class Cat(Animal): pass}（沒有覆寫任何東西），執行
+\texttt{Cat("Luna").speak()} 會印出什麼？
+\item 如果 \texttt{Dog} 覆寫了 \texttt{speak()}，執行
+\texttt{Dog("Rex", "Mixed Breed").speak()} 會印出什麼？
+\item 如果有人定義了 \texttt{class Cat(Animal):}，裡面的 \texttt{\_\_init\_\_} 是
+\texttt{def \_\_init\_\_(self, name, color): self.color = color}（忘記呼叫
+\texttt{super().\_\_init\_\_(name)}），接著執行 \texttt{Cat("Luna", "orange").speak()}，
+你覺得會發生什麼事？
+\end{drills}
+
+\section{多層繼承：子類別也可以再被繼承}
+\label{sec:multi-level-inheritance}
+
+前兩節看到的都是「一層」繼承：\texttt{Dog} 繼承自 \texttt{Animal}。但繼承這件事不會只能疊
+一層，\texttt{Dog} 本身也是一個普通的 class，只要語法上合法，任何 class 都可以再被別人繼承，
+包括已經繼承過別人的 class。也就是說，你可以再定義一個 \texttt{Puppy}（幼犬）繼承自
+\texttt{Dog}，這時候 \texttt{Puppy} 不只擁有 \texttt{Dog} 自己定義的東西，連 \texttt{Dog}
+從 \texttt{Animal} 那邊繼承來的東西，也會一路往下傳給 \texttt{Puppy}。這一節不需要新的片語
+模板，繼承的語法你已經會了，直接看範例最快。
+
+\begin{example}{python}{(dog-puppy.py) 幼犬是一種狗，狗是一種動物}
+class Animal:
+    def __init__(self, name):
+        self.name = name
+
+    def speak(self):
+        print(f"{self.name} made a sound.")
+
+
+class Dog(Animal):
+    def __init__(self, name, breed):
+        super().__init__(name)
+        self.breed = breed
+
+    def speak(self):
+        print(f"{self.name} barked!")
+
+    def fetch(self):
+        print(f"{self.name} ran off to fetch the ball.")
+
+
+class Puppy(Dog):
+    def __init__(self, name, breed, age_months):
+        super().__init__(name, breed)
+        self.age_months = age_months
+
+    def speak(self):
+        print(f"{self.name} let out a clumsy little bark.")
+
+    def nap(self):
+        print(f"{self.name} got tired and lay down for a nap.")
+
+
+puppy = Puppy("Buddy", "Shiba Inu", 3)
+puppy.speak()
+puppy.fetch()
+puppy.nap()
+print(puppy.breed)
+\end{example}
+
+\iosample{}{Buddy let out a clumsy little bark. \\ Buddy ran off to fetch the ball. \\ Buddy got
+tired and lay down for a nap. \\ Shiba Inu \\}
+
+這段程式一次示範了三件事：
+
+\begin{itemize}
+\item 第一，\texttt{Puppy} 自己又覆寫了一次 \texttt{speak()}，改成
+「還不太熟練的汪汪叫聲」，覆寫的規則跟前一節一樣，只是這次覆寫的對象是父類別 \texttt{Dog}
+（而 \texttt{Dog} 本身也覆寫過 \texttt{Animal} 的版本）。
+\item 第二，\texttt{puppy.fetch()} 正常
+執行，印出「跑去把球撿回來了」，但 \texttt{fetch()} 這個方法從頭到尾只在 \texttt{Dog} 裡定義
+過一次，\texttt{Puppy} 完全沒有自己寫過，這正是「白拿」的概念延伸到多層繼承的樣子：
+\texttt{Puppy} 不只白拿了直接父類別 \texttt{Dog} 的東西，也間接白拿到更上層 \texttt{Animal}
+的東西。
+\item 第三，\texttt{Puppy.\_\_init\_\_} 裡的 \texttt{super().\_\_init\_\_(name, breed)}
+呼叫的是 \texttt{Dog.\_\_init\_\_}，而 \texttt{Dog.\_\_init\_\_} 裡面自己又呼叫了一次
+\texttt{super().\_\_init\_\_(name)} 去跑 \texttt{Animal.\_\_init\_\_}，於是 \texttt{self.name}、
+\texttt{self.breed}、\texttt{self.age\_months} 三個屬性，分別由三層 class 各自負責設定好自己
+那一部分，一層一層往上串起來。
+\end{itemize}
+
+\keypoint{\texttt{super()} 每次呼叫，只會跳到「自己的直接父類別」那一層，不會一次跳到最上層的
+祖先。多層繼承之所以能一路往上生效，是因為每一層自己的 \texttt{\_\_init\_\_} 都老實呼叫了自己
+的 \texttt{super()}，一層接一層疊上去，不是 \texttt{Puppy} 一句話就直接連到 \texttt{Animal}。
+如果中間有任何一層忘記呼叫 \texttt{super().\_\_init\_\_()}，這條鏈就會在那一層斷掉，跟上一節
+看到的 \texttt{AttributeError} 是同一種坑，只是這次可能發生在鏈的中間，不一定是最底層。}
+
+多層繼承還有一個新手容易踩到的坑：每一層的 \texttt{super().\_\_init\_\_(...)} 要傳的引數，
+得照著「直接父類別」的 \texttt{\_\_init\_\_} 簽名走，不是照著最上層祖先的簽名走。
+
+\begin{example}{python}{(puppy-broken.py) 傳給 super() 的引數不齊全}
+class Animal:
+    def __init__(self, name):
+        self.name = name
+
+    def speak(self):
+        print(f"{self.name} made a sound.")
+
+
+class Dog(Animal):
+    def __init__(self, name, breed):
+        super().__init__(name)
+        self.breed = breed
+
+    def speak(self):
+        print(f"{self.name} barked!")
+
+
+class Puppy(Dog):
+    def __init__(self, name, breed, age_months):
+        super().__init__(name)  # 忘記把 breed 也傳給 super().__init__()
+        self.age_months = age_months
+
+
+puppy = Puppy("Buddy", "Shiba Inu", 3)
+\end{example}
+
+存檔執行後，會看到這樣的錯誤：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "puppy-broken.py", line 20, in <module>
+    puppy = Puppy("Buddy", "Shiba Inu", 3)
+  File "puppy-broken.py", line 16, in __init__
+    super().__init__(name)
+TypeError: Dog.__init__() missing 1 required positional argument: 'breed'
+\end{verbatim}
+
+\texttt{Puppy.\_\_init\_\_} 呼叫 \texttt{super().\_\_init\_\_(...)} 的時候，跳到的是它的直接
+父類別 \texttt{Dog} 的 \texttt{\_\_init\_\_}，而 \texttt{Dog.\_\_init\_\_} 需要 \texttt{name}
+跟 \texttt{breed} 兩個引數，這裡只傳了 \texttt{name}，Python 就直接在這一行報錯，根本還沒機會
+執行到 \texttt{self.age\_months = age\_months} 那一行。修法是把 \texttt{breed} 也一起傳進去：
+\texttt{super().\_\_init\_\_(name, breed)}。這個錯誤訊息也是由下往上讀最清楚：先看最下面一行
+\texttt{TypeError} 講的是哪個 \texttt{\_\_init\_\_} 缺了哪個引數，再往上對照是哪一層的
+\texttt{super()} 呼叫出的錯。
+
+繼承鏈當然可以繼續往下疊（例如再定義一個繼承自 \texttt{Puppy} 的 class），但實務上疊得太深、
+太複雜的繼承鏈反而會讓程式碼變得不好讀（想像一下要搞清楚某個方法到底是哪一層定義的，得往上翻
+好幾層 class 才找得到）。
+
+這一章的定位是點到為止，你只要知道「繼承可以疊好幾層、每一層各自負責
+自己那部分」這個事實就夠了，實際設計要疊幾層、什麼時候該停下來，是之後累積經驗才會抓到手感的
+事，這裡不深入。
+
+\begin{drills}[label=drills:multi-level-inheritance]
+\item 承接上面的 \texttt{Puppy}，如果 \texttt{Puppy} 沒有覆寫 \texttt{speak()}，執行
+\texttt{Puppy("Buddy", "Shiba Inu", 3).speak()} 會印出什麼？
+\item 如果再定義一個 \texttt{class Toy(Puppy): pass}（沒有覆寫或新增任何東西），執行
+\texttt{Toy("Tiny", "Mixed Breed", 2).fetch()} 會發生什麼事？
+\item 如果 \texttt{Puppy.\_\_init\_\_} 寫成
+\texttt{def \_\_init\_\_(self, name, breed, age\_months): super().\_\_init\_\_(name)}（漏傳
+\texttt{breed}），執行 \texttt{Puppy("Buddy", "Shiba Inu", 3)} 你覺得會發生什麼事？
+\end{drills}
+
+\section{繼承 vs 組合：另一種重複利用程式碼的方式}
+\label{sec:inheritance-vs-composition}
+
+前面幾節解決的都是同一種問題：「這個新 class 幾乎跟舊的一樣，只是多一點東西」，用繼承來處理。
+但繼承有一個前提，它適合的情境是「新 class 是一種舊 class」，例如「狗是一種動物」。如果兩個
+class 之間的關係比較像是「這個 class 裡面裝了另一個 class」，而不是「這個 class 是另一個
+class 的一種」，繼承就不是對的工具了。這種情況下，Python 常常改用另一種做法，叫「組合」
+（composition）：讓一個 class 的屬性直接是另一個 class 的物件。
+\index{組合}
+
+\begin{example}{python}{(car-composition.py) 車子裡面裝了一顆引擎}
+class Engine:
+    def __init__(self, horsepower):
+        self.horsepower = horsepower
+
+    def start(self):
+        print(f"Engine started, horsepower {self.horsepower}")
+
+
+class Car:
+    def __init__(self, brand, horsepower):
+        self.brand = brand
+        self.engine = Engine(horsepower)
+
+    def start(self):
+        print(f"{self.brand} getting ready to start")
+        self.engine.start()
+
+
+car = Car("Toyota", 150)
+car.start()
+\end{example}
+
+\iosample{}{Toyota getting ready to start \\ Engine started, horsepower 150 \\}
+
+留意 \texttt{class Car:} 這一行的括號是空的，\texttt{Car} 完全沒有繼承 \texttt{Engine}。
+\texttt{Car.\_\_init\_\_} 裡的 \texttt{self.engine = Engine(horsepower)}，是直接造一個
+\texttt{Engine} 物件，存成 \texttt{Car} 自己的一個屬性。\texttt{Car.start()} 裡面要用到引擎
+的功能時，就透過 \texttt{self.engine.start()} 去呼叫，這就是「組合」：一台車「有一個」引擎，
+不是「一種」引擎。
+
+跟前面幾節的 \texttt{Dog} 對照著看會更清楚：\texttt{Dog(Animal)} 表達的是
+「狗是一種動物」，適合用繼承；這裡的 \texttt{Car} 跟 \texttt{Engine} 表達的是「車子裡面裝了一
+顆引擎」，適合用組合。如果硬要把 \texttt{Car} 寫成繼承 \texttt{Engine}（\texttt{class
+Car(Engine):}），語法上不會出錯，但意思會變得很奇怪，等於在說「車子是一種引擎」，這跟現實世界
+的認知完全不符。
+
+\keypoint{要用繼承還是組合，可以先問自己一句話：這兩個 class 的關係，講起來比較像「A 是一種
+B」，還是「A 裡面有一個 B」？前者適合繼承，後者適合組合。這只是一個入門判準，實務上有些情況
+會更微妙，需要更多經驗才能判斷，這裡你只要知道除了繼承之外還有組合這個選項存在，之後看到別人
+的程式碼裡某個屬性本身又是另一個自訂物件時，不會覺得陌生就好，不需要現在就能精準判斷每種情境
+該選哪一個。}
+
+組合也有一個新手容易搞混的地方：因為 \texttt{Car} 沒有繼承 \texttt{Engine}，\texttt{Engine}
+身上的屬性、方法不會像繼承那樣自動「白拿」到 \texttt{Car} 身上，一定要透過 \texttt{self.engine}
+這一層才拿得到。
+
+\begin{example}{python}{(car-composition-error.py) 以為組合也會白拿屬性}
+class Engine:
+    def __init__(self, horsepower):
+        self.horsepower = horsepower
+
+    def start(self):
+        print(f"Engine started, horsepower {self.horsepower}")
+
+
+class Car:
+    def __init__(self, brand, horsepower):
+        self.brand = brand
+        self.engine = Engine(horsepower)
+
+
+car = Car("Toyota", 150)
+print(car.horsepower)
+\end{example}
+
+存檔執行後，會看到這樣的錯誤：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "car-composition-error.py", line 16, in <module>
+    print(car.horsepower)
+AttributeError: 'Car' object has no attribute 'horsepower'
+\end{verbatim}
+
+\texttt{horsepower} 是存在 \texttt{car.engine.horsepower} 這個位置，不是
+\texttt{car.horsepower}，\texttt{Car} 物件本身根本沒有這個屬性。
+
+這正好跟前幾節的繼承對照出
+差異：如果 \texttt{Car} 是繼承 \texttt{Engine}（\texttt{class Car(Engine):}），
+\texttt{car.horsepower} 會直接可以用，因為繼承會把父類別的屬性、方法整個「白拿」過來；但組合
+不會，組合只是把另一個物件存成自己的一個屬性，想用裡面的東西，一定要照著 \texttt{self.engine.
+horsepower} 這種「一層一層點進去」的路徑去拿，這也是判斷「這裡該用繼承還是組合」時，除了語意
+上「是一種」還是「有一個」之外，另一個看得到的實際差異。
+
+順帶用第 \ref{ch:variables} 章的名字牌模型回頭看一次組合：\texttt{self.engine = Engine(horsepower)} 這一行，
+做的事情跟任何一次賦值一樣，是造一個 \texttt{Engine} 物件、把名字牌 \texttt{engine} 貼上去，
+只是這張名字牌剛好貼在 \texttt{self} 身上、成為 \texttt{Car} 物件的一個屬性，不是貼在一個
+獨立的變數上。
+
+這也解釋了為什麼組合不會白拿屬性：\texttt{car.engine} 這張名字牌指向的是那個
+\texttt{Engine} 物件，\texttt{car} 這個名字牌本身指向的是另一個完全不同的 \texttt{Car} 物件，
+兩者是分開的兩張名字牌，貼在兩個不同的物件上，想從 \texttt{Car} 走到 \texttt{Engine} 的屬性，
+自然要先經過 \texttt{engine} 這張名字牌。
+
+\begin{drills}[label=drills:inheritance-vs-composition]
+\item 如果把 \texttt{class Car:} 改成 \texttt{class Car(Engine):}（讓 \texttt{Car} 直接繼承
+\texttt{Engine}），並把 \texttt{Car.\_\_init\_\_} 也對應改成呼叫
+\texttt{super().\_\_init\_\_(horsepower)}，這時候執行 \texttt{car.horsepower} 會不會出錯？
+跟原本組合的寫法比起來，語意上合不合理？
+\item 承接上面的 \texttt{car}（原本組合的寫法，\texttt{car.engine} 是一個 \texttt{Engine}
+物件），執行 \texttt{car.engine.start()} 會印出什麼？
+\end{drills}
+
+\section{讓物件學會自我介紹：\texttt{\_\_str\_\_}}
+\label{sec:str-method}
+
+延續前面的 \texttt{Animal}／\texttt{Dog}，如果你直接把一個物件丟進 \texttt{print()}，會
+看到什麼？
+
+\begin{example}{python}{(dog-print-ugly.py) 直接印出物件，會發生什麼事}
+class Animal:
+    def __init__(self, name):
+        self.name = name
+
+    def speak(self):
+        print(f"{self.name} made a sound.")
+
+
+class Dog(Animal):
+    def __init__(self, name, breed):
+        super().__init__(name)
+        self.breed = breed
+
+    def speak(self):
+        print(f"{self.name} barked!")
+
+
+dog = Dog("Max", "Shiba Inu")
+print(dog)
+\end{example}
+
+\iosample{}{<\_\_main\_\_.Dog object at 0x10309ef90> \\}
+
+這行字看起來很醜，也完全看不出這隻狗叫什麼名字，這是 Python 對「不知道該怎麼描述自己」的
+物件給的預設寫法：類別名稱、加上這個物件在記憶體裡的位置（那串 \texttt{0x...} 的十六進位
+數字，每次執行、每一台機器都可能不一樣，沒有任何實際意義）。你當然不希望使用者看到這種東西，
+好消息是 Python 讓你可以自己定義「這個物件被 \texttt{print()} 出來時該長什麼樣子」。
+
+\begin{code}{python}{定義 \_\_str\_\_}
+class ClassName:
+    def __str__(self):
+        return "the content you want shown when this object is printed"
+\end{code}
+
+\texttt{\_\_str\_\_} 是一個特殊方法：你自己不會直接呼叫它，當你對這個物件用
+\texttt{print()} 或 \texttt{str()} 時，Python 會自動幫你呼叫它，並且把它 \texttt{return}
+的字串印出來。留意 \texttt{\_\_str\_\_} 一定要回傳一個字串，不能直接在裡面 \texttt{print}。
+\index{特殊方法}
+\index{\_\_str\_\_}
+
+\begin{example}{python}{(dog-print-str.py) 幫 Animal 加上 \_\_str\_\_}
+class Animal:
+    def __init__(self, name):
+        self.name = name
+
+    def speak(self):
+        print(f"{self.name} made a sound.")
+
+    def __str__(self):
+        return f"{self.name} (an animal)"
+
+
+class Dog(Animal):
+    def __init__(self, name, breed):
+        super().__init__(name)
+        self.breed = breed
+
+    def speak(self):
+        print(f"{self.name} barked!")
+
+
+dog = Dog("Max", "Shiba Inu")
+print(dog)
+\end{example}
+
+\iosample{}{Max (an animal) \\}
+
+留意這裡 \texttt{\_\_str\_\_} 是定義在 \texttt{Animal} 身上的，\texttt{Dog} 完全沒有自己
+定義 \texttt{\_\_str\_\_}，但 \texttt{print(dog)} 一樣印出了好讀的內容。這跟上一節學到的
+道理是同一件事：\texttt{Dog} 沒有覆寫 \texttt{\_\_str\_\_}，就直接繼承 \texttt{Animal} 那
+一份，白拿。
+
+前面提過 \texttt{\_\_str\_\_} 一定要 \texttt{return} 一個字串，不能直接在裡面
+\texttt{print}，如果不小心寫錯會發生什麼事？
+
+\begin{example}{python}{(str-return-mistake.py) \_\_str\_\_ 裡忘記用 return}
+class Animal:
+    def __init__(self, name):
+        self.name = name
+
+    def __str__(self):
+        print(f"{self.name} (an animal)")  # 忘記用 return，直接印出來了
+
+
+animal = Animal("Max")
+print(animal)
+\end{example}
+
+存檔執行後，畫面上先印出一行「Max (an animal)」，緊接著卻還是跳出錯誤：
+
+\begin{verbatim}
+Max (an animal)
+Traceback (most recent call last):
+  File "str-return-mistake.py", line 10, in <module>
+    print(animal)
+TypeError: __str__ returned non-string (type NoneType)
+\end{verbatim}
+
+這裡最容易讓人困惑的地方是：畫面上明明先印出了一行內容看起來很正常的文字，後面卻還是報錯。
+原因是 \texttt{\_\_str\_\_} 裡面那句 \texttt{print(...)} 本身確實執行了、把文字顯示到螢幕上，
+但它沒有 \texttt{return} 任何東西，一個函式（或方法）如果沒有寫 \texttt{return}，結果就是
+\texttt{None}（第 \ref{ch:functions} 章教過的規則）。\texttt{print(animal)} 外層呼叫 \texttt{\_\_str\_\_} 拿到
+的是 \texttt{None}，不是字串，Python 才會丟出 \texttt{TypeError: \_\_str\_\_ returned
+non-string (type NoneType)}。修法是把 \texttt{print(...)} 換成 \texttt{return ...}，讓
+\texttt{\_\_str\_\_} 真的把字串「送回去」，而不是自己搶著印出來。
+
+\stylepoint{只要你定義的 class 之後有機會被 \texttt{print()} 出來（幾乎所有 class 都有這個
+機會，例如除錯的時候），養成習慣幫它寫一個 \texttt{\_\_str\_\_}，讀者（包括除錯時的你自己）
+會感謝你，這比每次都要另外寫 \texttt{print(f"...{obj.attr1}...")} 這種一長串屬性堆疊的
+程式碼方便多了。}
+
+\section{給寫程式的人看的版本：\texttt{\_\_repr\_\_}}
+\label{sec:str-vs-repr}
+
+\texttt{\_\_str\_\_} 是講給「一般使用者」聽的版本，但其實 Python 還有另一個很類似的特殊
+方法，叫 \texttt{\_\_repr\_\_}，是講給「寫程式的人」（包括除錯時的你自己）聽的版本。
+\index{\_\_repr\_\_}
+這一節
+沒有新的片語模板可以套，直接看範例最快。
+
+\begin{example}{python}{(dog-print-repr.py) \_\_str\_\_ 與 \_\_repr\_\_ 的分工}
+class Animal:
+    def __init__(self, name):
+        self.name = name
+
+    def speak(self):
+        print(f"{self.name} made a sound.")
+
+    def __str__(self):
+        return f"{self.name} (an animal)"
+
+    def __repr__(self):
+        return f"Animal({self.name!r})"
+
+
+class Dog(Animal):
+    def __init__(self, name, breed):
+        super().__init__(name)
+        self.breed = breed
+
+    def speak(self):
+        print(f"{self.name} barked!")
+
+
+dog = Dog("Max", "Shiba Inu")
+print(dog)
+print([dog])
+\end{example}
+
+\iosample{}{Max (an animal) \\{} [Animal('Max')] \\}
+
+留意 \texttt{\_\_repr\_\_} 裡這一行 \texttt{f"Animal({self.name!r})"}，比之前看過的 f-string
+多了一個 \texttt{!r}，這是 f-string 的「轉換旗標」，意思是對 \texttt{self.name} 呼叫
+\texttt{repr()}，而不是預設的 \texttt{str()} 來轉成文字。差別看得出來：字串值用
+\texttt{repr()} 轉出來的樣子會帶著引號（例如 \texttt{'Max'}），用 \texttt{str()} 轉出來則
+不帶引號（例如 \texttt{Max}）。這正好呼應 \texttt{\_\_repr\_\_} 的用途，給開發者看、要盡量
+精確，帶引號才看得出「這是一個字串」，跟給使用者看、講求好讀的 \texttt{\_\_str\_\_} 不一樣。
+
+同一個 \texttt{dog} 物件，兩行印出來的內容完全不一樣：\texttt{print(dog)} 走的是
+\texttt{\_\_str\_\_}，還是原本那句好讀的「Max (an animal)」；但 \texttt{print([dog])} 印的
+是一個 list，Python 在印 list 裡的每個元素時，用的是 \texttt{\_\_repr\_\_}，不是
+\texttt{\_\_str\_\_}，所以你看到的是 \texttt{Animal('Max')} 這種格式。如果你在互動式直譯器
+（第 \ref{ch:introduction} 章教過的 \texttt{>>>} 那個模式）直接打 \texttt{dog} 這個變數名稱、不加
+\texttt{print()}，看到的也會是同樣這行 \texttt{Animal('Max')}，因為直譯器要把一個變數的值
+「秀」給你看的時候，走的正是 \texttt{\_\_repr\_\_}，跟丟進 list 裡印出來是同一條路。
+
+你可能注意到，這裡印出來是 \texttt{Animal('Max')}，而不是 \texttt{Dog('Max')}，雖然
+\texttt{dog} 其實是一個 \texttt{Dog} 物件。這是因為 \texttt{\_\_repr\_\_} 是定義在
+\texttt{Animal} 身上、\texttt{Dog} 直接繼承了它，而這裡的寫法是手動寫死了 \texttt{"Animal("}
+這幾個字，沒有另外去問「我實際上是哪個 class」。
+
+這是刻意選的最簡單寫法，老實說出它的限制：
+如果想讓子類別印出來也顯示自己的類別名稱，是有辦法做到的，但那已經超出這一章想教的範圍，這裡
+你只要知道有這回事、不用被這個小細節絆住就好。
+
+如果一個物件只定義了 \texttt{\_\_repr\_\_}，完全沒有定義 \texttt{\_\_str\_\_}，
+\texttt{print()} 又會發生什麼事？
+
+\begin{example}{python}{(repr-fallback.py) 只定義 \_\_repr\_\_，沒定義 \_\_str\_\_}
+class Animal:
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self):
+        return f"Animal({self.name!r})"
+
+
+animal = Animal("Max")
+print(animal)
+\end{example}
+
+\iosample{}{Animal('Max') \\}
+
+這裡的 \texttt{Animal} 完全沒有定義 \texttt{\_\_str\_\_}，但 \texttt{print(animal)} 一樣正常
+印出東西，印出來的還是 \texttt{\_\_repr\_\_} 的格式。這是因為 \texttt{print()} 的規則是「優先
+找 \texttt{\_\_str\_\_}，找不到才退而求其次改用 \texttt{\_\_repr\_\_}」，不是「沒有
+\texttt{\_\_str\_\_} 就出錯」。這也是為什麼很多 class 就算偷懶只定義 \texttt{\_\_repr\_\_}、
+沒定義 \texttt{\_\_str\_\_}，\texttt{print()} 出來的結果通常還是看得懂，只是格式會比較像是
+給開發者看的那種樣子。
+
+\keypoint{一句話記住兩者的分工：\texttt{\_\_str\_\_} 是說給一般人聽的，\texttt{\_\_repr\_\_}
+是說給寫程式的人（包括除錯時的你自己）聽的。\texttt{print()} 優先找 \texttt{\_\_str\_\_}；如果
+一個物件根本沒定義 \texttt{\_\_str\_\_}，\texttt{print()} 才會退而求其次改用
+\texttt{\_\_repr\_\_} 的結果，但只要你像本節這樣兩個都定義了，各自在各自的場合派上用場。}
+
+\begin{drills}[label=drills:str-vs-repr]
+\item 承接上面的 \texttt{dog}（已經同時定義了 \texttt{\_\_str\_\_} 跟
+\texttt{\_\_repr\_\_}），\texttt{print(dog)} 這一行實際呼叫的是 \texttt{\_\_str\_\_} 還是
+\texttt{\_\_repr\_\_}？
+\item 如果你在互動式直譯器裡，先打 \texttt{dog}（不加 \texttt{print()}）按 Enter，接著又打
+\texttt{print([dog, dog])}，這兩次分別呼叫的是 \texttt{\_\_str\_\_} 還是
+\texttt{\_\_repr\_\_}？
+\end{drills}
+
+\section{回頭看名字牌模型：比較與複製物件}
+\label{sec:copy-and-equality}
+
+還記得第 \ref{ch:variables} 章的「名字牌模型」嗎？變數不是裝著值的盒子，是貼在物件上的名字牌，\texttt{=} 不是
+複製，是幫物件多貼一張名字牌。
+
+物件也是一樣的道理，只是物件比數字、字串複雜得多：物件裡面常常又
+貼著別的名字牌（例如一個 list 屬性），這時候「複製」一個物件、或是拿兩個物件互相比較，到底
+是在比什麼、複製到哪一層，就是這一節要搞清楚的事。這裡用一個你在第 \ref{ch:functions} 章就見過的老朋友，也就是
+購物車，重新示範一次。
+
+\begin{example}{python}{(cart-equality.py) 兩台內容一樣的購物車，== 卻是 False}
+class ShoppingCart:
+    def __init__(self, items):
+        self.items = items
+
+
+cart1 = ShoppingCart(["apple", "milk"])
+cart2 = ShoppingCart(["apple", "milk"])
+
+print(cart1 == cart2)
+print(cart1 == cart1)
+print(cart1 is cart2)
+\end{example}
+
+\iosample{}{False \\ True \\ False \\}
+
+\texttt{cart1} 跟 \texttt{cart2} 裝的東西明明一模一樣，\texttt{cart1 == cart2} 卻是
+\texttt{False}，這是因為自訂物件的 \texttt{==} 預設行為，跟 \texttt{is} 其實是同一套邏輯：
+比的是「這兩個名字牌是不是貼在同一個物件上」，不是「這兩個物件裝的內容是不是一樣」。
+\texttt{cart1 == cart1} 是 \texttt{True}，因為那本來就是同一個物件；\texttt{cart1 is cart2}
+是 \texttt{False}，因為它們是兩個分開建立的物件，只是內容剛好一樣。如果你想要的是「比內容」，
+要自己定義一個特殊方法叫 \texttt{\_\_eq\_\_}。
+
+\begin{code}{python}{定義 \_\_eq\_\_}
+class ClassName:
+    def __eq__(self, other):
+        return self.attr == other.attr
+\end{code}
+
+跟 \texttt{\_\_str\_\_} 一樣，\texttt{\_\_eq\_\_} 也是你不會自己去呼叫的特殊方法，只要
+你寫了 \texttt{\_\_eq\_\_}，往後任何用到 \texttt{==} 比較這個 class 的地方，Python 都會
+自動改叫它。
+\index{\_\_eq\_\_}
+
+\begin{example}{python}{(cart-eq-fixed.py) 定義 \_\_eq\_\_，改成比內容}
+class ShoppingCart:
+    def __init__(self, items):
+        self.items = items
+
+    def __eq__(self, other):
+        return self.items == other.items
+
+
+cart1 = ShoppingCart(["apple", "milk"])
+cart2 = ShoppingCart(["apple", "milk"])
+
+print(cart1 == cart2)
+\end{example}
+
+\iosample{}{True \\}
+
+除了 \texttt{\_\_eq\_\_} 之外，Python 還有一個很類似的特殊方法叫 \texttt{\_\_lt\_\_}（less
+than，「小於」），只要幫一個 class 定義了 \texttt{\_\_lt\_\_}，這個 class 的物件就能直接拿去
+用 \texttt{sorted()} 排序，不用另外告訴 Python「依照什麼順序排」。
+\index{\_\_lt\_\_}
+定義方式跟 \texttt{\_\_eq\_\_}
+很像，只是把比較運算子從 \texttt{==} 換成 \texttt{<}。
+
+\begin{example}{python}{(cart-lt.py) 定義 \_\_lt\_\_，讓購物車可以排序}
+class ShoppingCart:
+    def __init__(self, items):
+        self.items = items
+
+    def __eq__(self, other):
+        return self.items == other.items
+
+    def __lt__(self, other):
+        return len(self.items) < len(other.items)
+
+
+cart1 = ShoppingCart(["apple", "milk", "bread"])
+cart2 = ShoppingCart(["apple"])
+cart3 = ShoppingCart(["milk", "egg"])
+
+for cart in sorted([cart1, cart2, cart3]):
+    print(cart.items)
+\end{example}
+
+\iosample{}{['apple'] \\{} ['milk', 'egg'] \\{} ['apple', 'milk', 'bread'] \\}
+
+這裡的 \texttt{\_\_lt\_\_} 定義成「裝的東西比較少的購物車，比較『小』」，所以 \texttt{sorted()}
+會依照每台購物車裝的東西數量，從少排到多。跟第 \ref{ch:lists} 章學過的 \texttt{sorted()} 是同一個內建函式，
+差別在於這次排序的對象不是數字或字串，是你自己定義的物件，Python 需要靠 \texttt{\_\_lt\_\_}
+才知道「兩個購物車之間，誰比較小」。如果你想原地排序（不造一份新的），也可以對一份裝著購物車
+的 list 呼叫 \texttt{.sort()}，第 \ref{ch:lists} 章學過的 \texttt{sort()}／\texttt{sorted()} 差異，套用在
+自訂物件上也是同一套規則。
+
+\keypoint{這裡只點到為止地介紹了 \texttt{\_\_lt\_\_}，讓你知道自訂物件也能被排序這件事存在，
+不展開 \texttt{\_\_le\_\_}／\texttt{\_\_gt\_\_}／\texttt{\_\_ge\_\_} 這一整組完整的比較特殊
+方法（分別對應 \texttt{<=}／\texttt{>}／\texttt{>=}）。之後如果你真的需要一個 class 支援全部
+的比較運算子，可以再回頭查文件，這裡先知道 \texttt{sorted()} 對自訂物件排序時，靠的正是
+\texttt{\_\_lt\_\_} 就夠了。}
+
+現在來看複製。你可能會想，複製一台購物車給朋友，應該就是「造一台一模一樣、但各自獨立」的
+新購物車吧？實際上沒這麼簡單。
+
+\begin{example}{python}{(cart-shallow-copy.py) 淺層複製陷阱}
+import copy
+
+
+class ShoppingCart:
+    def __init__(self, items):
+        self.items = items
+
+
+cart1 = ShoppingCart(["apple", "milk"])
+
+# 淺層複製：只複製最外層的 ShoppingCart 物件，items 還是同一個 list
+cart2 = copy.copy(cart1)
+cart2.items.append("egg")
+print("cart1.items:", cart1.items)
+print("cart2.items:", cart2.items)
+
+# 深層複製：連 items 這個 list 也複製了一份，兩台車才真正各自獨立
+cart3 = copy.deepcopy(cart1)
+cart3.items.append("bread")
+print("cart1.items:", cart1.items)
+print("cart3.items:", cart3.items)
+\end{example}
+
+\iosample{}{cart1.items: ['apple', 'milk', 'egg'] \\ cart2.items: ['apple', 'milk', 'egg'] \\
+cart1.items: ['apple', 'milk', 'egg'] \\ cart3.items: ['apple', 'milk', 'egg', 'bread'] \\}
+
+往 \texttt{cart2} 裡加東西，\texttt{cart1} 竟然也跟著多了一樣，這是因為
+\texttt{copy.copy}（淺層複製，shallow copy）只複製最外層的 \texttt{ShoppingCart} 物件本身，
+物件裡面裝的 \texttt{items} 這個 list，兩台車其實還是貼著同一張名字牌，指向同一個 list
+物件。
+\index{淺層複製}
+往 \texttt{cart3} 加東西就不會影響到 \texttt{cart1}，因為 \texttt{copy.deepcopy}（深層
+複製，deep copy）連 \texttt{items} 這個 list 也另外造了一份，這次兩台車才是真正各自獨立、
+互不影響。
+\index{深層複製}
+
+\keypoint{不確定該用 \texttt{copy.copy} 還是 \texttt{copy.deepcopy} 的時候，先問自己一個
+問題：這個物件的屬性裡，有沒有 list、dict 這種可變（mutable）的東西？如果有，複製的時候就要
+多想一步，淺層複製只複製最外層，內層那些可變屬性還是同一份，改一邊、另一邊也會跟著變；只有
+\texttt{copy.deepcopy} 才會連內層也複製一份。}
+
+這個陷阱不是只有 list 屬性才會遇到。只要屬性裡裝的是任何可變物件（list、dict、甚至另一個
+自訂物件），淺層複製都可能踩到同一個坑。下面換一個裝著 dict 的例子看看。
+
+\begin{example}{python}{(packing-list-copy.py) 淺層複製陷阱的 dict 版本}
+import copy
+
+
+class PackingList:
+    def __init__(self, categories):
+        self.categories = categories
+
+
+trip1 = PackingList({"clothes": ["T-shirt", "jacket"], "toiletries": ["toothbrush"]})
+
+trip2 = copy.copy(trip1)
+trip2.categories["clothes"].append("umbrella")
+print("trip1:", trip1.categories["clothes"])
+print("trip2:", trip2.categories["clothes"])
+
+trip3 = copy.deepcopy(trip1)
+trip3.categories["clothes"].append("sunglasses")
+print("trip1:", trip1.categories["clothes"])
+print("trip3:", trip3.categories["clothes"])
+\end{example}
+
+\iosample{}{trip1: ['T-shirt', 'jacket', 'umbrella'] \\ trip2: ['T-shirt', 'jacket', 'umbrella'] \\
+trip1: ['T-shirt', 'jacket', 'umbrella'] \\ trip3: ['T-shirt', 'jacket', 'umbrella', 'sunglasses'] \\}
+
+\texttt{PackingList} 這次裝的是一個 dict（`categories`），dict 裡每個 key 對應的 value 又是
+一個 list。跟購物車的例子一模一樣：\texttt{copy.copy} 只複製最外層的 \texttt{PackingList}
+物件，\texttt{categories} 這個 dict 本身、以及裡面每一個 list，兩趟行程其實都還是同一份，
+所以往 \texttt{trip2} 裡加東西，\texttt{trip1} 也會跟著變。
+
+只有 \texttt{copy.deepcopy} 會
+連 dict、以及 dict 裡面每一個 list 都遞迴複製一份，這次 \texttt{trip3} 才真正跟 \texttt{trip1}
+各自獨立。淺層複製與深層複製這組概念，套用在 list 屬性、dict 屬性，甚至更複雜的巢狀結構上，
+道理都是同一套：只複製最外層的物件，還是連內層所有可變物件也一起複製。
+
+最後，回頭看 \texttt{ShoppingCart} 的 \texttt{\_\_init\_\_} 還有一個地方值得注意，如果你把
+它寫成這樣：
+
+\begin{example}{python}{(cart-mutable-default.py) 購物車版的可變預設參數陷阱}
+class ShoppingCart:
+    def __init__(self, items=[]):  # 危險：這個預設值只在定義的時候造一次
+        self.items = items
+
+
+cart_a = ShoppingCart()
+cart_a.items.append("apple")
+
+cart_b = ShoppingCart()
+print("cart_b.items:", cart_b.items)
+
+
+class FixedShoppingCart:
+    def __init__(self, items=None):
+        self.items = items if items is not None else []
+
+
+cart_c = FixedShoppingCart()
+cart_c.items.append("apple")
+
+cart_d = FixedShoppingCart()
+print("cart_d.items:", cart_d.items)
+\end{example}
+
+\iosample{}{cart\_b.items: ['apple'] \\ cart\_d.items: [] \\}
+
+\texttt{cart\_a} 沒指定 \texttt{items}，往它的購物車加了一顆蘋果；照直覺，另外新造一台沒指定
+內容的 \texttt{cart\_b} 應該是空的才對，但它的 \texttt{items} 裡卻也有一顆蘋果。
+
+\keypoint{這就是第 \ref{ch:functions} 章教過的那個坑，只是這次出現在 class 的 \texttt{\_\_init\_\_} 裡：
+\texttt{items=[]} 這個預設值，只在 \texttt{def \_\_init\_\_(...)} 這一行執行的當下造一次那個
+list 物件，之後每次呼叫 \texttt{ShoppingCart()}、沒有自己傳 \texttt{items} 的話，用的都是
+同一個物件，\texttt{cart\_a} 跟 \texttt{cart\_b} 其實共用同一張「預設 items」名字牌。安全
+寫法跟第 \ref{ch:functions} 章一樣：預設值改成 \texttt{None}，在 \texttt{\_\_init\_\_} 裡面判斷「如果沒傳，才
+新造一個空 list」，上面的 \texttt{FixedShoppingCart} 就是這樣寫的，\texttt{cart\_c} 跟
+\texttt{cart\_d} 才會真正各自獨立。}
+
+\begin{drills}[label=drills:copy-and-equality]
+\item
+\begin{verbatim}
+class Box:
+    def __init__(self, contents):
+        self.contents = contents
+
+box1 = Box(["book", "pen"])
+box2 = copy.copy(box1)
+box2.contents.append("ruler")
+print(box1.contents)
+\end{verbatim}
+（假設檔案最上面已經 \texttt{import copy}）這段程式會印出什麼？
+\item
+\begin{verbatim}
+class Point:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+p1 = Point(1, 2)
+p2 = Point(1, 2)
+print(p1 == p2)
+\end{verbatim}
+\texttt{Point} 沒有定義 \texttt{\_\_eq\_\_}，這段程式會印出什麼？
+\item
+\begin{verbatim}
+class Logger:
+    def __init__(self, messages=[]):
+        self.messages = messages
+
+    def add(self, msg):
+        self.messages.append(msg)
+
+log1 = Logger()
+log1.add("started")
+
+log2 = Logger()
+print(log2.messages)
+\end{verbatim}
+這段程式會印出什麼？為什麼？
+\item 承接 \texttt{PackingList} 的例子，如果改成
+\texttt{trip4 = copy.copy(trip1)}，接著執行
+\texttt{trip4.categories["toiletries"] = ["toothbrush", "towel"]}（直接把某個 key 對應的值整個
+換掉，不是用 \texttt{.append()}），\texttt{trip1.categories["toiletries"]} 會不會也跟著變？
+為什麼？
+\end{drills}
+
+這一章走了不少東西，回頭串一次：
+
+\begin{itemize}
+\item 繼承（可能疊好幾層）讓子類別「白拿」父類別的屬性和方法，需要
+不一樣時再覆寫、再用 \texttt{super()} 銜接父類別原本的設定；組合則是另一條路，不談「是一種」，
+談「有一個」，把另一個物件存成自己的屬性，換來的是不會自動白拿東西，一定要點名 \texttt{self.
+xxx} 才拿得到。
+\item \texttt{\_\_str\_\_}／\texttt{\_\_repr\_\_} 讓物件學會怎麼自我介紹，一個對使用者，
+一個對開發者。
+\item \texttt{\_\_eq\_\_}／\texttt{\_\_lt\_\_}／淺層與深層複製，講的其實都是同一
+件事：物件比數字、字串複雜，第 \ref{ch:variables} 章的名字牌模型延伸到物件世界之後，得多想一層「這裡複製到底
+複製到哪一層、比較到底在比什麼」。
+\end{itemize}
+
+這些工具你不需要每次寫程式都用到，但知道它們存在、知道遇到
+奇怪行為時該往哪個方向查，之後真的碰上了就不會兩眼一抹黑。
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:inheritance-basics}~節}
+\begin{enumerate}
+\item Luna made a sound. \texttt{Cat} 沒有覆寫 \texttt{speak()}，直接繼承
+\texttt{Animal} 的版本。
+\item Rex barked! \texttt{Dog} 覆寫過 \texttt{speak()}，呼叫時一律以子類別這份為準。
+\item 會出現 \texttt{AttributeError: 'Cat' object has no attribute 'name'}。因為
+\texttt{Cat.\_\_init\_\_} 沒有呼叫 \texttt{super().\_\_init\_\_(name)}，
+\texttt{Animal.\_\_init\_\_} 裡 \texttt{self.name = name} 那一行根本沒有被執行過，物件
+身上沒有 \texttt{name} 這個屬性，\texttt{speak()} 裡用到 \texttt{self.name} 時就出錯了。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:multi-level-inheritance}~節}
+\begin{enumerate}
+\item Buddy barked! \texttt{Puppy} 如果沒有覆寫 \texttt{speak()}，就會往上找到直接父類別
+\texttt{Dog} 定義的版本，跟第~\ref{sec:inheritance-basics}~節看到的覆寫規則是同一套，只是這次
+「往上找」多找了一層。
+\item Tiny ran off to fetch the ball. \texttt{Toy} 沒有自己定義 \texttt{fetch()}，也沒有繼承它的
+\texttt{Puppy} 定義過 \texttt{fetch()}，所以 Python 會繼續往上找到 \texttt{Dog} 定義的那一份，
+正常執行。
+\item 會出現 \texttt{TypeError: Dog.\_\_init\_\_() missing 1 required positional argument:
+'breed'}。\texttt{Puppy.\_\_init\_\_} 呼叫 \texttt{super().\_\_init\_\_(name)} 時只傳了
+\texttt{name}，但它跳到的 \texttt{Dog.\_\_init\_\_} 需要 \texttt{name} 跟 \texttt{breed} 兩個
+引數，缺一個就會直接報錯。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:inheritance-vs-composition}~節}
+\begin{enumerate}
+\item 不會出錯，\texttt{car.horsepower} 可以直接用，因為改成繼承之後，\texttt{Engine} 的
+屬性會整個「白拿」到 \texttt{Car} 身上。但語意上會很奇怪，等於在說「車子是一種引擎」，不符合
+現實世界的認知，這裡繼承在語法上可行，不代表這是恰當的設計選擇。
+\item Engine started, horsepower 150. \texttt{car.engine} 是一個 \texttt{Engine} 物件，
+\texttt{car.engine.start()} 正常呼叫 \texttt{Engine} 的 \texttt{start()} 方法。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:str-vs-repr}~節}
+\begin{enumerate}
+\item \texttt{\_\_str\_\_}，\texttt{print()} 一個物件時優先呼叫的是 \texttt{\_\_str\_\_}。
+\item 兩次都是 \texttt{\_\_repr\_\_}，在直譯器直接打變數名稱、以及物件被放進 list 裡顯示，
+用的都是 \texttt{\_\_repr\_\_}，不是 \texttt{\_\_str\_\_}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:copy-and-equality}~節}
+\begin{enumerate}
+\item \texttt{['book', 'pen', 'ruler']}，\texttt{copy.copy} 是淺層複製，\texttt{box1} 跟
+\texttt{box2} 的 \texttt{contents} 其實是同一個 list，往 \texttt{box2.contents} 加東西，
+\texttt{box1.contents} 也會跟著變。
+\item \texttt{False}，\texttt{Point} 沒有定義 \texttt{\_\_eq\_\_}，\texttt{==} 用的是
+預設行為，比的是「是不是同一個物件」，\texttt{p1} 跟 \texttt{p2} 是兩個分開建立的物件，即使
+內容一樣也是 \texttt{False}。
+\item \texttt{['started']}，這是可變預設參數陷阱的 class 版本：\texttt{messages=[]} 這個
+list 只在 \texttt{def \_\_init\_\_} 執行時造一次，\texttt{log1} 跟 \texttt{log2} 沒指定
+\texttt{messages} 的話用的是同一個 list，\texttt{log1.add("started")} 加進去的內容，
+\texttt{log2.messages} 也會看到。
+\item 會，\texttt{trip1.categories["toiletries"]} 也會變成 \texttt{['toothbrush', 'towel']}。
+\texttt{copy.copy} 只複製最外層的 \texttt{PackingList} 物件，\texttt{trip1.categories} 跟
+\texttt{trip4.categories} 其實是同一個 dict 物件，不管是修改 dict 裡某個 key 對應的 list
+內容，還是直接把某個 key 重新賦值成一個全新的 list，改的都是同一個 dict，兩邊看到的結果
+都會一起變。
+\end{enumerate}

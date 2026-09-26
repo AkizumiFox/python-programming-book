@@ -1,0 +1,832 @@
+\chapter{Tuple 與 unpacking}
+\label{ch:tuples}
+
+前面幾章你已經學過怎麼用 list 把一堆東西裝在一起、怎麼用 dict 把「名字」對應到「值」。
+這一章要認識另一種裝東西的容器，叫 tuple（唸作「thu-pl」或「too-pl」都有人講，沒有標準
+答案）。
+
+乍看之下 tuple 很像 list：一樣可以用中括號的方式取出裡面第幾個東西，一樣可以用
+\texttt{for} 走訪，一樣可以串接，但它有一個關鍵的差別：\textbf{造出來之後，裡面的內容
+就不能再改了}。這聽起來像是缺點（少了一個功能），但正是這個「不能改」的特性，讓 tuple
+在很多情境下比 list 更好用，你會在這一章慢慢看到為什麼。
+\index{tuple}
+
+這一章分三段推進：
+
+\begin{itemize}
+\item 第一段先讓你認識 tuple 這個新容器本身：怎麼造一個 tuple、它跟 list
+有哪些操作是共通的（包括串接與重複這兩個你在字串、list 章節都見過的運算子）、然後親手
+撞一次「不能修改」這道牆，看看 Python 會丟出什麼樣的錯誤訊息，順便簡單認識一個以 tuple
+為基礎、可以額外用名字取值的進階變體。
+\item 第二段是這一章真正的重頭戲：把 tuple 跟賦值語法
+結合在一起的技巧，統稱「unpacking」（解包）。一行程式碼同時把好幾個值分別存進好幾個變數
+裡，這個技巧會讓你少寫很多先存成一個容器、再一個一個挑出來的繁瑣步驟，日常寫程式會一直
+用到它，包括等一下你會學到的「函式同時回傳好幾個結果」也是靠它撐起來的，你還會學到用星
+號一次接住「剩下的」那些值，以及用底線忽略用不到的值這兩個實用的小技巧。
+\item 第三段把視野拉
+高一層，正式回答一個從第 \ref{ch:variables} 章就埋下的問題：如果「等號是幫物件貼名字牌，不是複製」這件事
+是真的，那為什麼 tuple 看起來「整個換掉」的時候，感覺就像被複製了一份新的一樣？這一段會
+用具體的例子（外加一個能親眼看見「這是不是同一個物件」的小工具）證明，其實 tuple 背後遵
+守的規則跟 list 一模一樣，只是因為它不能被原地修改，所以任何「看起來像修改」的操作，骨
+子裡都只能是「造一個新物件，把名字牌重新貼上去」。
+\end{itemize}
+
+\section{認識 Tuple：先像 List，再撞見「不能改」}
+\label{sec:tuple-basics}
+
+要造一個 tuple，最常見的寫法是用一對圓括號把幾個值包起來，中間用逗號分隔；其實圓括號
+不是必要的，逗號本身才是關鍵，但為了可讀性，大多數時候還是會加上括號。如果手上已經有一
+個 list 或其他容器，也可以直接用 \texttt{tuple()} 把它轉換成 tuple。
+\index{tuple()}
+
+\begin{code}{python}{建立 tuple 的幾種寫法}
+# 用括號建立（最常見的寫法）
+t = (x, y, z)
+
+# 逗號才是重點，括號其實可以省略
+t = x, y, z
+
+# 從其他序列轉換（例如 list）
+t = tuple(some_container)
+\end{code}
+
+\begin{example}{python}{(make-coordinate.py) 建立一組座標}
+latitude = 25.03
+longitude = 121.56
+coordinate = (latitude, longitude)
+print(coordinate)
+print(type(coordinate))
+
+# 也可以把現有的 list 轉換成 tuple
+scores_list = [88, 92, 76]
+scores_tuple = tuple(scores_list)
+print(scores_tuple)
+\end{example}
+
+\iosample{}{(25.03, 121.56) \\ <class 'tuple'> \\ (88, 92, 76) \\}
+
+留意 \texttt{print(coordinate)} 印出來的樣子：Python 用圓括號顯示 tuple，這也是為什麼
+大部分人習慣用括號來建立它，看起來跟印出來的樣子一致，比較好對照。
+
+\subsection*{tuple 也支援你已經學過的操作}
+
+你會發現，tuple 支援的操作你幾乎都學過，因為第 \ref{ch:lists} 章介紹 list 的時候，用索引取值、切
+片、\texttt{in}、\texttt{len()}、\texttt{for} 走訪，這些操作在 tuple 上的寫法跟意義完
+全一樣，不需要重新學一次。
+
+\begin{example}{python}{(tuple-like-list.py) tuple 也能索引、切片、走訪}
+colors = ("red", "green", "blue")
+
+print(colors[0])          # 索引，跟 list 一樣
+print(colors[1:])         # 切片，跟 list 一樣
+print("green" in colors)  # 用 in 檢查成員關係
+print(len(colors))        # 元素數量
+
+for color in colors:      # for 迴圈走訪，跟 list 一樣
+    print(color)
+\end{example}
+
+\iosample{}{red \\ ('green', 'blue') \\ True \\ 3 \\ red \\ green \\ blue \\}
+
+\subsection*{tuple 也可以用 \texttt{+} 串接、用 \texttt{*} 重複}
+
+除了上面這幾個操作，第 \ref{ch:strings} 章字串、第 \ref{ch:lists} 章 list 都教過另外兩個運算子，tuple 一樣支援：
+用 \texttt{+} 把兩個 tuple 接成一個新的 tuple，用 \texttt{*} 把一個 tuple 的內容重複
+好幾次。
+
+\begin{code}{python}{tuple 的串接與重複}
+combined = t1 + t2   # 把兩個 tuple 合併成一個新的 tuple
+repeated = t * n      # 把 t 的內容重複 n 次
+\end{code}
+
+\begin{example}{python}{(tuple-concat-repeat.py) 串接時段、預留固定長度的佔位內容}
+morning = ("09:00", "10:00", "11:00")
+afternoon = ("14:00", "15:00")
+schedule = morning + afternoon
+print(schedule)
+
+placeholder = ("-",) * 5
+print(placeholder)
+\end{example}
+
+\iosample{}{('09:00', '10:00', '11:00', '14:00', '15:00') \\ ('-', '-', '-', '-', '-') \\}
+
+這兩個運算子的行為跟第 \ref{ch:lists} 章 list 版本的 \texttt{+}、\texttt{*} 完全對應：\texttt{+}
+不會修改任何一邊原本的 tuple，會造出一個全新的 tuple 把兩邊接起來；\texttt{*} 也不是
+把每個元素乘上一個數字，是把整份內容重複貼上好幾次。\texttt{("-",) * 5} 這種寫法在需
+要先準備好一份固定長度、內容之後才會確定的容器時很好用。
+
+\subsection*{tuple 之間也可以直接比較大小}
+
+tuple 除了可以用 \texttt{==} 比較兩個 tuple 的內容是否完全一樣，也可以直接用
+\texttt{<}、\texttt{>} 這些比較運算子比較「大小」。比較的規則跟比對兩個字串很像：先比
+第一個元素，如果分得出高下就直接得到答案，分不出來才往下比第二個、第三個，以此類推，這
+種比法有個名字叫「字典順序比較」，因為概念上跟查字典時比較兩個詞先後順序的方式一樣。
+
+\begin{example}{python}{(compare-tuples.py) 比較版本號、依完賽時間排序}
+version_a = (1, 4, 2)
+version_b = (1, 5, 0)
+print(version_a < version_b)
+
+runner_x = ("11:32", "Alice")
+runner_y = ("11:28", "Bob")
+print(sorted([runner_x, runner_y]))
+\end{example}
+
+\iosample{}{True \\{} [('11:28', 'Bob'), ('11:32', 'Alice')] \\}
+
+第一個例子裡，\texttt{version\_a} 和 \texttt{version\_b} 的第一個元素都是
+\texttt{1}，分不出高下，於是往下比第二個元素，\texttt{4 < 5}，比較到這裡就有答案了，
+後面的元素完全不會再看。第二個例子把「完賽時間、姓名」包成 tuple 放進 list 裡，直接呼
+叫第 \ref{ch:lists} 章學過的 \texttt{sorted()}，因為第一個元素（時間字串）就已經能分出順序，
+\texttt{sorted()} 自然依完賽時間由先到後排好，這正是把好幾筆相關資料包成 tuple、再交
+給排序函式處理的常見寫法。
+
+\stylepoint{把好幾筆相關資料包成 tuple 放進 list 裡，再交給 \texttt{sorted()} 排序，是
+很常見的資料處理寫法。因為 tuple 之間的比較會自動照順序一路比下去，你不用自己寫比較邏
+輯，只要把最重要的排序依據放在 tuple 的第一個位置就好，這個小技巧之後處理表格型資料時
+會很有用。}
+
+\subsection*{撞牆：tuple 不能被修改}
+
+既然 tuple 這麼像 list，你可能會想，那對它做 \texttt{append()} 或直接改某個位置的值，
+應該也可以吧？試試看就知道了。
+
+\begin{example}{python}{(change-tuple.py) 嘗試修改 tuple 的內容}
+colors = ("red", "green", "blue")
+colors[0] = "purple"
+\end{example}
+
+存檔執行後，Python 不會讓你得逞：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "change-tuple.py", line 2, in <module>
+    colors[0] = "purple"
+    ~~~~~~^^^
+TypeError: 'tuple' object does not support item assignment
+\end{verbatim}
+
+\texttt{TypeError} 是說「這個型別不支援你要做的這個操作」；\texttt{does not support
+item assignment} 說得更白：「不支援用索引賦值來改變裡面某一個位置的內容」。這句話你要
+牢牢記住，這件事跟「變數到底是什麼」有關，我們留到這章最後一節再回頭講清楚。
+
+那如果改用 \texttt{.append()} 呢？結果甚至不是同一種錯誤：tuple 根本沒有
+\texttt{.append()} 這個方法，Python 連「有沒有這個操作」都判斷不出來，直接告訴你這個
+方法不存在：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "change-tuple.py", line 2, in <module>
+    colors.append("purple")
+    ^^^^^^^^^^^^^
+AttributeError: 'tuple' object has no attribute 'append'
+\end{verbatim}
+
+\keypoint{list 有 \texttt{.append()}、\texttt{.remove()}、\texttt{.sort()} 這些「會改
+變自己」的方法，tuple 完全沒有這些方法。這不是「有但被鎖住」，是打從一開始就沒有設計這
+些方法，因為 tuple 造出來之後本來就不打算被改變。}
+
+\subsection*{單元素 tuple 的陷阱：別忘了逗號}
+
+還有一個很容易踩到的坑：如果你只想放一個元素進 tuple，光加括號是不夠的。
+
+\begin{example}{python}{(single-element-tuple.py) 忘記逗號的陷阱}
+not_a_tuple = ("p")
+print(type(not_a_tuple))
+
+really_a_tuple = ("p",)
+print(type(really_a_tuple))
+\end{example}
+
+\iosample{}{<class 'str'> \\ <class 'tuple'> \\}
+
+原因是：圓括號在 Python 裡本來就有另一個用途，用來改變運算的優先順序（例如
+\texttt{(1 + 2) * 3}），所以單獨一個 \texttt{("p")} 會被 Python 當成括號裡包著一個字
+串，跟普通的 \texttt{"p"} 沒有兩樣。真正讓 Python 認出「這是 tuple」的關鍵，其實是那
+個逗號，\texttt{("p",)} 裡的逗號才是重點，括號只是順便加上去、讓人看得更清楚而已。
+
+\subsection*{簡單認識一個進階變體：namedtuple}
+
+Python 標準函式庫裡有一個叫 \texttt{namedtuple} 的工具，可以幫 tuple 裡的每一個位置
+額外取一個名字，讓你除了用 \texttt{coordinate[0]} 這種數字索引，也能用
+\texttt{coordinate.latitude} 這種點加名字的方式取值，讀起來更清楚，也比較不容易搞錯
+順序。
+
+這個工具需要透過之後幾章才會教到的「把現成工具叫進來使用」的語法才能用，這裡先
+不深入，只需要知道有這麼一個東西存在：它本質上還是一個 tuple（一樣不能修改內容），只
+是多了一層「幫每個位置取名字」的方便包裝，等你之後真的碰到需要「一組固定欄位、但又想
+用名字讀取」的情境，可以回頭來查它怎麼用。
+
+\begin{drills}[label=drills:tuple-basics]
+\item 這段程式碼會印出什麼？
+\begin{verbatim}
+value = ("hello")
+print(type(value))
+\end{verbatim}
+\item 這段程式碼執行後會發生什麼事？寫出你預期看到的錯誤類型（不用寫出完整訊息）。
+\begin{verbatim}
+sizes = ("S", "M", "L")
+sizes[1] = "XL"
+\end{verbatim}
+\item 這段程式碼執行後會發生什麼事？寫出你預期看到的錯誤類型，並說說看它跟上一題的錯誤
+類型為什麼不一樣。
+\begin{verbatim}
+sizes = ("S", "M", "L")
+sizes.append("XL")
+\end{verbatim}
+\item 這段程式碼會印出什麼？
+\begin{verbatim}
+weekday = ("Mon", "Tue")
+weekend = ("Sat", "Sun")
+print(weekday + weekend)
+print(weekday * 2)
+\end{verbatim}
+\item 這段程式碼的執行結果會是 \texttt{True} 還是 \texttt{False}？
+\begin{verbatim}
+print((2, 9) < (2, 10))
+\end{verbatim}
+\end{drills}
+
+\section{把 Tuple 跟賦值結合起來：Unpacking}
+\label{sec:tuple-unpacking}
+
+知道 tuple 是什麼之後，這一節要介紹這一章真正的重頭戲：把 tuple 跟賦值語法結合起來的
+技巧，叫做 unpacking（解包）。概念很直接：如果右邊是一個裝著好幾個值的容器，左邊可以
+一次列出好幾個變數名字，Python 會照順序把每個值分別存進對應的變數，一行程式碼就搞定，
+不用再寫「先存成一個容器、再用索引一個一個挑出來」的繁瑣步驟。
+\index{unpacking}
+
+\begin{code}{python}{多重賦值的基本語法}
+name1, name2, name3 = a_container_with_matching_length
+\end{code}
+
+\begin{example}{python}{(parse-date.py) 拆解日期字串}
+date_string = "2026-09-01"
+year, month, day = date_string.split("-")
+print(f"Year: {year}, Month: {month}, Day: {day}")
+\end{example}
+
+\iosample{}{Year: 2026, Month: 09, Day: 01 \\}
+
+這裡 \texttt{date\_string.split("-")} 會回傳一個裝著三個字串的 list（\texttt{["2026",
+"09", "01"]}），unpacking 對 list 也一樣有效，不是只有 tuple 才能用，重點在「右邊的東
+西裝了幾個值」，跟它是 tuple 還是 list 無關。跟原本要寫
+\texttt{year = date\_string.split("-")[0]} 這種一個個挑出來的寫法比起來，unpacking 一
+次把三個有意義的名字都準備好了，可讀性明顯好上不少。
+
+\subsection*{常見錯誤：數量對不上}
+
+unpacking 有一個硬性規定：左邊變數的個數，一定要跟右邊容器裡的元素個數完全一樣，多一
+個少一個都不行。
+
+\begin{example}{python}{(unpack-mismatch.py) 賦值數量對不上}
+point = (10, 20, 30)
+x, y = point
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "unpack-mismatch.py", line 2, in <module>
+    x, y = point
+    ^^^^
+ValueError: too many values to unpack (expected 2)
+\end{verbatim}
+
+\texttt{too many values to unpack} 是說「右邊的值太多了，左邊的變數裝不下」。反過來，
+如果左邊變數比右邊值還多，會得到相反方向的抱怨：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "unpack-mismatch2.py", line 2, in <module>
+    x, y, z = point
+    ^^^^^^^
+ValueError: not enough values to unpack (expected 3, got 2)
+\end{verbatim}
+
+兩則訊息都直接把「期望的個數」跟「實際拿到的個數」告訴你，通常一看就知道該加還是該減。
+
+\subsection*{用底線忽略用不到的值}
+
+有時候右邊容器裡的某個值你根本用不到，只是因為數量要對齊，不得不放一個變數名字接住它。
+這種情況 Python 社群習慣用底線 \texttt{\_} 當變數名，代表「這個值我知道存在，但故意不
+打算用它」。
+
+\begin{example}{python}{(ignore-with-underscore.py) 用底線接住不需要的值}
+student = ("Taylor", 16, "Denver")
+name, _, city = student
+print(f"{name} lives in {city}")
+\end{example}
+
+\iosample{}{Taylor lives in Denver \\}
+
+\texttt{\_} 本身其實沒有任何特殊語法地位，它就是一個普通的變數名字，你甚至可以正常
+印出 \texttt{print(\_)} 拿到那個被跳過的值。它會被拿來當「這裡故意不用」的訊號，純粹
+是 Python 寫作者之間約定俗成的習慣，讓讀你程式碼的人一眼就看出「這個位置的值不重要，
+不用花力氣去追它後面有沒有被用到」。
+
+\subsection*{用星號一次接住「剩下的」值}
+
+如果你只在乎前面幾個值，剩下不管有幾個都想整包收進一個 list 裡呢？在某個變數名前面加
+一個星號 \texttt{*}，就能把「剩下的所有值」打包成一個 list，交給那個變數。
+
+\begin{code}{python}{星號 unpacking 的三種常見寫法}
+first, *rest = some_container      # 單獨接住第一個元素，其餘打包成 list
+*init, last = some_container       # 單獨接住最後一個元素，前面打包成 list
+first, *middle, last = some_container  # 接住第一個和最後一個，中間打包成 list
+\end{code}
+
+\begin{example}{python}{(star-unpacking.py) 用星號拆解一份成績清單}
+scores = [95, 88, 76, 82, 91]
+
+top, *others = scores
+print(top)
+print(others)
+
+*rest, last = scores
+print(rest)
+print(last)
+
+first, *middle, last = scores
+print(first)
+print(middle)
+print(last)
+\end{example}
+
+\iosample{}{95 \\{} [88, 76, 82, 91] \\{} [95, 88, 76, 82] \\ 91 \\ 95 \\{} [88, 76, 82] \\ 91 \\}
+
+留意每一次印出來的 \texttt{others}、\texttt{rest}、\texttt{middle} 都是一個 list，不
+是 tuple。星號變數負責收留下來的所有值，數量不管是零個、一個還是很多個都沒問題，Python
+會自動打包成一個 list 給你，不需要事先知道剩下確切有幾個值，這正是星號 unpacking 跟前
+面「數量一定要對齊」規則最大的不同：一個星號變數可以吃下任意數量的值，讓左右兩邊不再需
+要完全一樣長。
+
+一個賦值裡最多只能出現一個星號變數，Python 沒辦法判斷兩個「剩下的」到底
+該怎麼切分：
+
+\begin{verbatim}
+File "two-stars.py", line 1
+    a, *b, *c = [1, 2, 3, 4]
+    ^^^^^^^^^
+SyntaxError: multiple starred expressions in assignment
+\end{verbatim}
+
+星號變數雖然可以吃下任意數量的值，但左邊固定位置的變數還是至少要有值可以對應，如果右邊
+的元素數量連固定位置都湊不滿，一樣會噴出 \texttt{ValueError}：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "not-enough-for-star.py", line 1, in <module>
+    a, b, *rest = [1]
+    ^^^^^^^^^^^
+ValueError: not enough values to unpack (expected at least 2, got 1)
+\end{verbatim}
+
+留意這裡的措辭是 \texttt{expected at least 2}，跟前面沒有星號時的
+\texttt{expected 3, got 2} 不太一樣：因為星號變數願意接受「零個或更多」，Python 只要
+求固定位置的變數（這裡是 \texttt{a}、\texttt{b}）一定要湊得滿，星號那個位置本身沒有下
+限。
+
+星號 unpacking 在處理「第一列是標題、後面每一列才是真正資料」這種常見的資料格式時特別
+好用，之後第 \ref{ch:csv} 章處理 CSV 檔案時會常常遇到這種形狀的資料。
+
+\begin{example}{python}{(skip-header-row.py) 用星號拆出標題與其餘資料列}
+raw_data = [
+    "Name,Score",
+    "Taylor,95",
+    "Jordan,88",
+]
+
+header, *records = raw_data
+print(header)
+print(records)
+\end{example}
+
+\iosample{}{Name,Score \\{} ['Taylor,95', 'Jordan,88'] \\}
+
+\texttt{header} 接住第一列標題，\texttt{*records} 把剩下不管幾列，全部打包成一個
+list，不需要事先知道這份資料到底有幾列，這正是星號 unpacking 比「數清楚長度、再用切片
+手動拆」方便的地方。
+
+\subsection*{用 unpacking 交換兩個變數}
+
+unpacking 有一個很受歡迎的小應用：交換兩個變數的值。
+
+\begin{example}{python}{(swap.py) 交換兩個變數的值}
+a = "mango"
+b = "lemon"
+print(f"Before swap: a = {a}, b = {b}")
+
+a, b = b, a
+
+print(f"After swap: a = {a}, b = {b}")
+\end{example}
+
+\iosample{}{Before swap: a = mango, b = lemon \\ After swap: a = lemon, b = mango \\}
+
+\stylepoint{很多語言要交換兩個變數的值，得先借一個第三個暫存變數：把 \texttt{a} 存到暫
+存變數，再把 \texttt{b} 存進 \texttt{a}，最後把暫存變數存進 \texttt{b}。Python 直接一
+行 \texttt{a, b = b, a} 就做完了。右邊的 \texttt{b, a} 先被組成一個 tuple，記住兩個舊
+值，再一次 unpack 回左邊的 \texttt{a} 和 \texttt{b}，完全不需要暫存變數，這是很多人覺
+得「這樣寫比較 Python」的經典例子。}
+
+這個技巧不只限於兩個變數，三個（或更多）變數要「輪流交換」時，同樣的寫法一樣管用。
+
+\begin{example}{python}{(rotate-three.py) 三個變數輪流交換}
+a = 1
+b = 2
+c = 3
+print(f"Before swap: a = {a}, b = {b}, c = {c}")
+
+a, b, c = c, a, b
+
+print(f"After swap: a = {a}, b = {b}, c = {c}")
+\end{example}
+
+\iosample{}{Before swap: a = 1, b = 2, c = 3 \\ After swap: a = 3, b = 1, c = 2 \\}
+
+原理跟兩個變數的 swap 完全一樣：右邊的 \texttt{c, a, b} 先被組成一個 tuple，記住三個舊
+值，再一次 unpack 回左邊的 \texttt{a}、\texttt{b}、\texttt{c}，每個變數拿到的都是「上
+一個位置原本的值」，一次到位，不需要暫存變數，也不需要拆成三行分開賦值。
+
+\subsection*{\texttt{for} 迴圈中的 unpacking}
+
+第 \ref{ch:dict-set} 章你學過用 \texttt{.items()} 走訪字典的 key 跟 value，當時的寫法
+\texttt{for key, value in some\_dict.items():} 其實就是 unpacking，\texttt{.items()}
+每一輪給你的都是一個 \texttt{(key, value)} 的 tuple，\texttt{for} 迴圈把它直接 unpack
+成兩個變數，原來那個語法背後就是這一章教的東西。
+
+\begin{example}{python}{(dict-items-unpacking.py) 走訪字典的 key 與 value}
+prices = {"apple": 35, "banana": 20, "orange": 45}
+
+for name, price in prices.items():
+    print(f"{name} costs {price} dollars each")
+\end{example}
+
+\iosample{}{apple costs 35 dollars each \\ banana costs 20 dollars each \\ orange costs 45 dollars each \\}
+
+\subsection*{巢狀 unpacking：tuple 裡面還裝著 tuple}
+
+如果容器裡的元素本身又是一個 tuple，unpacking 的寫法也可以跟著「巢狀」，只要讓左邊的
+形狀跟右邊對得上，Python 就能一路拆到底。
+
+\begin{example}{python}{(nested-unpacking.py) 走訪一份「城市配座標」的清單}
+points = [
+    ("Boston", (25.03, 121.56)),
+    ("Chicago", (24.15, 120.67)),
+]
+
+for city, (lat, lon) in points:
+    print(f"{city}: latitude {lat}, longitude {lon}")
+\end{example}
+
+\iosample{}{Boston: latitude 25.03, longitude 121.56 \\ Chicago: latitude 24.15, longitude 120.67 \\}
+
+\texttt{points} 裡的每一個元素，都是一個 \texttt{(城市名稱, (緯度, 經度))} 這樣兩層的
+tuple。\texttt{for} 迴圈的 \texttt{city, (lat, lon)} 這個寫法，形狀跟右邊完全對應：外
+層的兩個位置分別對到 \texttt{city} 跟一整個座標 tuple，而座標 tuple 本身又立刻被拆成
+\texttt{lat}、\texttt{lon} 兩個變數。左右兩邊的「形狀」要吻合，Python 才知道該怎麼拆，
+這跟第 1 節提到的「數量要對齊」是同一個規則，只是這裡多了一層。
+
+\subsection*{函式同時回傳多個值}
+
+第 \ref{ch:functions} 章你學過函式用 \texttt{return} 回傳一個結果。如果想讓函式同時給出好幾個結果呢？
+做法是讓 \texttt{return} 後面接好幾個用逗號分隔的值，這其實是在回傳一個 tuple，函式本
+質上還是只能回傳一個東西，只是這個東西剛好是一個 tuple。呼叫端再用 unpacking 把它拆開，
+分別存進有意義名字的變數。
+
+\begin{example}{python}{(min-max.py) 一次算出最大值和最小值}
+def min_max(numbers):
+    return min(numbers), max(numbers)
+
+
+data = [8, 3, 15, 1, 9]
+lo, hi = min_max(data)
+print(f"Min: {lo}, Max: {hi}")
+\end{example}
+
+\iosample{}{Min: 1, Max: 15 \\}
+
+如果呼叫端忘記 unpack，只用一個變數接住呼叫結果，會發生什麼事？並不會出錯，只是你拿到
+的會是整個 tuple 本身，沒有被拆開。
+
+\begin{example}{python}{(forget-to-unpack.py) 忘記 unpack 會拿到整個 tuple}
+def min_max(numbers):
+    return min(numbers), max(numbers)
+
+
+data = [8, 3, 15, 1, 9]
+result = min_max(data)
+print(result)
+print(type(result))
+\end{example}
+
+\iosample{}{(1, 15) \\{} <class 'tuple'> \\}
+
+這正好提醒你，函式回傳多個值這件事，從函式的角度看，它從頭到尾都只回傳了一個東西
+（一個 tuple），「同時拿到兩個變數」是呼叫端 unpack 之後才有的結果，不是函式本身的
+魔法。忘記 unpack 不會報錯，但你接下來想用 \texttt{lo}、\texttt{hi} 這兩個名字的地方，
+就會因為它們根本不存在而噴出 \texttt{NameError}。
+
+其實不用等到你自己寫函式，Python 內建函式裡就有現成的例子。\texttt{divmod(a, b)} 會
+一次算出 \texttt{a} 除以 \texttt{b} 的商跟餘數，回傳的正是一個裝著兩個值的 tuple。
+
+\begin{example}{python}{(divmod-example.py) 用內建函式 divmod() 一次拿到商與餘數}
+quotient, remainder = divmod(17, 5)
+print(f"Quotient is {quotient}, remainder is {remainder}")
+\end{example}
+
+\iosample{}{Quotient is 3, remainder is 2 \\}
+
+這正好說明「函式回傳多個值」不是什麼特殊魔法，只要函式回傳的是一個 tuple，呼叫端就能
+用這一節學到的 unpacking 語法把它拆開，不管這個函式是你自己寫的，還是 Python 內建的。
+
+\begin{drills}[label=drills:tuple-unpacking]
+\item 這段程式碼會印出什麼？
+\begin{verbatim}
+first = "cat"
+second = "dog"
+first, second = second, first
+print(first, second)
+\end{verbatim}
+\item 這段程式碼會印出什麼？
+\begin{verbatim}
+inventory = {"notebook": 3, "pen": 12}
+for item, count in inventory.items():
+    print(f"{item}: {count}")
+\end{verbatim}
+\item 這段程式碼會噴出 \texttt{ValueError}。要怎麼修改（不改變 \texttt{record} 那一
+行），才能讓它正常執行？
+\begin{verbatim}
+record = ("Alice", 15, "Boston")
+name, age = record
+\end{verbatim}
+\item 一個函式定義如下，呼叫端要怎麼寫，才能同時拿到 \texttt{total} 跟
+\texttt{average} 兩個變數？
+\begin{verbatim}
+def total_and_average(numbers):
+    return sum(numbers), sum(numbers) / len(numbers)
+\end{verbatim}
+\item 這段程式碼會印出什麼？
+\begin{verbatim}
+values = [10, 20, 30, 40]
+first, *rest = values
+print(rest)
+\end{verbatim}
+\item 這段程式碼會印出什麼？
+\begin{verbatim}
+pair = ("Boston Station", (25.05, 121.52))
+name, (lat, lon) = pair
+print(name, lat)
+\end{verbatim}
+\item 這段程式碼會印出什麼？
+\begin{verbatim}
+a, b, c = 1, 2, 3
+a, b, c = b, c, a
+print(a, b, c)
+\end{verbatim}
+\end{drills}
+
+\section{不可變 vs 可變：名字牌模型的收尾對比}
+\label{sec:tuple-vs-list}
+
+還記得第 1 節撞牆的時候留下的那個問題嗎？如果「等號是幫物件貼名字牌，不是複製」這件事
+是真的，那為什麼 tuple 看起來「整個換掉」的時候，感覺就像被複製了一份新的一樣？這一節
+就要把這件事講清楚。
+
+先看一段程式碼，雖然 tuple 不能被原地修改，但你還是可以寫出「看起來像修改」的程式碼，
+例如把某個位置的值換掉、拼接一個新的 tuple 上去：
+
+\begin{example}{python}{(replace-in-tuple.py) 看起來像修改，其實是造新物件}
+scores = ("A", "B", "C")
+print(scores, id(scores))
+
+scores = ("Z",) + scores[1:]
+print(scores, id(scores))
+\end{example}
+
+\iosample{}{('A', 'B', 'C') 4349906432 \\ ('Z', 'B', 'C') 4349912128 \\}
+
+（你自己實際跑出來的那兩個數字，幾乎一定跟這裡不一樣，\texttt{id()} 回傳的是物件在記
+憶體裡的位址，每次執行、每台機器都可能不同。重點不是數字本身，是\textbf{前後兩個數字不
+一樣}。）
+
+\texttt{id()} 是 Python 內建的函式，能告訴你一個物件在記憶體裡的「門牌號碼」，兩個物
+件的 \texttt{id()} 一樣，就代表它們是同一個物件。\index{id()}上面這段程式碼裡，\texttt{scores}
+「看起來」被改成了 \texttt{('Z', 'B', 'C')}，但 \texttt{id()} 告訴你，第二行印出來的
+\texttt{scores} 已經是一個全新的物件了，跟第一行那個完全不是同一個東西。
+
+這正好回答了開頭的問題：\textbf{不是名字牌模型在 tuple 這裡失效了，是 tuple 不可變，所
+以每一次「看起來像修改」的操作，都逼著 Python 造一個全新的物件，再把 \texttt{scores}
+這張名字牌重新貼上去}。第二行的 \texttt{scores = ("Z",) + scores[1:]} 其實分兩步：先用
+\texttt{("Z",) + scores[1:]} 造出一個全新的 tuple，再把 \texttt{scores} 這張名字牌從舊
+物件撕下來、貼到這個新物件上，原本那個 \texttt{('A', 'B', 'C')} 並沒有被改變，它只是
+不再被任何名字牌指著而已。
+
+拿第 \ref{ch:lists} 章 list 的別名行為回頭對照，會看得更清楚。如果兩張名字牌指著同一個 list，透過其
+中一個改動內容，另一個看到的也是改過的結果，因為 list 可以被原地修改，兩張名字牌指的
+從頭到尾都是同一個物件。
+
+但如果換成 tuple，同樣「兩張名字牌指著同一個物件」的情況，你不
+可能用某張名字牌去「原地修改」它，因為 tuple 根本沒有能原地修改自己的操作，任何看起來
+像修改的動作，都只能是造一個新物件、把其中一張名字牌重新貼上去，另一張名字牌仍然貼在原
+本那個沒被動過的舊物件上。
+
+\keypoint{對 int、字串、tuple 這類不可變型別，「名字牌模型」跟你原本從數學課或日常生活
+帶來的「盒子」直覺，在這裡剛好會給出一樣的結果，因為東西不能被原地修改，每次「看起來
+像修改」都只能整個換掉，感覺就很像「盒子裡的內容被換掉了」。但這只是巧合，不是名字牌模
+型的例外：底層規則從頭到尾都沒有變，變的只是「這個型別到底允不允許被原地修改」。}
+
+\subsection*{一個更細微的對照：\texttt{+=} 到底有沒有「原地修改」}
+
+第 \ref{ch:loops} 章你學過 \texttt{+=} 是「把右邊的值加到變數原本的值上，再把結果重新貼回同一個名
+字牌」的簡寫。這句話聽起來好像 \texttt{+=} 一定會造出新物件，但事情沒有這麼絕對：對
+list 使用 \texttt{+=}，Python 其實會直接在原本那個物件上把新內容接上去，物件本身沒有
+換過；對 tuple 使用 \texttt{+=}，因為 tuple 沒有任何原地修改自己的操作，只能乖乖造一
+個新物件。用 \texttt{id()} 可以親眼看到這個差別。
+
+\begin{example}{python}{(plus-equals-tuple-vs-list.py) 用 id() 比較 += 對 list 和 tuple 的差別}
+numbers_list = [1, 2, 3]
+before_list_id = id(numbers_list)
+numbers_list += [4]
+print(numbers_list, id(numbers_list) == before_list_id)
+
+numbers_tuple = (1, 2, 3)
+before_tuple_id = id(numbers_tuple)
+numbers_tuple += (4,)
+print(numbers_tuple, id(numbers_tuple) == before_tuple_id)
+\end{example}
+
+\iosample{}{[1, 2, 3, 4] True \\ (1, 2, 3, 4) False \\}
+
+第一行的 \texttt{True} 告訴你，\texttt{numbers\_list} 用 \texttt{+=} 之後，還是原本
+那個物件，只是內容被原地擴充了；第二行的 \texttt{False} 告訴你，\texttt{numbers\_tuple}
+用 \texttt{+=} 之後，已經是一個全新的物件了。同一個運算子、幾乎一模一樣的寫法，因為
+兩邊型別的可變性不同，骨子裡做的事情完全不一樣：這正是這一章從頭到尾一直在強調的重點，
+「型別允不允許原地修改」才是決定 Python 背後到底做了什麼事的關鍵，不是看程式碼表面長
+得像不像。
+
+\subsection*{tuple 不可變，指的是「這一層」不能換，不是裡面的東西永遠凍結}
+
+這裡有一個很容易被誤會的細節：tuple 保證的是「這個 tuple 本身裝著哪些物件」不能被改
+變，但如果裡面裝的某個元素本身是可變的（例如一個 list），那個元素自己還是可以被原地修
+改，跟外層的 tuple 完全是兩回事。
+
+\begin{example}{python}{(mutable-inside-tuple.py) tuple 裡面的 list 還是可以被修改}
+data = (1, 2, [3, 4])
+print(data)
+
+data[2].append(5)
+print(data)
+\end{example}
+
+\iosample{}{(1, 2, [3, 4]) \\ (1, 2, [3, 4, 5]) \\}
+
+\texttt{data[2] = "something"} 這種「把 tuple 裡第三個位置整個換掉」的寫法一樣會踩到
+第 1 節那道牆，觸發 \texttt{TypeError}。但 \texttt{data[2].append(5)} 完全是另一回事：
+它沒有動 \texttt{data} 這個 tuple 裡「第三個位置放的是哪個物件」這件事，第三個位置從
+頭到尾都指著同一個 list，只是那個 list 自己被原地修改了內容。tuple 只管住自己這一層，
+管不到（也沒打算管）裡面的物件要不要允許被修改。
+
+這個細節也解釋了為什麼 hashable（可雜湊）的判斷要看得更仔細一點：如果一個 tuple 裡裝
+了像 list 這種不可雜湊的東西，這個 tuple 整體也會變成不可雜湊，一樣不能拿來當 dict 的
+key。
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "mutable-inside-tuple.py", line 3, in <module>
+    d = {data: "some value"}
+        ^^^^^^^^^^^^^^^^^^^^
+TypeError: unhashable type: 'list'
+\end{verbatim}
+
+錯誤訊息抱怨的是 \texttt{'list'} 而不是 \texttt{'tuple'}，因為 Python 檢查一個 tuple
+能不能被雜湊時，會連著檢查它裡面每一個元素能不能被雜湊，只要有一個不行，整個 tuple 就
+不行。
+
+\keypoint{tuple 保證的不可變是「淺層」的：只保證它自己這一層的內容（裝著哪些物件）不會
+被換掉，不保證每個裝進去的物件本身也不能被修改。想要一份資料整個都不能被動到，裡面每
+一層也都要用不可變型別組成，例如全部用 tuple、字串、數字組成，不能有任何一層是 list
+或 dict。}
+
+\subsection*{不可變的實際好處：tuple 可以當 dict 的 key}
+
+「內容不會變」這件事，除了避免你意外改壞資料，還有一個很實際的好處：tuple 可以拿來當
+dict 的 key，而 list 不行。
+
+\begin{example}{python}{(tuple-as-dict-key.py) 用座標當字典的 key}
+locations = {
+    (25.03, 121.56): "Boston Tower",
+    (22.63, 120.30): "Seattle Port",
+}
+print(locations[(25.03, 121.56)])
+\end{example}
+
+\iosample{}{Boston Tower \\}
+
+如果改用 list 當 key，Python 會直接拒絕：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "tuple-as-dict-key.py", line 2, in <module>
+    locations = {bad_key: "Boston Tower"}
+                ^^^^^^^^^^^^^^^^^^^^^
+TypeError: unhashable type: 'list'
+\end{verbatim}
+
+\texttt{unhashable} 的意思是「沒辦法被雜湊」，dict 的 key 內部依賴一個叫「雜湊值」的
+機制才能快速查找，而這個機制要求 key 的內容永遠不會變，這樣雜湊值才不會失效。list 的內
+容隨時可能被改，Python 乾脆不允許它當 key；tuple 造出來就不能再改，正好滿足這個要求，
+所以可以放心拿來當 key。\index{hashable}這也是前面提到的 \texttt{namedtuple} 一個常被拿來用的場景：既
+要一組固定的欄位當 key，又想讓讀程式碼的人看得出每個位置代表什麼意思。
+
+\begin{drills}[label=drills:tuple-vs-list]
+\item 這段程式碼執行完，\texttt{a is b} 會是 \texttt{True} 還是 \texttt{False}？
+\begin{verbatim}
+a = [1, 2, 3]
+b = a
+b.append(4)
+\end{verbatim}
+\item 這段程式碼執行完，\texttt{t is t2} 會是 \texttt{True} 還是 \texttt{False}？
+\begin{verbatim}
+t = (1, 2, 3)
+t2 = t
+t2 = t2 + (4,)
+\end{verbatim}
+\item 承上題，如果把最後一行改成 \texttt{t2 = t}（不做任何加法），\texttt{t is t2}
+還會是同樣的答案嗎？為什麼？
+\item 這段程式碼執行完，\texttt{original\_id == id(nums)} 會是 \texttt{True} 還是
+\texttt{False}？
+\begin{verbatim}
+nums = [1, 2, 3]
+original_id = id(nums)
+nums += [4, 5]
+\end{verbatim}
+\item 這段程式碼執行完，\texttt{t} 的內容會是什麼？tuple 本身有沒有被「修改」？
+\begin{verbatim}
+t = (1, [2, 3])
+t[1].append(4)
+\end{verbatim}
+\end{drills}
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:tuple-basics}~節}
+\begin{enumerate}
+\item 印出 \texttt{<class 'str'>}，單獨一個括號包住的值不會變成 tuple，少了逗號，
+Python 只當它是一個字串。
+\item \texttt{TypeError}，tuple 不支援用索引賦值來改變內容
+（\texttt{'tuple' object does not support item assignment}）。
+\item \texttt{AttributeError}，因為 tuple 從一開始就沒有 \texttt{.append()} 這個方
+法，跟上一題「有這個操作但不准做」的 \texttt{TypeError} 不一樣，這裡是「這個操作根本不
+存在」。
+\item 印出：
+\begin{verbatim}
+('Mon', 'Tue', 'Sat', 'Sun')
+('Mon', 'Tue', 'Mon', 'Tue')
+\end{verbatim}
+\texttt{+} 把兩個 tuple 接成一個新 tuple，\texttt{*} 把整份內容重複兩次。
+\item \texttt{True}，兩個 tuple 第一個元素都是 \texttt{2}，分不出高下，往下比第二個
+元素，\texttt{9 < 10} 成立，比較到這裡就有答案了。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:tuple-unpacking}~節}
+\begin{enumerate}
+\item 印出 \texttt{dog cat}，\texttt{first, second = second, first} 先把 \texttt{dog}、
+\texttt{cat} 組成一個暫時的 tuple，再 unpack 回去，達成交換。
+\item 印出：
+\begin{verbatim}
+notebook: 3
+pen: 12
+\end{verbatim}
+\item \texttt{record} 有三個元素，但左邊只列了兩個變數，數量對不上。修法是讓左邊也列
+出三個變數，例如 \texttt{name, age, city = record}（如果不需要用到 \texttt{city}，也
+可以用一個底線當佔位名字：\texttt{name, age, \_ = record}）。
+\item \texttt{total, average = total\_and\_average(某個數字 list)}，函式回傳的是一個
+裝著兩個值的 tuple，呼叫端用 unpacking 把它拆成兩個變數接住。
+\item 印出 \texttt{[20, 30, 40]}，星號變數 \texttt{*rest} 會把除了第一個以外剩下的所
+有值打包成一個 list。
+\item 印出 \texttt{Boston Station 25.05}，\texttt{name} 對到外層第一個位置，\texttt{(lat, lon)}
+這個形狀對到外層第二個位置（本身又是一個座標 tuple），再拆成 \texttt{lat}、
+\texttt{lon} 兩個變數，這裡只印出 \texttt{name} 和 \texttt{lat}。
+\item 印出 \texttt{2 3 1}，右邊的 \texttt{b, c, a} 先依照舊值組成一個 tuple
+\texttt{(2, 3, 1)}，再一次 unpack 回左邊的 \texttt{a}、\texttt{b}、\texttt{c}，等於
+把三個值往前輪轉一格。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:tuple-vs-list}~節}
+\begin{enumerate}
+\item \texttt{True}，\texttt{b = a} 只是幫同一個 list 多貼一張名字牌，\texttt{.append()}
+是原地修改，兩張名字牌指的還是同一個物件。
+\item \texttt{False}，\texttt{t2 = t2 + (4,)} 造出一個全新的 tuple，再把 \texttt{t2}
+這張名字牌重新貼到新物件上，\texttt{t} 仍然貼在原本沒被動過的舊物件上。
+\item 不會，答案會變成 \texttt{True}，這次沒有做任何「看起來像修改」的操作，
+\texttt{t2 = t} 單純是幫同一個物件多貼一張名字牌 \texttt{t2}，跟 list 的別名行為（第一
+題）道理完全一樣，只是這裡剛好用在 tuple 上而已。
+\item \texttt{True}，對 list 使用 \texttt{+=} 是原地修改，\texttt{nums} 這張名字牌從
+頭到尾都貼在同一個物件上，跟前一節 \texttt{plus-equals-tuple-vs-list.py} 範例裡 list
+那一半的結果一致。
+\item \texttt{t} 會變成 \texttt{(1, [2, 3, 4])}；tuple 本身沒有被修改，它從頭到尾都是
+同一個物件、一樣裝著兩個位置，只是第二個位置指著的那個 list 被原地修改了內容。
+\end{enumerate}

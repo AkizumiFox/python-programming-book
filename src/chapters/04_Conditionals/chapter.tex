@@ -1,0 +1,969 @@
+\chapter{條件判斷}
+\label{ch:conditionals}
+
+每個人每天都在做「如果……就……否則……」這種判斷，只是平常不會意識到自己在做。外面
+在下雨，出門就帶傘，不帶傘就淋雨；紅燈亮著，就停下來等，燈一變綠才走。這一章要教的，
+就是怎麼把這種你已經很熟悉的判斷方式，翻譯成電腦看得懂的語言。
+
+我們分幾段推進：
+\begin{itemize}
+\item 先從最小的判斷開始，一次只問一個「是不是」的問題，讓電腦根據這一個答案決定
+做不做某件事。
+\item 接著把範圍擴大：一個問題往往不夠用，你可能要在好幾條路裡選一條，或是同時考慮
+好幾個條件才能下決定，這時候需要更多分支，需要把好幾個「是不是」串在一起，也會碰到
+「條件裡面還藏著條件」這種更貼近真實生活的情境，以及好幾個條件擠在同一行時，怎麼寫
+才不會讓自己（或別人）看不懂。
+\item 最後，我們要介紹 Python 一個有點特別的脾氣：不只 \texttt{True}、\texttt{False}
+算是非黑即白的答案，Python 在 \texttt{if} 裡看很多東西時，會把「空空如也」的東西直接
+當成 \texttt{False}，把「有內容」的東西當成 \texttt{True}，不用你特別去檢查「是不是
+空的」。
+\end{itemize}
+
+整章下來，你會從「只會判斷一件事」慢慢累積到「能把好幾個日常生活裡稀鬆平常的判斷，原封
+不動翻譯成 Python 看得懂的條件」。
+
+\section{比較是不是：認識比較運算子}
+\label{sec:comparison-operators}
+
+要讓電腦幫你做判斷，第一步是先教它怎麼問一個「是不是」的問題，例如「這個數字是不是比
+那個數字大」「這兩個值是不是相等」。這種問句在 Python 裡叫做比較，用的是比較運算子，問完
+之後得到的答案，就是你在第 \ref{ch:variables} 章認識過的 \texttt{bool} 型別：不是 \texttt{True} 就是
+\texttt{False}，沒有第三種答案。
+\index{比較}
+\index{比較運算子}
+
+\begin{code}{python}{比較兩個值}
+value1 operator value2
+\end{code}
+
+Python 提供的比較運算子有這幾個：\texttt{==}（相等）、\texttt{!=}（不相等）、
+\texttt{<}（小於）、\texttt{>}（大於）、\texttt{<=}（小於等於）、\texttt{>=}（大於等於）。
+
+\begin{example}{python}{(compare-scores.py) 比較兩科分數哪個高}
+math_score = 85
+english_score = 92
+
+print(math_score > english_score)
+print(math_score == english_score)
+print(math_score != english_score)
+\end{example}
+
+\iosample{}{False \\ False \\ True \\}
+
+\keypoint{比較運算子的結果永遠是一個 \texttt{bool} 值，只有 \texttt{True} 或
+\texttt{False} 兩種可能。這正是第 \ref{ch:variables} 章介紹過的四種基本型別之一，這裡是型別介紹完之後，
+你第一次真正拿它來做事。}
+
+要特別注意 \texttt{==} 跟 \texttt{=} 是兩個完全不同的東西：\texttt{=} 是「把值指定給
+一個名字」（例如 \texttt{score = 60}），\texttt{==} 才是「問這兩個值是不是相等」。很多人
+在數學課習慣把等號當成「相等」的意思，寫 Python 時反而容易把這兩個搞混，下一節會實際
+示範打錯會發生什麼事。
+
+比較運算子不只能用在數字身上。字串也可以用 \texttt{==} 比較內容是不是完全一樣，例如
+\texttt{"apple" == "apple"} 會是 \texttt{True}，\texttt{"apple" == "Apple"} 因為大小寫
+不同會是 \texttt{False}。至於 \texttt{<}、\texttt{>} 用在字串上，牽涉到字母排列順序的
+規則，這本書之後真正需要的時候才會提到，這一章你只要先把數字的比較用熟就好，那是最直覺、
+也最常用的情況。
+
+還有一個小細節值得留意：\texttt{int} 跟 \texttt{float} 這兩種數字型別互相比較時，Python
+只在乎數值本身，不在乎型別是不是完全一樣。
+
+\begin{example}{python}{(mixed-type-compare.py) int 跟 float 互相比較}
+price = 100
+budget = 100.0
+
+print(price == budget)
+print(price < 100.5)
+\end{example}
+
+\iosample{}{True \\ True \\}
+
+\texttt{price} 是 \texttt{int} 的 100，\texttt{budget} 是 \texttt{float} 的
+100.0，兩者型別不一樣，但值相等，\texttt{price == budget} 一樣是 \texttt{True}。這跟
+第 \ref{ch:variables} 章「型別長在物件上，不是長在變數上」的概念不衝突：比較運算子看的是兩邊的值，型別
+不同只要數值相等，比較的結果照樣成立。
+
+\begin{drills}[label=drills:comparison-operators]
+\item \texttt{price = 120}，這個比較式的結果是 \texttt{True} 還是 \texttt{False}？
+\texttt{price >= 120}
+\item \texttt{name = "Alice"}，這個比較式的結果是 \texttt{True} 還是 \texttt{False}？
+\texttt{name == "alice"}
+\end{drills}
+
+\section{如果……就……：if 陳述句}
+\label{sec:if-basics}
+
+光是問出「是不是」還不夠，你通常還想根據這個答案，決定電腦要不要做某件事：分數及格才印出
+「通過」，天氣冷才提醒帶外套。這種「只有條件成立才做」的結構，在 Python 裡叫做
+\texttt{if} 陳述句。
+\index{if 陳述句}
+
+\begin{code}{python}{if 陳述句}
+if condition:
+    action
+\end{code}
+
+\texttt{if} 後面接一個條件（通常是一個比較運算式），再接一個冒號；下一行開始，只要是
+縮排過的程式碼，都算是「條件成立才做」的區塊，Python 靠縮排（通常是 4 個空白）來判斷
+一段程式碼屬不屬於這個區塊，不是靠大括號或其他符號。
+
+\begin{example}{python}{(check-passing.py) 分數及格才印出通過}
+score = 75
+if score >= 60:
+    print("Pass")
+\end{example}
+
+\iosample{}{Pass \\}
+
+如果你把第一行的 \texttt{score} 改成 \texttt{50}，重新執行這支程式，螢幕上會完全沒有
+任何輸出。因為 \texttt{50 >= 60} 是 \texttt{False}，縮排的那一行 \texttt{print} 根本
+不會被執行，Python 會直接跳過整個 \texttt{if} 區塊，往下面（如果還有的話）繼續執行。
+
+這一節開始，你要正式打字寫出 \texttt{if} 這個結構，剛好是新手最容易在三個地方打錯的時候，
+接下來一個一個示範打錯會發生什麼事。
+
+\textbf{漏掉冒號：}
+
+\begin{example}{python}{(check-passing-broken-colon.py) 漏掉冒號}
+score = 75
+if score >= 60
+    print("Pass")
+\end{example}
+
+執行後會看到：
+
+\begin{verbatim}
+  File "check-passing-broken-colon.py", line 2
+    if score >= 60
+                  ^
+SyntaxError: expected ':'
+\end{verbatim}
+
+\texttt{expected ':'} 就是字面上的意思。Python 讀到這一行，發現該有冒號的地方沒有冒號，
+直接告訴你它期待看到什麼。補上冒號就能修好。
+
+\textbf{縮排不對：}
+
+\begin{example}{python}{(check-passing-broken-indent.py) 少了縮排}
+score = 75
+if score >= 60:
+print("Pass")
+\end{example}
+
+執行後會看到：
+
+\begin{verbatim}
+  File "check-passing-broken-indent.py", line 3
+    print("Pass")
+    ^^^^^
+IndentationError: expected an indented block after 'if' statement on line 2
+\end{verbatim}
+
+\texttt{IndentationError} 專門處理縮排出錯的情況；這裡的意思是「第 2 行的 if 陳述句
+後面，應該要接一個縮排過的區塊，但沒有」。把 \texttt{print} 那一行往右縮排 4 個空白
+即可。
+\index{IndentationError}
+
+\textbf{把 \texttt{==} 打成 \texttt{=}：}
+
+\begin{example}{python}{(check-passing-broken-equals.py) 等號打錯}
+score = 75
+if score = 60:
+    print("Exactly 60 points")
+\end{example}
+
+執行後會看到：
+
+\begin{verbatim}
+  File "check-passing-broken-equals.py", line 2
+    if score = 60:
+       ^^^^^^^^^^
+SyntaxError: invalid syntax. Maybe you meant '==' or ':=' instead of '='?
+\end{verbatim}
+
+這個錯誤訊息特別貼心，直接猜到你大概是想打 \texttt{==}。\texttt{if} 後面的條件要問的是
+「是不是相等」，不是「把值指定給誰」，這種時候一定要用 \texttt{==}。
+
+這三個錯誤有一個共同的地方：Python 都是在還沒有真正開始執行程式之前，光是「讀」你的
+程式碼這一步就卡住了，所以看到的都是 \texttt{SyntaxError} 或 \texttt{IndentationError}，
+而不是程式執行到一半才出的錯。之後你會漸漸讀得懂這類錯誤訊息的固定套路：先看錯誤類型，
+再看它指到程式碼的哪個位置、用什麼符號標出問題所在，通常就能猜到八九不離十的修法。
+
+\begin{drills}[label=drills:if-basics]
+\item 這段程式的輸出是什麼？
+\begin{verbatim}
+score = 88
+if score > 90:
+    print("Excellent")
+print("Done")
+\end{verbatim}
+\item 這段程式漏了一個符號，Python 執行時會出現什麼類型的錯誤？請指出漏了什麼、怎麼修：
+\begin{verbatim}
+temperature = 30
+if temperature > 28
+    print("Hot")
+\end{verbatim}
+\item 這段程式的作者本來想「氣溫超過 28 度才印出 Hot」，但寫錯了一個符號，導致每次執行
+都會印出「Hot」，不管氣溫多少度。請找出錯在哪裡：
+\begin{verbatim}
+temperature = 20
+if temperature = 28:
+    print("Hot")
+\end{verbatim}
+\end{drills}
+
+\section{不然呢：if/else 二選一}
+\label{sec:if-else}
+
+上一節的 \texttt{if} 只處理了「條件成立才做」，但如果條件不成立，你通常也想做點別的事，
+不是什麼都不做。分數不及格，也想印出「不及格」提醒一下。這種「兩條路一定會走其中一條」
+的結構，要用 \texttt{if}/\texttt{else} 搭配。
+\index{if/else}
+
+\begin{code}{python}{if/else}
+if condition:
+    actionA
+else:
+    actionB
+\end{code}
+
+\texttt{else} 不需要再寫一次條件，它的意思就是「上面那個條件不成立的話」，跟
+\texttt{if} 一樣，冒號後面接縮排過的區塊。
+
+\begin{example}{python}{(pass-or-fail.py) 及格或不及格}
+score = 55
+if score >= 60:
+    print("Pass")
+else:
+    print("Fail")
+\end{example}
+
+\iosample{}{Fail \\}
+
+\keypoint{\texttt{if}/\texttt{else} 保證兩條路裡一定會走其中一條，不會有「兩條都不
+執行」或「兩條都執行」的情況。這跟下一節要介紹的、一連串各自獨立的 \texttt{if}
+不一樣，那種寫法反而可能同時執行好幾條路，或一條都不執行。}
+
+也要注意 \texttt{else} 本身沒辦法再加條件。如果你想要的其實是「分數 90 以上、80 到 89、
+其他」這種好幾條路的分法，光靠一個 \texttt{if}/\texttt{else} 是做不到的，這正是接下來
+兩節要解決的問題：先看「條件裡面還可以再包一層條件」，再看「怎麼把好幾個條件串成一條鏈」。
+
+\begin{drills}[label=drills:if-else]
+\item \texttt{score = 60}，這段程式會印出什麼？
+\begin{verbatim}
+if score >= 60:
+    print("Pass")
+else:
+    print("Fail")
+\end{verbatim}
+\item 下面這段程式想做的是「及格印通過，不及格印不及格」，但完全沒有反應，執行後畫面
+什麼都沒有。請指出問題在哪裡：
+\begin{verbatim}
+score = 45
+if score >= 60
+    print("Pass")
+else:
+    print("Fail")
+\end{verbatim}
+\end{drills}
+
+\section{條件裡面還有條件：巢狀 if}
+\label{sec:nested-if}
+
+現實生活裡的判斷，常常一層接著一層，很少問一次就結束：先確認有沒有票，有票才
+接著看年齡夠不夠買成人票；先確認今天有沒有下雨，有下雨才接著看有沒有帶傘。前面一個
+條件先成立，後面那個條件才有意義去問。
+
+這種「條件裡面還有條件」的結構，在 Python 裡叫做
+巢狀 if（\texttt{if} 裡面再包一個 \texttt{if}），寫法是把整個內層的 \texttt{if}（或
+\texttt{if}/\texttt{else}）當成外層 \texttt{if} 底下「條件成立才做」的那個動作。
+\index{巢狀 if}
+
+\begin{code}{python}{巢狀 if}
+if condition1:
+    if condition2:
+        actionA
+    else:
+        actionB
+else:
+    actionC
+\end{code}
+
+內層的 \texttt{if}/\texttt{else} 要比外層的 \texttt{if} 多縮排一層（通常是再多 4 個
+空白，變成 8 個空白），這樣 Python 才知道它屬於外層條件成立時的那個區塊。縮排的層數
+沒有上限，你可以視需要再往裡面包第三層、第四層，但巢狀包太多層通常代表可以想辦法簡化，
+這一點在後面幾節會再回頭討論。
+
+\begin{example}{python}{(party-entry.py) 有票才看年齡夠不夠}
+age = 16
+has_ticket = True
+
+if has_ticket:
+    if age >= 18:
+        print("Adult ticket, entry allowed")
+    else:
+        print("Minor, parental accompaniment required")
+else:
+    print("No ticket, entry denied")
+\end{example}
+
+\iosample{}{Minor, parental accompaniment required \\}
+
+一步一步看這段程式在做什麼：外層先問 \texttt{has\_ticket} 是不是 \texttt{True}。這裡
+\texttt{has\_ticket} 是 \texttt{True}，於是往內層走，接著問 \texttt{age >= 18}；
+\texttt{age} 是 16，不滿 18，所以走進內層的 \texttt{else}，印出「Minor, parental
+accompaniment required」。如果一開始 \texttt{has\_ticket} 就是 \texttt{False}，內層那整段 \texttt{if}/
+\texttt{else}（不管年齡是多少）根本不會被檢查，會直接跳到最外層的 \texttt{else}，
+印出「No ticket, entry denied」。
+
+\keypoint{巢狀 \texttt{if} 表達的是「後面的條件，要在前面的條件先成立的情況下才有意義」，
+這跟下一節要介紹的 \texttt{elif} 鏈不一樣：\texttt{elif} 鏈是好幾條互斥的路，彼此地位
+平等，巢狀 \texttt{if} 則是一層一層有先後關係，內層條件完全依賴外層條件先成立。}
+
+\begin{drills}[label=drills:nested-if]
+\item 這段程式的輸出是什麼？
+\begin{verbatim}
+weather = "Rainy"
+has_umbrella = True
+
+if weather == "Rainy":
+    if has_umbrella:
+        print("Can go out")
+    else:
+        print("Wait for rain to stop")
+else:
+    print("Go out directly")
+\end{verbatim}
+\item 承上題，如果把 \texttt{has\_ticket} 換成 \texttt{False}，其他都不變，
+\texttt{party-entry.py} 這段程式會印出什麼？內層的 \texttt{if}/\texttt{else} 有沒有
+被執行到？
+\item 為什麼外層條件不成立時，內層的 \texttt{if}/\texttt{else} 整段都不會被檢查？
+\end{drills}
+
+\section{好幾條路選一條：if/elif/else 鏈}
+\label{sec:elif-chain}
+
+現實中的判斷常常不只兩條路。用分數給等第就是個好例子：90 分以上是 A、80 到 89 是 B、
+70 到 79 是 C，這種情況是好幾個區間選一個，不是「及格/不及格」那種二選一。這時候需要
+\texttt{elif}（是 else if 的縮寫）把好幾個條件串成一條鏈。
+\index{elif}
+
+\begin{code}{python}{if/elif/else}
+if condition1:
+    action1
+elif condition2:
+    action2
+else:
+    action3
+\end{code}
+
+一條 \texttt{if}/\texttt{elif}/\texttt{else} 鏈由上往下檢查，只要有一個條件成立，
+就執行那一段、然後直接跳過整條鏈剩下的部分，不會再往下檢查，即使後面的條件其實也成立。
+\index{if/elif/else 鏈}
+
+\begin{example}{python}{(grade-letter.py) 依分數給等第}
+score = 82
+
+if score >= 90:
+    grade = "A"
+elif score >= 80:
+    grade = "B"
+elif score >= 70:
+    grade = "C"
+elif score >= 60:
+    grade = "D"
+else:
+    grade = "F"
+
+print(grade)
+\end{example}
+
+\iosample{}{B \\}
+
+\texttt{score} 是 82，第一個條件 \texttt{score >= 90} 不成立，往下檢查
+\texttt{score >= 80}，這個成立，於是 \texttt{grade} 被設成 \texttt{"B"}，接下來
+\texttt{elif score >= 70}、\texttt{elif score >= 60} 就算也成立（82 確實也大於等於
+70 跟 60），一律被跳過、完全不會執行。
+
+\keypoint{一條 \texttt{elif} 鏈裡，最多只有一段會被執行，第一個成立的那一段。這跟一連串
+各自獨立的 \texttt{if} 完全不一樣，接下來直接示範兩者的差別。}
+
+如果把 \texttt{elif} 錯打成一連串各自獨立的 \texttt{if}，會發生什麼事？
+
+\begin{example}{python}{(grade-letter-wrong.py) 誤把 elif 鏈拆成獨立 if}
+score = 82
+
+grade = ""
+if score >= 90:
+    grade = "A"
+if score >= 80:
+    grade = "B"
+if score >= 70:
+    grade = "C"
+
+print(grade)
+\end{example}
+
+\iosample{}{C \\}
+
+同樣是 82 分，這裡卻印出了 \texttt{C}，不是預期的 \texttt{B}，問題出在每一個
+\texttt{if} 都是獨立檢查、互不相關，Python 會把三個條件從頭到尾都檢查一遍：
+\begin{itemize}
+\item \texttt{score >= 90} 不成立，跳過。
+\item \texttt{score >= 80} 成立，\texttt{grade} 被設成 \texttt{"B"}。
+\item 接著 \texttt{score >= 70} 也成立，\texttt{grade} 又被改成 \texttt{"C"}，把剛剛
+設好的 \texttt{"B"} 蓋掉了。
+\end{itemize}
+
+三段獨立的 \texttt{if} 各自都會被檢查、只要成立就
+執行，不會因為前一段已經執行過就跳過後面，這跟 \texttt{elif} 鏈「只執行第一個成立的
+那一段」剛好相反。
+
+判斷的原則很簡單：
+\index{互斥的區間}
+\begin{itemize}
+\item 如果好幾個條件本來就是「互斥的區間」（一個值不可能同時落在兩個區間裡），像分數
+等第這種情況，要用 \texttt{elif} 鏈。
+\item 如果好幾個條件彼此獨立、互不相關，每一個都想各自檢查一次，才用一連串各自獨立的
+\texttt{if}（例如「分數及不及格」跟「是不是週末」是兩件不相干的事，各自用一個
+\texttt{if} 才對）。
+\end{itemize}
+
+這一點也可以拿來跟上一節
+的巢狀 \texttt{if} 對照：巢狀 \texttt{if} 是「內層要靠外層先成立」，\texttt{elif} 鏈是
+「好幾條路彼此互斥、只能走一條」，各自條件之間沒有誰依賴誰的關係。
+
+還有一件事值得特別提醒：\texttt{elif} 鏈最後不一定要接 \texttt{else}。如果你只想在
+少數幾種情況下做點什麼，其他情況一律不用理會，可以只寫 \texttt{if} 跟幾個
+\texttt{elif}，不接 \texttt{else}。
+
+\begin{example}{python}{(elif-no-else.py) elif 鏈不接 else}
+score = 55
+
+if score >= 90:
+    print("A")
+elif score >= 80:
+    print("B")
+elif score >= 70:
+    print("C")
+
+print("Score processed")
+\end{example}
+
+\iosample{}{Score processed \\}
+
+\texttt{score} 是 55，三個 \texttt{elif} 條件全部不成立，因為沒有 \texttt{else}，整條
+鏈裡沒有任何一段被執行，直接跳到鏈外面繼續往下執行 \texttt{print("Score processed")}。這跟
+本章稍早提到的 \texttt{if}/\texttt{else} 保證「兩條路一定會走其中一條」不一樣：一條
+沒接 \texttt{else} 的 \texttt{elif} 鏈，是有可能「一條路都不走」的，要不要接
+\texttt{else}，取決於「沒有任何條件成立時，是不是還想做點什麼」這件事。
+
+\begin{drills}[label=drills:elif-chain]
+\item 這段程式的輸出是什麼？
+\begin{verbatim}
+score = 65
+if score >= 90:
+    grade = "A"
+elif score >= 80:
+    grade = "B"
+elif score >= 60:
+    grade = "D"
+else:
+    grade = "F"
+print(grade)
+\end{verbatim}
+\item 這段程式想做的是「依分數印出等第」，但作者不小心把 \texttt{elif} 全部改成獨立的
+\texttt{if}。\texttt{score} 是 95 的話，這段程式實際上會印出什麼？
+\begin{verbatim}
+score = 95
+grade = ""
+if score >= 60:
+    grade = "Pass"
+if score >= 90:
+    grade = "Excellent"
+print(grade)
+\end{verbatim}
+\item 你要判斷「今天是不是週末」跟「氣溫是不是超過 30 度」這兩件事，兩者互不相關、
+你都想各自知道結果，這種情況該用 \texttt{elif} 鏈，還是兩個各自獨立的 \texttt{if}？
+\item \texttt{score = 40}，這段程式沒有接 \texttt{else}，會印出什麼？
+\begin{verbatim}
+if score >= 90:
+    print("A")
+elif score >= 80:
+    print("B")
+print("Done")
+\end{verbatim}
+\end{drills}
+
+\section{同時看好幾個條件：and、or、not}
+\label{sec:logical-operators}
+
+有時候一個判斷需要同時看好幾個條件才能下定論：「兩科都要及格才算真的及格」「只要有一科
+拿高分就值得慶祝」。Python 提供三個邏輯運算子，把好幾個「是不是」串成一個更大的條件：
+\texttt{and}（兩邊都成立才算成立）、\texttt{or}（有一邊成立就算成立）、\texttt{not}
+（把結果反過來）。
+\index{邏輯運算子}
+\index{and}
+\index{or}
+\index{not}
+
+\begin{code}{python}{and／or／not}
+condition1 and condition2
+condition1 or condition2
+not condition
+\end{code}
+
+先看 \texttt{and}：兩科都及格，才算真的及格。
+
+\begin{example}{python}{(both-subjects-pass.py) 兩科都及格才算}
+math_score = 75
+english_score = 68
+
+if math_score >= 60 and english_score >= 60:
+    print("Both subjects passed")
+else:
+    print("At least one subject failed")
+\end{example}
+
+\iosample{}{Both subjects passed \\}
+
+再看 \texttt{or}：只要有一科拿高分，就值得注意。
+
+\begin{example}{python}{(either-subject-high.py) 任一科拿高分就算}
+math_score = 95
+english_score = 68
+
+if math_score >= 90 or english_score >= 90:
+    print("At least one subject scored high")
+else:
+    print("Neither subject scored high")
+\end{example}
+
+\iosample{}{At least one subject scored high \\}
+
+最後看 \texttt{not}：把一個條件的結果整個反過來。
+
+\begin{example}{python}{(not-passing.py) 用 not 反過來問「沒有及格」}
+math_score = 45
+print(not (math_score >= 60))
+print(math_score < 60)
+\end{example}
+
+\iosample{}{True \\ True \\}
+
+\texttt{not (math\_score >= 60)} 的意思就是「math\_score 不是大於等於 60」，效果跟直接
+寫 \texttt{math\_score < 60} 一樣，兩行印出的結果完全相同。有些情況（例如條件本身已經
+很長）用 \texttt{not} 包起來會比重寫一次相反的比較式更清楚，但也不是每次都比較好讀，
+拿捏的原則留到本章最後一節再細談。
+
+除了 \texttt{and}，Python 還提供一種更精簡的寫法，專門用在「一個值是不是落在某個範圍
+內」這種情境。假設你想知道兩科分數的差距是不是在 10 分以內（代表兩科表現差不多），有
+三種寫法可以做到同一件事，一種比一種精簡：
+
+\begin{code}{python}{同一個判斷的三種寫法}
+if 0 < gap:
+    if gap < 10:
+        ...
+
+if 0 < gap and gap < 10:
+    ...
+
+if 0 < gap < 10:
+    ...
+\end{code}
+
+第一種是你剛剛學過的巢狀 \texttt{if}（\texttt{if} 裡面再包一個 \texttt{if}）；第二種用
+\texttt{and} 把兩層壓成一層；第三種是 Python 特有的連鎖比較寫法，直接把兩個比較式接在
+一起寫成 \texttt{0 < gap < 10}，效果跟前兩種完全一樣，但更接近你在數學課上寫
+「$0 < x < 10$」的方式。實際跑一次，確認三種寫法真的都成立：
+\index{連鎖比較}
+
+\begin{example}{python}{(score-gap-check.py) 三段式演進：分數差距是否在 10 分以內}
+math_score = 85
+english_score = 92
+gap = english_score - math_score
+
+if gap > 0:
+    if gap < 10:
+        print("Nested version: gap within 10 points")
+
+if gap > 0 and gap < 10:
+    print("Flattened with and: gap within 10 points")
+
+if 0 < gap < 10:
+    print("Chained comparison: gap within 10 points")
+\end{example}
+
+\iosample{}{Nested version: gap within 10 points \\ Flattened with and: gap within 10 points \\ Chained comparison: gap within
+10 points \\}
+
+\stylepoint{碰到「一個值是不是落在某個範圍內」這種判斷，直接寫連鎖比較
+\texttt{0 < gap < 10}，比巢狀 \texttt{if} 或 \texttt{and} 更精簡、也更接近你原本的
+數學直覺，這是 Python 少數幾個其他語言通常沒有的方便寫法。}
+
+\begin{drills}[label=drills:logical-operators]
+\item \texttt{age = 16}，這個條件式的結果是 \texttt{True} 還是 \texttt{False}？
+\texttt{age >= 12 and age < 18}
+\item \texttt{score = 45}，這個條件式的結果是 \texttt{True} 還是 \texttt{False}？
+\texttt{score < 60 or score == 100}
+\item 把 \texttt{score > 0 and score < 60} 改寫成連鎖比較的寫法會是什麼？
+\end{drills}
+
+\section{and／or 不見得會兩邊都看：短路求值}
+\label{sec:short-circuit}
+
+上一節看到的 \texttt{and}／\texttt{or}，有一個很多人第一次接觸時會覺得意外的行為：
+Python 不一定會把兩邊的條件都算過一遍才給你答案。這叫短路求值：如果從左邊的條件就已經
+能確定整條式子的結果，Python 會直接把答案交出來，右邊那個條件根本不會被執行到。
+\index{短路求值}
+
+\begin{code}{python}{短路求值的判斷順序}
+condition1 and condition2   # condition1 是 False，condition2 會被跳過
+condition1 or condition2    # condition1 是 True，condition2 會被跳過
+\end{code}
+
+\texttt{and} 的邏輯是「兩邊都成立才算成立」，所以只要左邊已經是 \texttt{False}，不管
+右邊是什麼，整條式子注定是 \texttt{False}，Python 沒有理由浪費力氣去算右邊。同樣地，
+\texttt{or} 的邏輯是「有一邊成立就算成立」，只要左邊已經是 \texttt{True}，整條式子注定
+是 \texttt{True}，右邊也會被跳過。
+
+這個行為不只是省一點執行時間而已，它還有一個很實用的地方：可以用來避免一個本來會出錯的
+操作真的被執行到。想像你想知道一個字串是不是以「A」開頭，如果這個字串本身是空的，你根本
+不可能去看它的第一個字元，硬要看反而會出錯。
+
+\begin{example}{python}{(starts-with-a-broken.py) 沒有先確認字串是不是空的}
+name = ""
+if name[0] == "A":
+    print("Starts with A")
+else:
+    print("Doesn't start with A")
+\end{example}
+
+執行後會看到：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "starts-with-a-broken.py", line 2, in <module>
+    if name[0] == "A":
+       ~~~~^^^
+IndexError: string index out of range
+\end{verbatim}
+
+\texttt{name} 是空字串，根本沒有第 0 個字元，\texttt{name[0]} 這一步自己就先出錯了，
+連比較都還沒開始比。第 \ref{ch:strings} 章學過的 \texttt{IndexError} 在這裡又出現了，只是這次不是索引
+超出字串長度，而是字串本身長度就是 0，任何索引都超出範圍。用短路求值可以先把「字串是不是
+空的」擋在前面：
+
+\begin{example}{python}{(starts-with-a-fixed.py) 用 and 先確認字串不是空的}
+name = ""
+if name and name[0] == "A":
+    print("Starts with A")
+else:
+    print("Empty string, or doesn't start with A")
+\end{example}
+
+\iosample{}{Empty string, or doesn't start with A \\}
+
+這裡的 \texttt{name} 是空字串，在 \texttt{if} 裡會被當成 \texttt{False}（下一節會完整
+解釋這件事），所以 \texttt{name and name[0] == "A"} 左邊已經是 \texttt{False}，短路
+求值讓右邊的 \texttt{name[0] == "A"} 根本不會被執行，也就不會有機會出錯。
+
+順序在這裡很
+重要：一定要把「用來擋錯誤的條件」寫在左邊，才能靠短路求值保護右邊；如果順序寫反，變成
+\texttt{name[0] == "A" and name}，Python 一樣由左至右求值，容易出錯的那一步反而會先
+被執行、先出錯，短路求值完全幫不上忙。
+
+\texttt{or} 也有一樣的效果，只是換成「左邊已經是 \texttt{True} 就不看右邊」：
+
+\begin{example}{python}{(starts-with-h-or.py) 用 or 提前判斷}
+text = ""
+if not text or text[0] == "H":
+    print("Empty string, or starts with H")
+else:
+    print("Has content, but doesn't start with H")
+\end{example}
+
+\iosample{}{Empty string, or starts with H \\}
+
+\texttt{text} 是空字串，\texttt{not text} 的結果是 \texttt{True}（空字串本身是
+\texttt{False}，\texttt{not} 把它反過來變成 \texttt{True}），左邊已經是 \texttt{True}，
+\texttt{or} 直接判定整條式子成立，右邊的 \texttt{text[0] == "H"} 完全不會被執行，同樣
+避開了原本會出現的 \texttt{IndexError}。
+
+\keypoint{短路求值是 Python 允許你把「先確認安全，再做可能出錯的事」寫在同一行的方式，
+不只是「順便發生」的小細節，重點是順序：確認安全的那個條件一定要放在左邊。之後你會學到
+Python 針對「這件事可能會失敗」還有另一種更專門的處理方式，等學到那裡，你可以回頭比較
+兩者的差異。}
+
+\begin{drills}[label=drills:short-circuit]
+\item \texttt{score = 0}，這個條件式的結果是 \texttt{True} 還是 \texttt{False}？
+執行過程中，右邊的 \texttt{100 / score > 1} 有沒有真的被算出來？
+\texttt{score != 0 and 100 / score > 1}
+\item \texttt{name = ""}，如果把 \texttt{name and name[0] == "A"} 的順序寫反，變成
+\texttt{name[0] == "A" and name}，還能不能避免 \texttt{IndexError}？為什麼？
+\item \texttt{has\_data = True}，\texttt{count = 5}，這個條件式的結果是
+\texttt{True} 還是 \texttt{False}？\texttt{has\_data or count > 100}
+\end{drills}
+
+\section{把好幾個條件寫得清楚：可讀性小技巧}
+\label{sec:readable-conditions}
+
+\texttt{and}、\texttt{or}、\texttt{not} 一旦混在同一行裡用，很容易碰到一個新問題：
+Python 判斷這些運算子的順序，不一定跟你讀這句話時腦中浮現的順序一樣。Python 會先看
+\texttt{not}，再看 \texttt{and}，最後才看 \texttt{or}，這個優先順序跟英文文法裡
+「先乘除、後加減」的數學規則類似，但很少有人真的把它背起來，寫程式的時候也很容易忘記，
+結果寫出跟自己原本想的不一樣的條件。
+
+\begin{example}{python}{(party-entry-precedence.py) 優先順序造成的判斷結果不同}
+membership = True
+has_invitation = False
+age = 16
+
+if membership or has_invitation and age >= 18:
+    print("Entry allowed (no parens)")
+else:
+    print("Entry denied (no parens)")
+
+if (membership or has_invitation) and age >= 18:
+    print("Entry allowed (with parens)")
+else:
+    print("Entry denied (with parens)")
+\end{example}
+
+\iosample{}{Entry allowed (no parens) \\ Entry denied (with parens) \\}
+
+同樣的三個變數，兩段判斷卻給出不一樣的答案。原意是「要嘛是會員、要嘛有邀請函，而且必須
+年滿 18 歲才能入場」。加了括號的版本，也就是 \texttt{(membership or has\_invitation)}
+搭配 \texttt{and age >= 18}，才真的照這個順序做事：先看是不是符合資格，再看年齡。
+
+但如果沒加括號，直接寫成 \texttt{membership or has\_invitation and age >= 18}，
+Python 會先算 \texttt{and}。這一整條式子等於自動被理解成
+\texttt{has\_invitation and age >= 18} 先算出一個結果，再拿去跟 \texttt{membership}
+做 \texttt{or}。這裡 \texttt{membership} 是 \texttt{True}，\texttt{or} 左邊已經成立，
+短路求值直接判定整條式子成立，完全沒有機會檢查年齡，未成年的會員因此被誤放行了。
+
+\stylepoint{只要一行條件式裡同時用到 \texttt{and} 跟 \texttt{or}，一律加括號寫清楚你要
+的優先順序，不要依賴預設的優先權規則。加括號幾乎不花額外力氣，卻能讓自己跟之後看程式碼
+的人都不用去記、也不用去猜 Python 到底會先算哪一半。}
+
+除了加括號，另一個讓長條件變好讀的辦法，是把每一段子條件拆成一個有名字的布林變數，讓
+最後那行 \texttt{if} 讀起來幾乎像一句白話：
+
+\begin{example}{python}{(party-entry-named.py) 拆成有名字的布林變數}
+membership = True
+has_invitation = False
+age = 16
+
+is_adult = age >= 18
+qualifies_by_status = membership or has_invitation
+
+if qualifies_by_status and is_adult:
+    print("Entry allowed")
+else:
+    print("Entry denied")
+\end{example}
+
+\iosample{}{Entry denied \\}
+
+這段程式先把「符不符合資格」跟「夠不夠年齡」各自算成一個獨立的 \texttt{bool} 值，存進
+名字清楚的變數，最後 \texttt{if qualifies\_by\_status and is\_adult:} 這一行完全不用
+擔心運算子的優先順序，因為每個變數本身已經是算好的 \texttt{True}／\texttt{False}，
+彼此之間只剩一個 \texttt{and}，不會再有混著 \texttt{or} 的判讀問題。
+
+條件愈複雜，這種
+拆解方式的好處愈明顯：與其在腦中一次解一整條長算式，不如先解決一小段、給它一個名字，
+最後再把幾個名字組起來。
+
+\begin{drills}[label=drills:readable-conditions]
+\item 有一段折扣判斷式想表達的是「會員或持有優惠券，而且消費滿 100 元才能打折」，作者
+寫成 \texttt{is\_member or has\_coupon and total >= 100}，沒有加括號。
+\texttt{is\_member = True}，\texttt{has\_coupon = False}，\texttt{total = 50} 的情況
+下，這樣寫算出來的結果，跟原本想表達的意思一不一樣？
+\item 承上題，把條件式改成 \texttt{(is\_member or has\_coupon) and total >= 100}，
+同樣的三個變數值，結果會不會不一樣？為什麼？
+\item 把 \texttt{not (age >= 18 and has\_ticket)} 拆成兩個有名字的布林變數
+（例如 \texttt{is\_adult}、\texttt{has\_ticket}）再組合，你會怎麼寫？
+\end{drills}
+
+\section{空的東西當作沒有}
+\label{sec:truthy-falsy}
+
+目前為止，你放進 \texttt{if} 的條件都是比較運算式的結果，答案不是 \texttt{True} 就是
+\texttt{False}。但 Python 其實還有一個特別的脾氣：數字、字串這些值本身也可以直接放進
+\texttt{if} 裡，不用先寫成比較式。\texttt{0}、空字串 \texttt{""} 會被當成
+\texttt{False}，非零的數字、有內容的字串會被當成 \texttt{True}。
+\index{truthy/falsy}
+
+\begin{code}{python}{把值直接放進 if}
+if x:
+    action
+\end{code}
+
+先看數字的情況：
+
+\begin{example}{python}{(bonus-check.py) 有沒有加分}
+bonus_points = 0
+
+if bonus_points:
+    print("Bonus points:", bonus_points)
+else:
+    print("No bonus points")
+\end{example}
+
+\iosample{}{No bonus points \\}
+
+\texttt{bonus\_points} 是 \texttt{0}，放進 \texttt{if} 裡直接被當成 \texttt{False}，
+跟寫 \texttt{if bonus\_points != 0:} 的效果一樣，但不用你自己動手比較。再看字串的情況：
+
+\begin{example}{python}{(name-check.py) 使用者有沒有輸入名字}
+name = ""
+
+if name:
+    print("Hello, " + name)
+else:
+    print("You haven't entered a name")
+\end{example}
+
+\iosample{}{You haven't entered a name \\}
+
+空字串 \texttt{""} 一樣被當成 \texttt{False}；如果 \texttt{name} 是 \texttt{"Alice"}
+這種有內容的字串，\texttt{if name:} 就會是 \texttt{True}。
+
+\stylepoint{比起特地寫一段程式碼去檢查「這個字串是不是空的」，Python 慣用的寫法直接寫
+\texttt{if name:} 就好，空的東西自然就是 \texttt{False}，不用你多此一舉再比一次。}
+
+很多人第一次看到「非零的數字都是 \texttt{True}」，會直覺以為負數比較特別，可能被當成
+\texttt{False}，其實 Python 的規則很單純：只有 \texttt{0}（不管是整數的 \texttt{0}
+還是後面會學到的小數 \texttt{0.0}）才是 \texttt{False}，非零的數字不管是正是負，一律
+都是 \texttt{True}。
+
+\begin{example}{python}{(temperature-change-check.py) 負數也算是有內容}
+temperature_change = -3
+
+if temperature_change:
+    print("Temperature changed")
+else:
+    print("Temperature unchanged")
+\end{example}
+
+\iosample{}{Temperature changed \\}
+
+\texttt{temperature\_change} 是 \texttt{-3}，雖然是負數，但它不是 \texttt{0}，放進
+\texttt{if} 裡一樣被當成 \texttt{True}，所以印出「Temperature changed」。判斷的關鍵永遠只有一個：
+「是不是等於 0（或空的）」，跟正負號、跟數字大小完全無關。
+
+這個「空的當 \texttt{False}、有東西當 \texttt{True}」的脾氣，不只數字、字串適用，之後
+你會學到的容器型別，空的時候也是一樣的邏輯，到時候你會發現這個習慣完全用得上。
+
+這也是
+本章多次提到、卻還沒完全講開的伏筆：Python 除了用 \texttt{if} 檢查「東西存不存在、
+是不是空的」，之後你還會學到另一套更 Python 的做法，直接先試著去用一個東西，等真的
+出問題了再處理，而不是每次動手之前都先檢查一輪。
+
+這一章看到的 truthy／falsy 判斷跟短路
+求值，都是幫你先打好地基，等真正學到那套做法時，會更容易感覺到兩者的差異跟各自適合
+的場合。
+
+\begin{drills}[label=drills:truthy-falsy]
+\item \texttt{count = 0}，\texttt{if count:} 裡面那段程式碼會不會被執行？
+\item \texttt{message = "Done"}，\texttt{if message:} 裡面那段程式碼會不會被執行？
+\item \texttt{score = -10}，\texttt{if score:} 裡面那段程式碼會不會被執行？
+\end{drills}
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:comparison-operators}~節}
+\begin{enumerate}
+\item \texttt{True}，120 大於等於 120。
+\item \texttt{False}，\texttt{"Alice"} 跟 \texttt{"alice"} 大小寫不同，\texttt{==} 比較
+字串時會連大小寫一起比，兩者不相等。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:if-basics}~節}
+\begin{enumerate}
+\item 會印出：Done。\texttt{score > 90} 不成立，所以「Excellent」不會被印出，但
+\texttt{print("Done")} 沒有縮排在 \texttt{if} 裡面，不管條件成不成立都會執行。
+\item \texttt{SyntaxError: expected ':'}，\texttt{if} 那一行結尾漏了冒號，補上
+\texttt{if temperature > 28:} 即可。
+\item 把 \texttt{=} 誤打成該用 \texttt{==} 的地方，把 \texttt{if temperature = 28:}
+改成 \texttt{if temperature == 28:} 就能修好（不過原意應該是「超過 28 度」，可能要改成
+\texttt{if temperature > 28:} 才對）。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:if-else}~節}
+\begin{enumerate}
+\item 會印出：Pass。\texttt{score >= 60} 成立（60 大於等於 60）。
+\item 少了冒號。\texttt{if score >= 60} 那一行結尾要補上冒號，變成
+\texttt{if score >= 60:}，程式才會正常執行。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:nested-if}~節}
+\begin{enumerate}
+\item 會印出：Can go out。外層 \texttt{weather == "Rainy"} 成立，往內層走，
+\texttt{has\_umbrella} 是 \texttt{True}，印出「Can go out」。
+\item 會印出：No ticket, entry denied。內層的 \texttt{if}/\texttt{else}（判斷年齡的那一段）
+完全沒有被執行到，因為外層 \texttt{has\_ticket} 已經是 \texttt{False}，Python 直接
+跳到最外層的 \texttt{else}。
+\item 因為內層的 \texttt{if}/\texttt{else} 整段都縮排在外層 \texttt{if} 的區塊裡，是
+外層條件成立時才會做的「動作」；外層條件一旦不成立，這整個縮排區塊（不管裡面有幾層）都
+會被跳過，不會有任何一部分被執行。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:elif-chain}~節}
+\begin{enumerate}
+\item 會印出：D。\texttt{score >= 90} 不成立，\texttt{score >= 80} 不成立，
+\texttt{score >= 60} 成立（65 大於等於 60），\texttt{grade} 被設成 \texttt{"D"}，
+之後不會再檢查 \texttt{else}。
+\item 會印出：Excellent。兩個 \texttt{if} 都是獨立檢查：\texttt{score >= 60} 成立，
+\texttt{grade} 先變成 \texttt{"Pass"}；接著 \texttt{score >= 90} 也成立，
+\texttt{grade} 又被改成 \texttt{"Excellent"}，蓋掉前面的結果。
+\item 兩個各自獨立的 \texttt{if}，兩件事彼此無關，不是同一組互斥的區間，各自檢查、
+各自印出結果才對，用 \texttt{elif} 鏈反而會讓其中一個判斷被跳過。
+\item 只會印出：Done。\texttt{score} 是 40，兩個條件都不成立，這條 \texttt{elif} 鏈
+沒有接 \texttt{else}，所以沒有任何一段被執行，直接往下跳到 \texttt{print("Done")}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:logical-operators}~節}
+\begin{enumerate}
+\item \texttt{True}，16 大於等於 12，也小於 18，兩個條件都成立，\texttt{and} 的結果是
+\texttt{True}。
+\item \texttt{True}，45 小於 60，\texttt{score < 60} 已經成立，\texttt{or} 只要有一邊
+成立就是 \texttt{True}，不用管另一邊。
+\item \texttt{0 < score < 60}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:short-circuit}~節}
+\begin{enumerate}
+\item \texttt{True}。\texttt{score != 0} 已經成立，\texttt{and} 左邊是
+\texttt{True}，還不能確定整條式子的結果，所以右邊的 \texttt{100 / score > 1} 確實會
+被算出來（這裡跟左邊已經是 \texttt{False} 就會跳過右邊的情況不一樣，因為左邊是
+\texttt{True} 時 \texttt{and} 沒辦法提早下結論，一定要看右邊）。
+\item 不能。\texttt{and} 由左至右求值，把容易出錯的比較放在左邊，等於在還沒機會被短路
+之前就已經先執行、也已經先出錯，順序寫反，短路求值完全派不上用場。
+\item \texttt{True}。\texttt{has\_data} 已經是 \texttt{True}，\texttt{or} 左邊已經
+成立，直接判定整條式子成立，右邊的 \texttt{count > 100} 不會被執行到。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:readable-conditions}~節}
+\begin{enumerate}
+\item 不一樣。因為 \texttt{and} 的優先順序比 \texttt{or} 高，這行等於
+\texttt{is\_member or (has\_coupon and total >= 100)}，\texttt{is\_member} 已經是
+\texttt{True}，短路求值讓 \texttt{or} 直接判定整條式子成立，完全沒有檢查到
+\texttt{total} 夠不夠 100，跟原本「消費滿 100 元才能打折」的意思不一樣。
+\item 會不一樣。加上括號後，Python 會先算 \texttt{(is\_member or has\_coupon)}
+得到 \texttt{True}，再跟 \texttt{total >= 100}（\texttt{False}，因為 50 不到 100）
+做 \texttt{and}，整條式子變成 \texttt{False}，這次才真的照原意判斷出「沒有打折」。
+\item 例如寫成 \texttt{is\_adult = age >= 18}、接著
+\texttt{if not (is\_adult and has\_ticket):}，或是進一步拆成 \texttt{qualifies =
+is\_adult} \texttt{and has\_ticket} 再寫 \texttt{if not qualifies:}，效果都跟原本
+那一整行相同，但讀起來更清楚每一段在檢查什麼。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:truthy-falsy}~節}
+\begin{enumerate}
+\item 不會，\texttt{0} 在 \texttt{if} 裡被當成 \texttt{False}。
+\item 會，\texttt{"Done"} 是非空字串，在 \texttt{if} 裡被當成 \texttt{True}。
+\item 會，\texttt{-10} 雖然是負數，但不等於 \texttt{0}，在 \texttt{if} 裡一樣被當成
+\texttt{True}。
+\end{enumerate}

@@ -1,0 +1,194 @@
+\ProvidesPackage{sleek-code}[2026/08/31 v1.4 Sleek Code Listings]
+
+%%%%%%%%%%%%%%%%
+% Requirements %
+%%%%%%%%%%%%%%%%
+
+\RequirePackage{tcolorbox}
+\tcbuselibrary{listingsutf8, breakable, minted}
+\RequirePackage{varwidth} % 讓 iotermbox 依內容自動收縮寬度
+
+%%%%%%%%%%%%
+% Settings %
+%%%%%%%%%%%%
+
+\makeatletter
+\newcommand{\listofexamples}{%
+    \chapter*{\listexamplename}%
+    \@starttoc{loe}%
+}
+\newcommand{\listexamplename}{片語與範例目錄}
+\makeatother
+
+%%%%%%%%%%%%%%%%
+% Environments %
+%%%%%%%%%%%%%%%%
+
+% 片語（idiom）：一段可套用的通用程式樣板，例如 for 迴圈的固定寫法。
+% 標題格式沿用原書慣例：「片語 <章>.<編號>：<說明>」。
+% 可選的第一個參數是 tcolorbox 選項，用來掛 label，例如
+%   \begin{code}[label=idiom:three-q]{c}{標題}
+% 既有的 \begin{code}{c}{標題} 仍然可用。
+\newtcblisting[auto counter, number within=chapter, list inside=loe]{code}[3][]{
+    listing engine=minted,
+    minted language={#2},
+    listing only,
+    minted style=perldoc,
+    minted options={breaklines, autogobble, linenos, numbersep=3mm},
+    title={\textbf{片語~\thetcbcounter：}#3},
+    sharp corners,
+    breakable,
+    colback=white,
+    left=7mm,
+    #1
+}
+
+% 範例（worked example）：套用片語、可實際編譯執行的完整程式。
+% 與片語共用同一個章節計數器，編號會接續片語往下編。
+% 標題格式沿用原書慣例：「範例 <章>.<編號>：(檔名.c) <說明>」。
+% 可選的第一個參數同上，例如 \begin{example}[label=ex:sum]{c}{(sum.c) 標題}
+\newtcblisting[use counter from=code, list inside=loe]{example}[3][]{
+    listing engine=minted,
+    minted language={#2},
+    listing only,
+    minted style=perldoc,
+    minted options={breaklines, autogobble, linenos, numbersep=3mm},
+    title={\textbf{範例~\thetcbcounter：}#3},
+    sharp corners,
+    breakable,
+    colback=white,
+    left=7mm,
+    #1
+}
+
+% 節末練習：短題，用來練子技能（預測、補空、抓蟲），不是題庫裡的完整題目。
+% 選擇性引數與 code／example 一樣走 key-value，例如
+%   \begin{drills}[label=drills:rec-stack]
+% label 的編號沿用該節（\thesection），錨點落在「練習」標題，
+% 避免誤抓前一個 example／figure。 解答區應引用節上的 \label{sec:...}。
+\makeatletter
+\providecommand{\phantomsection}{}
+\pgfkeys{
+  /drills/.cd,
+  label/.store in=\drills@label,
+}
+\newenvironment{drills}[1][]{%
+    \def\drills@label{}%
+    \pgfqkeys{/drills}{#1}%
+    \par\medskip
+    \noindent\textbf{練習}\par\smallskip
+    \ifx\drills@label\empty\else
+      \phantomsection
+      \protected@edef\@currentlabel{\thesection}%
+      \label{\drills@label}%
+    \fi
+    \begin{enumerate}
+}{%
+    \end{enumerate}
+    \medskip
+}
+\makeatother
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 學習要點 / 風格要點 %
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 兩者都是「粗體引言 + 一句話重點」的行內段落，不加框——與原書一致。
+% 編號依「章.流水號」累計，不因小節重設。
+
+\newcounter{keypoint}[chapter]
+\renewcommand{\thekeypoint}{\thechapter.\arabic{keypoint}}
+\newcommand{\keypoint}[1]{%
+    \par\medskip\noindent\refstepcounter{keypoint}%
+    \textbf{學習要點~\thekeypoint}\quad #1\par\medskip
+}
+
+\newcounter{stylepoint}[chapter]
+\renewcommand{\thestylepoint}{\thechapter.\arabic{stylepoint}}
+\newcommand{\stylepoint}[1]{%
+    \par\medskip\noindent\refstepcounter{stylepoint}%
+    \textbf{風格要點~\thestylepoint}\quad #1\par\medskip
+}
+
+%%%%%%%%%%%%%%%%%%%%
+% 輸入 / 輸出範例 %
+%%%%%%%%%%%%%%%%%%%%
+% \iosample{輸入的每一行，以 \\ 分隔}{輸出的每一行，以 \\ 分隔}
+% 每一行直接寫內容即可，不用加列號，例如：1 4 8 9 10 \\
+% 若該題無輸出（或無輸入），對應參數留空即可，該區塊會自動省略；
+% 若兩者都有，會並排顯示（左輸入、右輸出）。
+% 樣式做成終端機／文字檔的樣子（標題列 + 等寬字內容、無列號），
+% 但維持跟片語/範例一致的白底樣式，不用深色底。
+% 方框寬度會依內容自動收縮（用 varwidth 量出「自然」寬度），
+% 只有在內容真的太長時才會用到寬度上限並換行，
+% 避免像固定 6cm 那樣，較長的一行被硬性換成兩行。
+
+\newtcolorbox{iotermbox}[2][]{%
+    colback=white, colframe=black!65, coltext=black,
+    fonttitle=\ttfamily\footnotesize, colbacktitle=black!65, coltitle=white,
+    title={#2}, sharp corners, boxrule=0.5mm, boxsep=0mm,
+    left=3mm, right=3mm, top=1.5mm, bottom=1.5mm,
+    halign=left, #1,
+}
+
+\newsavebox{\iotermmeasurebox}
+\newlength{\iotermwidth}
+\newlength{\iotermwidtha}
+\newlength{\iotermwidthb}
+
+% \iotermsetwidth{寬度上限}{標題}{內容}
+% 用 varwidth 量出內容在不超過寬度上限的情況下，自然需要的寬度；
+% 同時量出標題列（等寬字、footnotesize）的寬度，取兩者較大值，
+% 再加上 iotermbox 左右留白（3mm+3mm）與框線寬度後存進 \iotermwidth，
+% 供設定 iotermbox 的 width 使用，這樣標題文字才不會被裁掉。
+\newcommand{\iotermsetwidth}[3]{%
+    \sbox{\iotermmeasurebox}{\begin{varwidth}{#1}\ttfamily\raggedright\noindent\ignorespaces#3\strut\end{varwidth}}%
+    \setlength{\iotermwidth}{\wd\iotermmeasurebox}%
+    \sbox{\iotermmeasurebox}{\ttfamily\footnotesize#2}%
+    \ifdim\wd\iotermmeasurebox>\iotermwidth
+        \setlength{\iotermwidth}{\wd\iotermmeasurebox}%
+    \fi
+    \setlength{\iotermwidth}{\dimexpr\iotermwidth+6mm+1mm\relax}%
+}
+
+% 已知 LaTeX 陷阱：\\ 後面緊接 [ 會被誤判成 \\[<長度>] 的可選間距語法
+% （例如輸出剛好是 Python 的 list/dict repr，像 ['a', 'b']，寫在 \\ 換行之後），
+% 導致 "Missing number" / "Illegal unit of measure" 之類的編譯錯誤。
+% 曾經嘗試在這裡局部重新定義 \\ 來自動閃避，但因為下面 tabular 環境本身也會
+% 局部重新定義 \\ 當作換行/換列用，兩者互相干擾反而炸得更嚴重，已還原成原始寫法。
+% 目前的解法是呼叫端（章節 draft.tex）在 \\ 後面緊接 [ 的地方手動改成 \\{}——
+% 這件事已經寫進 references/stage-prompts/draft.md 跟 SKILL.md，draft 階段
+% 编譯驗證時本來就會抓到這個錯誤並自行修正，不需要在這裡改動共用巨集。
+\newcommand{\iosample}[2]{%
+    \begin{center}
+    \def\tmpinput{#1}%
+    \def\tmpoutput{#2}%
+    \ifx\tmpinput\empty
+        \iotermsetwidth{\linewidth}{output}{#2}%
+        \begin{iotermbox}[width=\iotermwidth]{output}
+        \ttfamily\raggedright\noindent\ignorespaces #2
+        \end{iotermbox}
+    \else\ifx\tmpoutput\empty
+        \iotermsetwidth{\linewidth}{input}{#1}%
+        \begin{iotermbox}[width=\iotermwidth]{input}
+        \ttfamily\raggedright\noindent\ignorespaces #1
+        \end{iotermbox}
+    \else
+        \iotermsetwidth{0.46\linewidth}{input}{#1}%
+        \setlength{\iotermwidtha}{\iotermwidth}%
+        \iotermsetwidth{0.46\linewidth}{output}{#2}%
+        \setlength{\iotermwidthb}{\iotermwidth}%
+        \begin{tabular}{@{}c@{\hspace{1cm}}c@{}}
+        \begin{iotermbox}[width=\iotermwidtha,valign=top]{input}
+        \ttfamily\raggedright\noindent\ignorespaces #1
+        \end{iotermbox}
+        &
+        \begin{iotermbox}[width=\iotermwidthb,valign=top]{output}
+        \ttfamily\raggedright\noindent\ignorespaces #2
+        \end{iotermbox}
+        \\
+        \end{tabular}
+    \fi\fi
+    \end{center}
+}
+
+\endinput

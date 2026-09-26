@@ -1,0 +1,908 @@
+\chapter{除錯與讀懂錯誤訊息}
+\label{ch:debugging}
+
+程式碼跑不動、螢幕跳出一片紅字，這件事你在第一章已經親身經歷過兩次：漏了一個引號的時候，
+Python 丟出 \texttt{SyntaxError}；把 \texttt{print} 打成 \texttt{pint} 的時候，Python
+丟出 \texttt{NameError}。那時候你學到的是一個求生技巧：紅字不用整段從頭讀到尾，先看最後
+一行、掃到錯誤類型跟訊息，就抓到大半個線索了。
+
+這一章要做的事，是把那個求生技巧升級成一套真正管用的排查方法，分四段推進：
+
+\begin{enumerate}
+\item 先把你的「錯誤字典」擴大，除了已經認識的 \texttt{SyntaxError}、\texttt{NameError}，
+再加上五個你接下來寫程式一定會撞見的老朋友：\texttt{TypeError}、\texttt{AttributeError}、
+\texttt{ValueError}、\texttt{IndexError}、\texttt{KeyError}，每一種都對應一種具體的犯錯
+情境，看到訊息就能立刻猜到問題大概出在哪裡。
+\item 回到「讀 traceback」這件事本身，這次的程式碼不再只有一兩行；你已經學過函式，程式碼
+裡開始出現函式呼叫函式的情況，traceback 也會跟著變長，這段要教你怎麼在一長串
+\texttt{File}、\texttt{line} 裡，順著呼叫鏈找到真正該修的地方。
+\item 處理一個更麻煩的情況：程式沒有崩潰、沒有紅字，卻給了你錯的答案。這種「安靜的錯」
+比丟例外的錯更難抓，因為沒有現成的錯誤訊息可以讀，你得自己主動出擊，一邊用「把懷疑範圍
+砍半」的思路縮小搜尋範圍，一邊用 \texttt{print()} 一步步把程式內部到底發生了什麼事挖出來。
+\item 介紹 \texttt{assert}，一個讓你先把自己的假設寫進程式碼裡的工具，如果哪天假設不成立，
+程式會馬上告訴你，不用等到很多行程式碼之後才崩潰在一個完全看不出原因的地方；這段也會順便
+講清楚一件容易搞混的事：\texttt{assert} 跟你在檔案與例外那一章學過的 \texttt{try/except}，
+到底該用哪一個、分工在哪裡。
+\end{enumerate}
+
+讀完這一章，紅字對你來說不會再是「完蛋了」的訊號，會變成程式在告訴你「往這裡看」的路標。
+
+在正式開始之前，先花一句話複習：\texttt{SyntaxError} 是 Python 連「讀」你的程式碼這一步
+都卡住了，代表程式碼不符合語法規則；\texttt{NameError} 是 Python 找不到一個叫這個名字的
+東西，通常是打錯字或忘了先定義。這兩個你已經很熟了，接下來要把你認識的錯誤類型，從兩種
+擴充到七種。
+
+\section{型別不對：TypeError}
+\label{sec:type-error}
+
+\texttt{TypeError} 是「型別不合」的意思，你叫 Python 做一件事，但它手上這幾個東西的種類
+兜不起來，沒辦法照你的要求做。這種錯誤最常出現在兩種情境：把不同型別的東西直接湊在一起做
+運算，或是呼叫函式時給的東西跟函式原本期待的對不上。
+
+\begin{code}{python}{TypeError 常見寫法}
+text + number        # 字串不能直接跟數字相加
+function_name(argument)     # 引數的數量／型別要跟函式定義一致
+\end{code}
+
+先看第一種情境，把字串跟數字直接相加：
+
+\begin{example}{python}{(type-error-concat.py) 印出分數報告}
+name = "Alice"
+score = 87
+print(name + "'s score: " + score)
+\end{example}
+
+存檔執行後：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "type-error-concat.py", line 3, in <module>
+    print(name + "'s score: " + score)
+          ~~~~~~~~~~~~~~~~~~~~^~~~~~~
+TypeError: can only concatenate str (not "int") to str
+\end{verbatim}
+
+\texttt{TypeError} 的意思是「型別不合」；\texttt{can only concatenate str (not "int")
+to str} 更具體地說：「字串只能跟字串相接，你這裡想接的卻是一個 \texttt{int}（整數）」。
+\texttt{score} 是數字，不是文字，Python 沒辦法把數字直接「接」在字串後面。修法是先用
+\texttt{str()} 把數字轉成字串：\texttt{name + "'s score: " + str(score)}。
+
+再看第二種情境，呼叫函式時，給的引數兜不起來：
+
+\begin{example}{python}{(type-error-missing-arg.py) 計算商品總價}
+def calc_total_price(unit_price, quantity):
+    return unit_price * quantity
+
+print(calc_total_price(35))
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "type-error-missing-arg.py", line 4, in <module>
+    print(calc_total_price(35))
+          ~~~~~~~~~~~~~~~~^^^^
+TypeError: calc_total_price() missing 1 required positional argument: 'quantity'
+\end{verbatim}
+
+這條訊息很老實：\texttt{calc\_total\_price()} 這個函式定義時要兩個引數，你呼叫的時候只
+給了一個，少了 \texttt{quantity}。這類 \texttt{TypeError} 不一定是「數量」給錯，也可能是
+「型別」給錯，例如同一個函式，如果呼叫時把折扣率誤打成一段文字（本來該是數字），Python
+在函式內部真正要做乘法、減法運算的那一行才會爆出來，錯誤訊息會變成類似
+\texttt{unsupported operand type(s) for -: 'int' and 'str'}，意思一樣：兩個型別不合，
+沒辦法做這個運算。
+
+\keypoint{看到 \texttt{TypeError}，先問自己兩個問題：「這裡的東西型別對嗎？」「函式要的
+引數，我是不是少給了、或給錯種類了？」訊息裡通常會直接點名是哪兩種型別衝突，順著這個線索
+去對照程式碼，八九不離十就能找到問題。}
+
+\section{方法不存在：AttributeError}
+\label{sec:attribute-error}
+
+\texttt{AttributeError} 是「這個東西身上根本沒有你要呼叫的那個方法」的意思。它常常出現
+在你以為一個變數是某種型別，但因為前面某一步，它其實已經變成另一種型別，而新的型別身上沒有
+你接下來呼叫的那個方法。
+
+最容易踩到的情況，是第 \ref{ch:lists} 章提過的一個小陷阱：很多會修改清單的方法
+（像 \texttt{sort()}、\texttt{append()}、\texttt{insert()}、\texttt{remove()}）預設回傳
+的是 \texttt{None}，不是改好的那份清單。如果你把回傳值重新指定給原本的變數，這個變數就會
+被名字牌重新貼到 \texttt{None} 這個物件上，之後對它呼叫任何清單方法，都會撞上
+\texttt{AttributeError}。
+
+\begin{code}{python}{AttributeError 常見寫法}
+variable = variable.sort()     # sort() 回傳 None，所以 variable 現在指向 None
+variable.append(new_item)      # 對 None 呼叫 list 的方法會丟出 AttributeError
+\end{code}
+
+\begin{example}{python}{(attr-error-names.py) 排序後加入新成員}
+names = ["Alice", "Bob", "Charlie"]
+names = names.sort()
+names.append("Taylor")
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "attr-error-names.py", line 3, in <module>
+    names.append("Taylor")
+    ^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'append'
+\end{verbatim}
+
+\texttt{AttributeError: 'NoneType' object has no attribute 'append'} 這句話拆開來看：
+\texttt{'NoneType'} 是 \texttt{None} 這個特殊值的型別名稱，意思是「一個型別是
+\texttt{NoneType} 的物件身上，沒有 \texttt{append} 這個屬性（方法）」。
+
+回頭看程式碼：\texttt{names.sort()} 把 \texttt{names} 這份清單原地排序，但它的回傳值是
+\texttt{None}；第二行 \texttt{names = names.sort()} 把 \texttt{names} 這張名字牌，從
+原本指著清單的物件，改貼到了 \texttt{None} 身上。等到第三行呼叫
+\texttt{names.append(...)}，\texttt{names} 早就不是清單了，是 \texttt{None}，自然找不到
+\texttt{append} 這個方法。修法很直接：把 \texttt{names = names.sort()} 這一行改成單獨
+一行 \texttt{names.sort()}，不要把回傳值重新指定給 \texttt{names}。
+
+\texttt{AttributeError} 第二個常見來源，是方法名稱本身打錯字。這種情況型別完全沒有跑掉，
+單純是手指打滑：
+
+\begin{example}{python}{(attr-error-typo.py) 方法名稱打錯字}
+scores = [82, 91, 76]
+scores.apend(88)
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "attr-error-typo.py", line 2, in <module>
+    scores.apend(88)
+    ^^^^^^^^^^^^
+AttributeError: 'list' object has no attribute 'apend'. Did you mean: 'append'?
+\end{verbatim}
+
+\texttt{scores} 明明是一份 list，型別完全沒問題，問題出在 \texttt{apend} 這個名字，
+list 身上根本沒有叫這個名字的方法，正確拼法是 \texttt{append}。比較新版的 Python 甚至會
+貼心地在錯誤訊息最後加上 \texttt{Did you mean: 'append'?}，直接把最可能的正確拼法猜給你
+看，這種提示值得養成習慣去讀，往往一眼就能抓到打錯字的地方。
+
+\keypoint{看到 \texttt{AttributeError: 'X' object has no attribute 'Y'}，先確認這個
+「\texttt{'X'} 型別」是不是你原本以為的型別：如果型別本身就不對，往回找是哪一行把這個
+變數的名字牌改貼到別的物件上了，\texttt{sort()}、\texttt{append()} 這類回傳 \texttt{None}
+的方法是最常見的肇事者；如果型別是對的，那就檢查 \texttt{Y}（方法名稱）是不是打錯字，
+訊息後面如果帶著 \texttt{Did you mean} 的提示，通常就是答案。}
+
+\stylepoint{懷疑 \texttt{AttributeError} 是型別跑掉造成的，可以在出錯的那一行前面插一行
+\texttt{print(type(variable))}，把它目前實際的型別印出來看看，跟你以為的型別是否一致。這個
+技巧在本章稍後談「用 print 主動除錯」時還會再用到。}
+
+\section{值不合理：ValueError}
+\label{sec:value-error}
+
+\texttt{ValueError} 早在第 \ref{ch:variables} 章型別轉換時就出現過：型別轉換函式如果拿到一個內容不合理、
+沒辦法真的轉換成目標型別的值，就會丟出 \texttt{ValueError}。跟 \texttt{TypeError} 不
+一樣的地方在於：\texttt{TypeError} 是型別本身就對不上（例如硬要把清單當數字加），
+\texttt{ValueError} 是型別本身沒問題（都是字串），只是這個字串裡裝的內容轉換不了。
+
+\begin{code}{python}{ValueError 常見寫法}
+int(text)      # 如果文字不是合法的整數格式就會出錯
+float(text)    # 如果文字不是合法的數字格式就會出錯
+\end{code}
+
+\begin{example}{python}{(value-error-age.py) 讀取問卷年齡}
+age_text = "twenty-five"
+age = int(age_text)
+print(age)
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "value-error-age.py", line 2, in <module>
+    age = int(age_text)
+ValueError: invalid literal for int() with base 10: 'twenty-five'
+\end{verbatim}
+
+\texttt{invalid literal for int() with base 10: 'twenty-five'} 這句話在說：
+「twenty-five」這個字串，用十進位的規則去解讀，不是一個合法的整數寫法。\texttt{int()}
+只認得阿拉伯數字組成的字串（像 \texttt{"25"}），拼出來的英文數字詞「twenty-five」對它
+來說只是一串它看不懂的符號。這種錯誤特別容易發生在處理使用者輸入或外部資料的時候，你以為
+對方會乖乖打數字，實際上拿到的內容五花八門。
+
+這正是 EAFP 精神該派上用場的地方：與其在轉換之前先寫一堆判斷式，檢查這段文字是不是「看起來
+像數字」，不如直接呼叫 \texttt{int()}，用第 \ref{ch:files-exceptions} 章學過的 \texttt{try/except} 接住
+\texttt{ValueError} 就好：
+
+\begin{example}{python}{(value-error-try.py) 用 try/except 接住轉換失敗}
+age_text = "twenty-five"
+try:
+    age = int(age_text)
+except ValueError:
+    print("Could not parse the age, defaulting to age 0")
+    age = 0
+print(age)
+\end{example}
+
+\iosample{}{Could not parse the age, defaulting to age 0 \\
+0 \\}
+
+\texttt{float()} 遇到轉換不了的內容，一樣會丟出 \texttt{ValueError}，只是訊息的措辭跟
+\texttt{int()} 不太一樣：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "value-error-float.py", line 2, in <module>
+    price = float(price_text)
+ValueError: could not convert string to float: 'fifteen dollars'
+\end{verbatim}
+
+\texttt{int()} 的訊息習慣說 \texttt{invalid literal for int() with base 10}，
+\texttt{float()} 則是 \texttt{could not convert string to float}，兩句話字面不同，但
+意思一樣：手上這段字串，不是這個型別轉換函式看得懂的格式。習慣了 \texttt{int()} 的訊息
+之後，看到 \texttt{float()} 的版本也不用重新學一遍，抓到「\texttt{ValueError} 加上
+轉換函式的名字」這個共同的形狀就夠了。
+
+\keypoint{\texttt{TypeError} 跟 \texttt{ValueError} 很容易搞混，分辨的訣竅是問：型別
+本身對不對？如果型別本身就用錯了（例如拿一個清單當字典的鍵、字串硬要加數字），是
+\texttt{TypeError}；如果型別沒問題，只是裡面的內容不合理、轉換不出你要的結果（例如
+\texttt{int("twenty-five")}、\texttt{float("fifteen dollars")}），是 \texttt{ValueError}。}
+
+\section{超出範圍：IndexError}
+\label{sec:index-error}
+
+\texttt{IndexError} 專屬於 list（還有字串）這類「有順序、可以用位置去拿東西」的資料，
+你要的位置根本不存在，list 沒那麼長。這種錯誤特別容易發生在你「以為」清單長度是固定的，
+但其實它是會變的（例如根據使用者輸入而長短不一）。
+
+\begin{code}{python}{IndexError 常見寫法}
+my_list[index]     # 索引必須小於清單目前的長度，否則會出錯
+\end{code}
+
+\begin{example}{python}{(index-error-survey.py) 讀取問卷回答}
+survey_answers = ["Very satisfied", "Neutral"]
+print("4th respondent's answer: " + survey_answers[3])
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "index-error-survey.py", line 2, in <module>
+    print("4th respondent's answer: " + survey_answers[3])
+                                        ~~~~~~~~~~~~~~^^^
+IndexError: list index out of range
+\end{verbatim}
+
+\texttt{survey\_answers} 只收到兩份回答，索引只有 \texttt{0} 跟 \texttt{1} 可以用，程式
+裡卻寫死了 \texttt{[3]}，以為第四位受訪者一定存在。這是很典型的「你的程式碼假設了一個
+固定長度，但實際資料沒那麼長」的情況，寫死的索引數字，正是最該懷疑的地方。
+
+另一種常見的寫法是迴圈裡的位置算錯，例如故意讓迴圈多跑一輪：
+
+\begin{verbatim}
+weekly_expenses = [120, 340, 95]
+for i in range(1, len(weekly_expenses) + 1):
+    print(weekly_expenses[i])
+\end{verbatim}
+
+這段程式碼會先正常印出 \texttt{340}、\texttt{95}，跑到最後一輪 \texttt{i} 變成 \texttt{3}
+時才爆出 \texttt{IndexError}。\texttt{weekly\_expenses} 只有三個元素，合法的索引是
+\texttt{0}、\texttt{1}、\texttt{2}，並沒有 \texttt{3}。
+
+\stylepoint{看到 \texttt{IndexError}，先檢查兩件事：這個清單的長度是固定的還是會變的？
+如果是會變的，索引是不是被你寫死了；如果是用 \texttt{range()} 算出來的，範圍是不是多算
+了一輪。}
+
+\section{找不到 key：KeyError}
+\label{sec:key-error}
+
+dict 用「鍵（key）」去查「值（value）」，但如果你查的那個鍵根本沒被放進這個 dict 裡，
+Python 不會幫你猜一個答案，會直接丟出 \texttt{KeyError}。
+
+\begin{code}{python}{KeyError 常見寫法}
+my_dict[key]     # 如果字典裡沒有這個鍵就會出錯
+\end{code}
+
+\begin{example}{python}{(key-error-word-count.py) 統計字出現的次數}
+word_counts = {"cat": 3, "dog": 5}
+print(word_counts["bird"])
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "key-error-word-count.py", line 2, in <module>
+    print(word_counts["bird"])
+          ~~~~~~~~~~~^^^^^^^^
+KeyError: 'bird'
+\end{verbatim}
+
+\texttt{KeyError: 'bird'} 直接把找不到的那個鍵印給你看，\texttt{word\_counts} 裡只登記了
+\texttt{"cat"} 跟 \texttt{"dog"}，從來沒有出現過 \texttt{"bird"} 這個鍵，查詢自然失敗。
+
+這種「查詢一個東西，但它可能根本不存在」的情境，正是第 \ref{ch:files-exceptions} 章 \texttt{try/except}／
+\texttt{dict.get()} 派上用場的地方，如果你已經預期某個鍵可能不存在，直接用那時候學過的
+方式接住，會比讓程式在這裡整個崩潰更好。這一章後半段會再回頭把這件事講得更完整。
+
+這也呼應第 \ref{ch:files-exceptions} 章教的 EAFP 精神：不用動手前把條件檢查得滴水不漏，先讓程式跑，出錯了再用
+這一章教的 traceback 抓出問題、用 \texttt{try/except} 接住就好。
+
+\begin{drills}[label=drills:error-types]
+\item 這段程式碼執行後，會是哪一種錯誤類型？
+\begin{verbatim}
+temperatures = [22, 25, 19, 21]
+print("Day 5 temperature: " + str(temperatures[4]))
+\end{verbatim}
+\item 這段程式碼執行後，會是哪一種錯誤類型？
+\begin{verbatim}
+menu_prices = {"milk tea": 50, "black tea": 35}
+print(menu_prices["green tea"])
+\end{verbatim}
+\item 這段程式碼執行後，會是哪一種錯誤類型？
+\begin{verbatim}
+total_score = 90
+print(total_scroe)
+\end{verbatim}
+\item 這段程式碼執行後，會是哪一種錯誤類型？
+\begin{verbatim}
+inventory = {"apple": 10, "banana": 5}
+inventory.add("cherry")
+\end{verbatim}
+\item 這段程式碼執行後，會是哪一種錯誤類型？
+\begin{verbatim}
+weight_text = "thirty-five"
+weight = int(weight_text)
+\end{verbatim}
+\end{drills}
+
+\section{讀懂變長的 traceback：多層函式呼叫}
+\label{sec:call-stack}
+
+前面幾個範例的程式都只有短短兩三行，traceback 裡自然只會出現一組
+\texttt{File}／\texttt{line}。但你已經學過函式，程式碼開始出現函式呼叫函式的情況，一個
+函式裡面又呼叫了另一個函式，這時候如果錯誤發生在最裡面那一層，traceback 會把整條呼叫鏈
+都攤開給你看，不只一組 \texttt{File}／\texttt{line}，會有好幾組。
+
+\begin{example}{python}{(call-stack-average.py) 印出成績報告}
+def calculate_average(scores):
+    return sum(scores) / len(scores)
+
+def print_score_report(student_name, scores):
+    avg = calculate_average(scores)
+    print(f"{student_name}'s average score: {avg}")
+
+print_score_report("Alice", [])
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "call-stack-average.py", line 8, in <module>
+    print_score_report("Alice", [])
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "call-stack-average.py", line 5, in print_score_report
+    avg = calculate_average(scores)
+  File "call-stack-average.py", line 2, in calculate_average
+    return sum(scores) / len(scores)
+           ~~~~~~~~~~~~^~~~~~~~~~~~~
+ZeroDivisionError: division by zero
+\end{verbatim}
+
+跟前面幾種錯誤一樣，先看最後一行：\texttt{ZeroDivisionError} 是除數為 0 時，Python
+丟出的錯誤。\index{ZeroDivisionError}這一次 traceback 有三組 \texttt{File}：
+
+\begin{itemize}
+\item 最下面一組（\texttt{line 2}，在 \texttt{calculate\_average} 裡）才是真正出錯的
+地方，\texttt{sum(scores) / len(scores)} 這一行，除數 \texttt{len(scores)} 剛好是
+\texttt{0}，因為傳進來的 \texttt{scores} 是一份空清單。
+\item 中間一組（\texttt{line 5}，在 \texttt{print\_score\_report} 裡）告訴你：
+\texttt{calculate\_average} 這次是被 \texttt{print\_score\_report} 呼叫的，而且是在它
+的第 5 行呼叫的。
+\item 最上面一組（\texttt{line 8}，在 \texttt{<module>}，也就是程式最外層）告訴你這整條
+呼叫鏈最初是從哪裡發動的：\texttt{print\_score\_report("Alice", [])} 這一行，傳進去的
+成績清單根本是空的。
+\end{itemize}
+
+順著這條鏈子往回看，你會發現真正該修的不只是「除法會除以 0」這件事本身，還要往回問
+「這個空清單是從哪裡來的？」，也許是 \texttt{print\_score\_report} 應該在呼叫
+\texttt{calculate\_average} 之前，先確認清單不是空的。
+
+\keypoint{traceback 由上到下，其實是呼叫發生的順序：最上面是最早發生的呼叫，最下面才是
+真正出錯的那一行；讀的時候還是先看最下面的錯誤類型跟訊息抓大方向，再回頭用中間這幾組
+\texttt{File}／\texttt{line} 定位是「哪一層」呼叫出的問題，兩件事不衝突，只是這次要多做
+一步：確認是呼叫鏈裡的哪一層發動的。}
+
+\begin{drills}[label=drills:call-stack]
+\item 有一段程式，執行後出現以下 traceback：
+\begin{verbatim}
+Traceback (most recent call last):
+  File "cart.py", line 8, in <module>
+    print_shopping_summary(["apple", "banana"], [])
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "cart.py", line 5, in print_shopping_summary
+    avg_price = get_average_price(prices)
+  File "cart.py", line 2, in get_average_price
+    return sum(prices) / len(prices)
+           ~~~~~~~~~~~~^~~~~~~~~~~~~
+ZeroDivisionError: division by zero
+\end{verbatim}
+真正執行到出錯那一刻的是哪一個檔案、哪一行、哪個函式？這次呼叫又是從程式的哪裡發動的、
+傳進去的是什麼？
+\end{drills}
+
+\section{程式很長、不知道從哪裡開始查：用二分法縮小範圍}
+\label{sec:bisect-debug}
+
+traceback 很好用的前提是程式真的丟出了例外。但接下來要面對的情況更常見：程式一路執行到
+結束，沒有任何紅字，答案卻是錯的。這種時候你連 traceback 這個路標都沒有，只能自己動手找
+問題。
+
+當程式只有三五行，用眼睛掃過去可能就找到問題了；但如果整個函式有十幾行、甚至呼叫了
+好幾個其他函式，從頭到尾一行一行看效率很低。這裡有一個好用的思路，叫二分法：
+
+\begin{itemize}
+\item 在程式執行過程的正中間找一個點，檢查那個時間點的狀態對不對。
+\item 如果中間就已經不對了，問題出在前半段；如果中間是對的，問題出在後半段。
+\item 每檢查一次，就能把懷疑範圍砍半，比從頭到尾每一行都檢查快得多。
+\end{itemize}
+
+\begin{example}{python}{(bisect-temps-buggy.py) 計算炎熱日的平均氣溫}
+def analyze_temperatures(temps):
+    hot_days = []
+    for t in temps:
+        if t > 30:
+            hot_days.append(t)
+    total = 0
+    for t in hot_days:
+        total = t
+    average = total / len(hot_days)
+    return average
+
+temps = [28, 32, 35, 29, 31, 33]
+print(analyze_temperatures(temps))
+\end{example}
+
+\iosample{}{8.25 \\}
+
+六筆氣溫裡，超過 30 度的有 32、35、31、33 四筆，這四筆的平均應該是 32.75，但程式印出
+8.25。這個函式做了兩件事：先過濾出炎熱日，再把它們加總平均，寫在兩段各自獨立的迴圈裡。如果
+從頭到尾一行一行讀，要在兩段迴圈之間來回對照並不輕鬆，這時候正好可以用二分法，從中間切一刀：
+在兩段迴圈之間插入 \texttt{print()}，檢查篩選出來的 \texttt{hot\_days} 對不對：
+
+\begin{example}{python}{(bisect-temps-print.py) 從中間插入 print 檢查}
+def analyze_temperatures(temps):
+    hot_days = []
+    for t in temps:
+        if t > 30:
+            hot_days.append(t)
+    print(f"hot_days = {hot_days}")
+    total = 0
+    for t in hot_days:
+        total = t
+    print(f"total = {total}")
+    average = total / len(hot_days)
+    return average
+
+temps = [28, 32, 35, 29, 31, 33]
+print(analyze_temperatures(temps))
+\end{example}
+
+\iosample{}{hot\_days = [32, 35, 31, 33] \\
+total = 33 \\
+8.25 \\}
+
+第一行印出來的 \texttt{hot\_days = [32, 35, 31, 33]} 完全正確，代表問題不在前半段的
+篩選迴圈，範圍一口氣砍掉一半，只剩下加總的那段迴圈值得懷疑。再看第二行：
+\texttt{total = 33}，這只是 \texttt{hot\_days} 裡最後一個元素，不是四個數字加起來的
+總和，問題就在這裡。往回看程式碼，第二段迴圈裡寫的是 \texttt{total = t}，每一輪都把
+\texttt{total} 整個換掉，跟第 \ref{ch:loops} 章學過的累加寫法對照一下就能看出來，這裡少了一個加號，
+應該寫成 \texttt{total += t} 才對：
+
+\begin{verbatim}
+def analyze_temperatures(temps):
+    hot_days = []
+    for t in temps:
+        if t > 30:
+            hot_days.append(t)
+    total = 0
+    for t in hot_days:
+        total += t
+    average = total / len(hot_days)
+    return average
+\end{verbatim}
+
+改完之後重新執行，會正確印出 \texttt{32.75}。
+
+\keypoint{二分法除錯的精神不是每次都要剛好從程式正中間切一刀，是找一個「這裡的結果我可以
+判斷對不對」的中繼點，插入 \texttt{print()} 確認狀態，再依照結果決定往前半段還是後半段
+繼續縮小範圍。函式裡如果有好幾個各自獨立的步驟（像這裡的「先篩選、再加總」），步驟跟步驟
+之間往往就是最自然的切點。}
+
+\begin{drills}[label=drills:bisect-debug]
+\item 一個函式做了三件事：先把清單裡的數字都乘以 2、再篩選出偶數、最後加總。執行後總和
+不對，你會在哪兩個位置插入 \texttt{print()} 來縮小範圍？各自預期看到什麼？
+\end{drills}
+
+\section{程式沒有崩潰，但結果不對：用 print 主動除錯}
+\label{sec:print-debug}
+
+前面幾段的錯誤都會讓程式崩潰、直接把線索（traceback）遞到你手上。但很多時候程式跑得好好
+的、沒有半個紅字，答案卻是錯的。這種「安靜的錯」比丟例外的錯更麻煩，因為沒有現成的錯誤
+訊息可以讀，你得自己想辦法讓程式「說話」。
+
+最直接的做法，就是在你懷疑出問題的地方插入 \texttt{print()}，把中間過程的變數值印出來，
+對照「你以為它應該是什麼」跟「它實際上是什麼」。懷疑範圍如果很大，上一節教的二分法可以先
+幫你把範圍砍到剩下一兩行，這一節接著處理縮小範圍之後，該怎麼真正用 \texttt{print()}
+挖出問題。
+
+\begin{code}{python}{插入 print 除錯}
+print("debug:", variable_name)     # 在你懷疑有問題的地方印出目前的值
+\end{code}
+
+先看一段有問題的程式：它想算出一批成績裡有幾位及格，但輸出的數字明顯不對。
+
+\begin{example}{python}{(debug-passing-count.py) 統計及格人數}
+def count_passing_students(scores, passing_score):
+    passing_count = 0
+    for score in scores:
+        passing_count = 0
+        if score >= passing_score:
+            passing_count += 1
+    return passing_count
+
+scores = [55, 78, 92, 60, 88]
+print(count_passing_students(scores, 60))
+\end{example}
+
+\iosample{}{1 \\}
+
+五筆成績裡有 78、92、60、88 四筆及格，答案應該是 \texttt{4}，但程式印出 \texttt{1}。
+沒有任何紅字，程式「正常」執行完畢，只是答案是錯的，這正是最需要主動出擊的情況。把懷疑的
+地方（迴圈每一輪 \texttt{passing\_count} 的變化）插上 \texttt{print()}：
+
+\begin{example}{python}{(debug-passing-count-print.py) 加上 print 觀察每一輪}
+def count_passing_students(scores, passing_score):
+    passing_count = 0
+    for score in scores:
+        passing_count = 0
+        print(f"Checking {score}, current passing_count = {passing_count}")
+        if score >= passing_score:
+            passing_count += 1
+    return passing_count
+
+scores = [55, 78, 92, 60, 88]
+print(count_passing_students(scores, 60))
+\end{example}
+
+\iosample{}{Checking 55, current passing\_count = 0 \\
+Checking 78, current passing\_count = 0 \\
+Checking 92, current passing\_count = 0 \\
+Checking 60, current passing\_count = 0 \\
+Checking 88, current passing\_count = 0 \\
+1 \\}
+
+問題一眼就看出來了：每一輪 \texttt{passing\_count} 都在印出的當下是 \texttt{0}，它從來
+沒有把上一輪累加的結果留住，因為 \texttt{passing\_count = 0} 這一行被放進了 \texttt{for}
+迴圈裡面，每一輪都重新歸零一次。修法是把這一行搬到迴圈外面，只在一開始歸零一次：
+
+\begin{verbatim}
+def count_passing_students(scores, passing_score):
+    passing_count = 0
+    for score in scores:
+        if score >= passing_score:
+            passing_count += 1
+    return passing_count
+\end{verbatim}
+
+改完之後重新執行，答案就會正確印出 \texttt{4}。
+
+\subsection*{寫出有意義的 print 除錯訊息}
+
+上面這個例子只印一個變數，一眼就能看懂哪個數字對應哪個東西。但除錯用的 \texttt{print()}
+一多，如果每一行都只印裸的數字，很快就會分不清楚哪一個數字是哪個變數、是哪一輪印出來的。
+比較一下同一段程式，兩種不同的除錯訊息寫法：
+
+\begin{example}{python}{(print-msg-bad.py) 沒有標籤的除錯訊息}
+def calculate_average_spending(receipts):
+    total = 0
+    count = 0
+    for amount in receipts:
+        print(amount)
+        total += amount
+        count += 1
+    return total / count
+
+receipts = [320, 150, 480]
+print(calculate_average_spending(receipts))
+\end{example}
+
+\iosample{}{320 \\
+150 \\
+480 \\
+316.6666666666667 \\}
+
+這四行輸出裡，前三行是除錯用的 \texttt{print(amount)}，最後一行才是函式真正的回傳值，
+但光看數字完全分不出哪個是哪個，如果程式裡同時有好幾個變數在印，更容易看到眼花。改成幫
+每個值加上標籤，說清楚「這是什麼」跟「當下發生在哪個階段」：
+
+\begin{example}{python}{(print-msg-good.py) 加上標籤的除錯訊息}
+def calculate_average_spending(receipts):
+    total = 0
+    count = 0
+    for amount in receipts:
+        print(f"amount = {amount}, running total = {total}")
+        total += amount
+        count += 1
+    return total / count
+
+receipts = [320, 150, 480]
+print(calculate_average_spending(receipts))
+\end{example}
+
+\iosample{}{amount = 320, running total = 0 \\
+amount = 150, running total = 320 \\
+amount = 480, running total = 470 \\
+316.6666666666667 \\}
+
+用 f-string 幫每個數字加上「這是什麼變數」「這是哪一輪」的標籤之後，就算同時印好幾個
+變數、印好幾輪，也能一眼看出每個數字的來歷，不用回頭去對照程式碼第幾行才知道印出來的是
+哪個東西。除錯訊息值不值得多打幾個字，差別往往就在這裡。
+
+\stylepoint{懷疑某個變數的型別跑掉（像是前面 \texttt{AttributeError} 那一節提到的
+情況），除了印值本身，也可以順便印 \texttt{type(variable)}，一次確認「值對不對」跟「型別
+對不對」兩件事，不用等到真的撞上 \texttt{AttributeError} 才回頭查。}
+
+\keypoint{\texttt{print()} 除錯法用完之後，記得把除錯用的那幾行刪掉或註解掉，不然它們會
+跟正式的輸出混在一起，讓別人（或未來的你）看不懂哪些是「真正的結果」、哪些是「除錯的
+碎碎念」。之後如果程式規模變大，會有更適合大量除錯訊息的專門工具，這本書用
+\texttt{print()} 就夠了，它門檻最低，也是你從第一章就已經會用的工具。}
+
+\begin{drills}[label=drills:print-debug]
+\item 下面這段程式想算出購物車的總金額，但輸出結果不對：
+\begin{verbatim}
+def calculate_cart_total(items):
+    total = 0
+    for item_name, price, quantity in items:
+        total = price * quantity
+    return total
+
+cart = [("apple", 20, 3), ("banana", 15, 2)]
+print(calculate_cart_total(cart))
+\end{verbatim}
+不要真的動手執行，用紙上推演的方式回答：你會在哪幾個地方插入 \texttt{print()}？你預期
+會看到什麼樣的輸出，藉此發現問題出在哪裡？
+\item 下面這段程式印出來的除錯訊息完全沒有標籤，難以判讀：
+\begin{verbatim}
+def find_max_price(prices):
+    max_price = 0
+    for p in prices:
+        print(p)
+        if p > max_price:
+            max_price = p
+    return max_price
+\end{verbatim}
+把 \texttt{print(p)} 改寫成一行更有意義的除錯訊息，讓輸出清楚說明這個數字是目前這一輪
+的 \texttt{p}，還是目前為止的 \texttt{max\_price}。
+\end{drills}
+
+\section{assert：把假設寫進程式碼裡}
+\label{sec:assert}
+
+寫程式的時候，你心裡常常會有一些「這裡應該一定會怎樣」的假設，例如一個算折扣後金額的
+函式，你會假設傳進來的價格一定是正數。
+
+如果這個假設有一天不成立，你會希望程式馬上停下來、清楚告訴你「你的假設錯了」，不用等到
+一個荒謬的數字（例如負的金額）悄悄流到程式後面幾十行之後，才在一個完全看不出原因的地方
+出狀況。\texttt{assert} 就是讓你把這種假設直接寫進程式碼裡的工具。\index{assert}
+
+\begin{code}{python}{assert 語句}
+assert condition, "message to show if the condition is False"
+\end{code}
+
+\begin{example}{python}{(assert-discount.py) 計算折扣後金額}
+def apply_discount(price, discount_rate):
+    assert price > 0, "price must be positive"
+    return price * (1 - discount_rate)
+
+print(apply_discount(-100, 0.2))
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "assert-discount.py", line 5, in <module>
+    print(apply_discount(-100, 0.2))
+          ~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "assert-discount.py", line 2, in apply_discount
+    assert price > 0, "price must be positive"
+           ^^^^^^^^^
+AssertionError: price must be positive
+\end{verbatim}
+
+\texttt{assert condition, message} 的意思是：「檢查這個條件，如果條件是 \texttt{True}，什麼事都
+不會發生，程式繼續往下跑；如果條件是 \texttt{False}，馬上丟出
+\texttt{AssertionError}，並把後面那段訊息顯示出來」。\index{AssertionError}
+
+這裡呼叫 \texttt{apply\_discount(-100, 0.2)}，\texttt{price} 是 \texttt{-100}，不滿足
+\texttt{price > 0}，assert 就當場攔了下來。如果改成呼叫
+\texttt{apply\_discount(500, 0.2)}，因為 \texttt{500 > 0} 成立，assert 完全不會發出任何
+聲音，程式照樣算出 \texttt{400.0} 繼續執行，你平常根本不會注意到 assert 的存在，只有
+假設被打破的那一刻，它才會跳出來說話。
+
+\stylepoint{assert 失敗的時候，該做的事是回頭檢查「我的假設哪裡想錯了」，不是把那行
+assert 刪掉讓它閉嘴。assert 會失敗，通常代表程式在更早的地方就已經做錯事了，把它刪掉只
+是把問題藏起來，不是解決問題。}
+
+\keypoint{\texttt{assert} 跟你在第 \ref{ch:files-exceptions} 章學過的 \texttt{try/except}，聽起來都是在「處理
+可能出錯的情況」，但分工其實很不一樣：
+\begin{itemize}
+\item \texttt{try/except}（也就是先做、錯了再處理的 EAFP 精神）適合用在「這件事本來就
+可能因為外部因素失敗，而且失敗是你意料中、程式應該要能撐住繼續跑」的情境，例如檔案不
+存在、使用者亂打、字典裡查不到那個鍵（就像第 \ref{sec:key-error}~節看到的
+\texttt{KeyError}）。
+\item \texttt{assert} 則適合用在「這裡假設一定要成立」的情境：如果不成立，代表程式本身
+某個地方寫錯了，應該讓程式當場停下來，不該用 \texttt{try/except} 把
+\texttt{AssertionError} 接住、假裝沒事繼續跑，因為那等於是把一個已經知道有錯的程式，
+硬撐著繼續執行下去。
+\end{itemize}}
+
+\subsection*{assert 的限制：兩個容易踩的坑}
+
+\texttt{assert} 好用，但有兩個地方特別容易讓新手誤用，需要先講清楚。
+
+第一個是語法陷阱：把條件跟訊息用括號包在一起，變成一個 tuple。
+
+\begin{code}{python}{assert 常見的坑：條件誤包成 tuple}
+assert (condition, "message")   # 危險：這個括號會讓它變成 tuple，永遠是 True
+\end{code}
+
+\begin{example}{python}{(assert-tuple-trap.py) 誤把 assert 條件包成 tuple}
+def apply_discount(price, discount_rate):
+    assert (price > 0, "price must be positive")
+    return price * (1 - discount_rate)
+
+print(apply_discount(-100, 0.2))
+\end{example}
+
+\begin{verbatim}
+assert-tuple-trap.py:2: SyntaxWarning: assertion is always true, perhaps remove parentheses?
+  assert (price > 0, "price must be positive")
+-80.0
+\end{verbatim}
+
+這裡完全沒有出現 \texttt{AssertionError}，價格是 \texttt{-100} 這個明顯不合理的數字，
+照樣被拿去算出 \texttt{-80.0} 印出來，assert 形同虛設。原因藏在括號裡：
+\texttt{(price > 0, "price must be positive")} 這一整包，因為外層多包了一層括號、中間又用逗號
+隔開，被 Python 解讀成一個裝了兩個元素的 tuple（第 \ref{ch:tuples} 章學過的容器型別）。
+
+根據第 \ref{ch:conditionals} 章教過的 truthy/falsy 規則，非空的容器一律當作 \texttt{True}，這個 tuple 裡有兩個
+元素，不管 \texttt{price} 到底是多少，它永遠是非空的，所以這個 assert 不管 \texttt{price}
+是多少，永遠通過檢查。Python 自己也發現了這個常見的坑，執行時印出的
+\texttt{SyntaxWarning: assertion is always true, perhaps remove parentheses?} 就是在
+提醒你。
+
+正確寫法是拿掉外層括號，寫回原本 \texttt{assert condition, message} 的樣子，讓 Python
+讀成兩個獨立的東西，不是一整包 tuple。
+
+\keypoint{\texttt{assert condition, message} 中間那個逗號，是 assert 語法本身的一部分，不是用來
+把兩者包進同一個 tuple。只要在條件外面多加一層括號、把訊息也包進去，就會不小心造出一個
+恆真的 tuple，讓 assert 失去作用。如果執行程式時看到
+\texttt{SyntaxWarning: assertion is always true}，幾乎可以直接斷定就是這個坑，把外層
+括號拿掉即可。}
+
+第二個限制更根本：assert 是可以被整個關掉的。Python 執行程式時如果加上 \texttt{-O} 這個
+選項（例如 \texttt{python -O program.py}），所有的 assert 陳述句都會被直接跳過，連檢查
+都不會檢查，不管條件是真是假。用本節最開始的 \texttt{assert-discount.py} 示範，平常直接
+執行會照原本示範的方式丟出 \texttt{AssertionError}；但如果改成加上 \texttt{-O} 選項
+執行：
+
+\begin{verbatim}
+$ python3 assert-discount.py
+Traceback (most recent call last):
+  File "assert-discount.py", line 5, in <module>
+    print(apply_discount(-100, 0.2))
+          ~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "assert-discount.py", line 2, in apply_discount
+    assert price > 0, "price must be positive"
+           ^^^^^^^^^
+AssertionError: price must be positive
+
+$ python3 -O assert-discount.py
+-80.0
+\end{verbatim}
+
+同一段程式、同樣不合理的 \texttt{-100}，加上 \texttt{-O} 執行後，assert 完全沒有發揮
+作用，一路算出 \texttt{-80.0}。這代表 assert 只適合拿來抓「開發階段就該抓到、抓到了是
+在提醒自己犯了邏輯錯誤」的問題。
+
+像驗證使用者輸入是否合法、確認金額或密碼格式正確這類攸關程式正確性與安全性、無論如何都
+必須執行的檢查，該用第 \ref{ch:files-exceptions} 章學過的 \texttt{if} 搭配例外處理來處理，因為你沒辦法保證這段
+程式將來執行時，會不會被人不小心（或刻意）加上 \texttt{-O} 執行，讓原本該擋下來的檢查
+整個消失。
+
+\keypoint{把 assert 想成寫給自己看的除錯用檢查點，不是程式正式運作時保證一定會執行的
+保護機制。開發階段拿來快速抓自己的邏輯錯誤很好用，但任何「不管什麼情況都一定要擋下來」
+的檢查（輸入驗證、權限確認），都應該用 \texttt{if}／\texttt{try except} 來寫，不要依賴
+assert。}
+
+\begin{drills}[label=drills:assert]
+\item 幫下面這個函式加上一個合理的 \texttt{assert}，確保傳進來的邊長一定是正數：
+\begin{verbatim}
+def calculate_square_area(side_length):
+    return side_length ** 2
+\end{verbatim}
+\item 你要寫一段程式，讀取使用者從鍵盤輸入的年齡（文字），再用 \texttt{int()} 轉成數字。
+使用者有可能打了「二十」這種沒辦法轉換的內容，這種情況你會用 \texttt{assert} 還是
+\texttt{try/except} 來處理？為什麼？
+\item 你寫了一個「取清單中間那個元素」的函式，你自己在程式裡已經確保呼叫這個函式之前，
+清單一定不會是空的。如果不小心真的傳了一份空清單進來，代表的是使用者輸入有問題，還是
+你自己程式邏輯哪裡寫錯了？這種情況比較適合用 \texttt{assert} 還是 \texttt{try/except}？
+\item 你在程式裡看到這一行 assert，執行後卻發現不管條件寫得多離譜，好像都沒有真的擋下
+任何東西：
+\begin{verbatim}
+assert (age >= 0, "age cannot be negative")
+\end{verbatim}
+這裡的問題出在哪裡？該怎麼修正？
+\end{drills}
+
+紅字曾經是你最怕看到的東西，但走到這裡，你已經有一整套面對它的方法：
+
+\begin{itemize}
+\item 認得七種最常見的錯誤類型。
+\item 知道怎麼順著變長的 traceback 找到真正該修的地方。
+\item 遇到不報錯但答案不對的「安靜的錯」，知道怎麼用二分法縮小範圍、用有標籤的 print
+主動挖出線索。
+\item 學會用 assert 把自己的假設寫清楚，也知道它的限制在哪裡。
+\end{itemize}
+
+下次程式又跳出一片紅字，那不是「完蛋了」的訊號，會變成程式在告訴你「往這裡看」的提醒。
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:key-error}~節}
+\begin{enumerate}
+\item \texttt{IndexError}，\texttt{temperatures} 只有四筆資料，合法索引是
+\texttt{0}～\texttt{3}，\texttt{temperatures[4]} 超出範圍。
+\item \texttt{KeyError}，\texttt{menu\_prices} 裡沒有 \texttt{"green tea"} 這個鍵。
+\item \texttt{NameError}，變數叫 \texttt{total\_score}，但查詢時打成了
+\texttt{total\_scroe}，兩個拼法對不起來。
+\item \texttt{AttributeError}，dict 沒有 \texttt{add()} 這個方法（\texttt{add()} 是
+set 才有的方法），\texttt{inventory.add("cherry")} 會因為找不到這個方法而出錯。
+\item \texttt{ValueError}，\texttt{"thirty-five"} 不是 \texttt{int()} 認得的阿拉伯數字格式，
+轉換會失敗。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:call-stack}~節}
+\begin{enumerate}
+\item 真正執行到出錯那一刻的是 \texttt{cart.py} 第 2 行，在 \texttt{get\_average\_price}
+函式裡的 \texttt{sum(prices) / len(prices)}，因為 \texttt{prices} 是空清單、除數是
+\texttt{0}。這次呼叫是從 \texttt{cart.py} 第 5 行、\texttt{print\_shopping\_summary}
+函式裡的 \texttt{get\_average\_price(prices)} 發動的；而 \texttt{print\_shopping\_summary}
+本身又是被最外層第 8 行的呼叫（傳進了一份空的價錢清單）觸發的，真正該回頭檢查的是
+「這份價錢清單為什麼是空的」。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:bisect-debug}~節}
+\begin{enumerate}
+\item 可以先在「乘以 2」跟「篩選偶數」之間插入 \texttt{print()}，檢查乘以 2 之後的清單
+內容對不對；如果這裡是對的，再往後移，改成在「篩選偶數」跟「加總」之間插入
+\texttt{print()}，檢查篩選出來的偶數清單對不對。哪一個中繼點先出現不合預期的內容，問題
+就落在那一步驟；如果兩個中繼點看起來都對，問題就落在最後的加總那一段。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:print-debug}~節}
+\begin{enumerate}
+\item 可以在 \texttt{for} 迴圈裡面、\texttt{total = price * quantity} 這一行前後插入
+\texttt{print()}，把每一輪的 \texttt{item\_name}、\texttt{price}、\texttt{quantity}
+跟當下的 \texttt{total} 印出來。預期會看到 \texttt{total} 每一輪都被整個換掉（例如第一輪
+是 \texttt{60}，第二輪變成 \texttt{30}），不是越加越多，這樣就能發現問題出在
+\texttt{total = price * quantity} 應該改成 \texttt{total += price * quantity}，不然
+每一輪都會把前面算好的總額蓋掉，只留下最後一項商品的金額。
+\item 可以把 \texttt{print(p)} 改成
+\texttt{print(f"p = \{p\}，目前 max\_price = \{max\_price\}")}，這樣每一行印出來的
+內容，會同時秀出「這一輪拿到的價格」跟「目前為止看過的最大值」，不用回頭對照程式碼就能
+看懂每個數字代表什麼。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:assert}~節}
+\begin{enumerate}
+\item 例如 \texttt{assert side\_length > 0, "side\_length must be positive"}，加在函式的第一行。
+\item 用 \texttt{try/except}，使用者打了什麼是你控制不了的外部因素，這種「本來就可能會
+失敗、失敗了程式該撐住繼續跑」的情境正是 EAFP 的主場，用
+\texttt{try: ... except ValueError: ...} 接住轉換失敗的情況即可。
+\item 代表你自己程式邏輯哪裡寫錯了（或呼叫的地方沒有真的做到你以為的保證），這種「照
+理說一定成立」的假設被打破，適合用 \texttt{assert}，讓程式當場停下來提醒你，不要悄悄用
+\texttt{try/except} 把錯誤吞掉、假裝沒事。
+\item 問題出在 \texttt{(age >= 0, "age cannot be negative")} 外層多包了一層括號，被 Python
+解讀成一個裝了兩個元素的 tuple，非空的 tuple 永遠是 \texttt{True}，這個 assert 不管
+\texttt{age} 是多少都會通過檢查。修法是拿掉外層括號，改回
+\texttt{assert age >= 0, "age cannot be negative"} 的寫法。
+\end{enumerate}

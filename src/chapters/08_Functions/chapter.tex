@@ -1,0 +1,1147 @@
+\chapter{函式}
+\label{ch:functions}
+
+前面六章，你寫的每一支程式都是「從頭到尾一路往下唸」。就算中間有 \texttt{if} 分岔、有
+\texttt{for} 迴圈繞圈子，整支程式終究是同一塊、攤開來看得到全貌的敘述。這一章要教你的函式
+（function），第一次讓你的程式碼可以被「摺起來」：把一段有名字的動作收進一個盒子，之後
+只要喊它的名字，不用把內容再抄一次。
+
+這一章分六段推進：
+
+\begin{itemize}
+\item 第一段先讓你體驗函式最基本的樣子：怎麼定義一個函式、怎麼呼叫它、怎麼讓它把算好的
+東西「送回來」給你而不是只印在螢幕上，以及一次送回不只一個值長什麼樣子
+（第 \ref{sec:function-def}～\ref{sec:function-multi-return} 節）。
+\item 第二段回頭處理一個很實際的問題：函式如果要接收不只一項資訊，你有哪些方式可以把這些
+資訊餵進去、每種方式各自的講究是什麼；這一段的最後兩節還會處理一個更麻煩的情況——連「會
+收到幾項資訊」都事先不知道的時候該怎麼寫
+（第 \ref{sec:function-positional}～\ref{sec:function-kwargs} 節）。
+\item 第三段拉開視角，先談為什麼值得把程式碼拆成函式，再談函式本身其實也可以像數字、字串
+一樣被傳來傳去（第 \ref{sec:function-why}～\ref{sec:function-first-class} 節）。
+\item 第四段是這一章真正的核心，也是整本書第二次正式呼應「名字牌」這個比喻的地方：你會
+看到，呼叫函式、傳參數，其實跟之前學過的「指定變數」是同一套邏輯，而且這套邏輯會直接導出
+一個所有 Python 使用者遲早都會踩到的經典陷阱：預設參數如果是一個 list，會發生什麼詭異的事
+（第 \ref{sec:function-nametag}～\ref{sec:mutable-default} 節）。
+\item 第五段把視角轉向「函式裡面的變數」跟「函式外面的變數」是兩個互不干擾的世界，這件事
+既是這一章的最後一塊核心拼圖，也是為什麼函式能被放心「摺起來」重複使用的真正原因
+（第 \ref{sec:function-scope} 節）。
+\item 第六段是一個簡短的收尾：怎麼替函式留一句自我介紹，讓下一個讀到這段程式碼的人（很
+可能是三個月後的你自己）知道它在做什麼（第 \ref{sec:function-docstring} 節）。
+\end{itemize}
+
+在往下讀之前，先講清楚一件事：函式，就是一段被取了名字、可以重複呼叫的程式碼。你其實已經
+用過別人寫好的函式了。第 \ref{ch:introduction} 章的 \texttt{print}、之後幾章陸續出現的 \texttt{len}、
+\texttt{int} 都是函式。這一章要教的，是怎麼自己動手定義一個。
+
+\section{函式的最小樣子：定義與呼叫}
+\label{sec:function-def}
+
+要定義一個函式，你需要 \texttt{def}（英文 define 的縮寫）這個關鍵字開頭，接函式名稱、
+一對圓括號、一個冒號，底下縮排的部分就是函式被呼叫時會執行的內容，這一段叫做函式的
+「主體」（body）。函式名稱的命名規則跟變數一樣，只能用英文字母、數字、底線，不能用數字
+開頭；習慣上也會用 snake\_case，也就是全部小寫、單字之間用底線連接的命名風格，這是
+Python 函式／變數命名最常見的慣例。
+\index{def}
+\index{主體}
+\index{snake\_case}
+
+\begin{code}{python}{定義並呼叫一個沒有參數的函式}
+def function_name():
+    code
+    code
+
+function_name()
+\end{code}
+
+光是寫了 \texttt{def} 這幾行，並不會讓裡面的程式碼真的執行，這幾行只是在告訴 Python
+「以後如果有人喊這個名字，要做的事情是這些」。真正的執行，要等到你在下面另外寫一行
+「函式名稱\texttt{()}」，也就是呼叫（call）這個函式的那一刻，才會發生。
+\index{呼叫}
+
+\begin{example}{python}{(say-hello.py) 定義並呼叫一個打招呼函式}
+def say_hello():
+    print("Hello! Welcome to this program.")
+
+
+print("Program starting...")
+say_hello()
+say_hello()
+print("Program finished.")
+\end{example}
+
+\iosample{}{Program starting... \\ Hello! Welcome to this program. \\ Hello! Welcome to this program. \\ Program finished. \\}
+
+看這段程式的輸出順序，會發現一件有意思的事：\texttt{say\_hello} 的定義明明寫在最上面，
+但「Program starting...」這行字卻先被印出來，直到程式跑到 \texttt{say\_hello()} 這一行，
+函式主體裡的那句打招呼才真正出現。而且因為呼叫了兩次，那句話也真的印了兩次。
+
+\keypoint{函式定義的時候，裡面的程式碼並不會執行；只有在函式被呼叫的那一刻，主體裡的內容
+才會真正跑起來，而且可以被呼叫任意多次。前面六章你寫的程式都是「寫一行、跑一行」，函式是
+你第一次遇到「寫了程式碼，但它先按兵不動，等被叫到才動作」的情形，一開始不習慣很正常。}
+
+\section{帶一個參數的函式}
+\label{sec:function-param-basic}
+
+上一節的 \texttt{say\_hello} 每次都只會印出同一句話，沒辦法跟不同的人打招呼。如果想讓
+函式在被呼叫的時候，可以帶一項資訊進去、依這項資訊做不同的事，就要在 \texttt{def} 那一行
+的括號裡放一個名字，這個名字叫做參數（parameter）；呼叫的時候括號裡實際放進去的值，叫做
+引數（argument）。這兩個詞很多人會混著講，不用太計較，但看到 Python 的錯誤訊息裡出現
+「argument」，知道它在講的是「呼叫時給的值」就好。
+\index{參數}
+
+\begin{code}{python}{定義並呼叫一個帶單一參數的函式}
+def function_name(parameter_name):
+    code (can use the parameter_name variable)
+
+function_name(argument)
+\end{code}
+
+\begin{example}{python}{(greet-name.py) 跟指定的人打招呼}
+def say_hello(name):
+    print(f"Hello, {name}! Welcome to this program.")
+
+
+say_hello("Alice")
+say_hello("Bob")
+\end{example}
+
+\iosample{}{Hello, Alice! Welcome to this program. \\ Hello, Bob! Welcome to this program. \\}
+
+呼叫函式的時候，引數 \texttt{"Alice"} 被對應給了參數 \texttt{name}，函式主體裡用到
+\texttt{name} 的地方，用的就是這次呼叫傳進來的值。下一次呼叫換成 \texttt{"Bob"}，
+\texttt{name} 裡裝的東西也跟著換了。
+
+如果呼叫函式的時候忘了帶引數，會怎麼樣？
+
+\begin{example}{python}{(greet-name-broken.py) 忘記帶引數}
+def say_hello(name):
+    print(f"Hello, {name}! Welcome to this program.")
+
+
+say_hello()
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "greet-name-broken.py", line 5, in <module>
+    say_hello()
+    ~~~~~~~~~^^
+TypeError: say_hello() missing 1 required positional argument: 'name'
+\end{verbatim}
+
+最後一行說得很白話：\texttt{missing 1 required positional argument: 'name'}，意思是
+「少了一個必要的引數，名字叫 \texttt{name}」。\texttt{say\_hello} 定義的時候要求呼叫者
+一定要給 \texttt{name}，這裡卻一個都沒給，Python 沒辦法幫你猜這個空缺該填什麼，只好直接
+停下來告訴你缺了什麼。這是這一章第一次示範函式相關的錯誤訊息，之後只要引數的數量跟函式
+要求的對不上，都會看到類似的 \texttt{TypeError}。
+
+\section{把值送回來：\texttt{return}}
+\label{sec:function-return}
+
+前面兩節的函式都只是把結果直接印在螢幕上。如果你想把函式算出來的東西存進一個變數、拿去
+做別的事，光靠 \texttt{print} 是不夠的：\texttt{print} 只是把文字顯示出來，不代表這個值
+可以被程式的其他部分接住。要讓函式把算好的東西「送回去」給呼叫它的地方，要用
+\texttt{return}。
+\index{return}
+
+\begin{code}{python}{用 return 把值送回呼叫端}
+def function_name(parameter):
+    return value
+\end{code}
+
+\begin{example}{python}{(add-numbers.py) 把兩個數字加起來並回傳}
+def add_numbers(a, b):
+    return a + b
+
+
+result = add_numbers(3, 5)
+print(result)
+\end{example}
+
+\iosample{}{8 \\}
+
+這裡跟前兩節不一樣的地方是：\texttt{add\_numbers} 本身完全沒有呼叫 \texttt{print}，它
+只是把 \texttt{a + b} 算好的結果透過 \texttt{return} 交還給呼叫它的那一行程式碼；真正把
+結果印出來的，是外面的 \texttt{print(result)}。\texttt{return} 一執行，函式就會立刻
+結束，把值帶回呼叫端，你可以把它存進變數（像這裡的 \texttt{result}），也可以直接拿去做
+其他計算，函式本身不會自己決定要拿這個值做什麼。
+
+順帶一提：如果一個函式從頭到尾都沒有寫 \texttt{return}（就像前兩節的 \texttt{say\_hello}
+一樣），呼叫它其實還是會得到一個值，只是那個值是 Python 一個特別的東西，叫做
+\texttt{None}，代表「什麼都沒有」。如果你把第 \ref{sec:function-param-basic} 節那個沒有 \texttt{return} 的
+\texttt{say\_hello} 拿來寫成 \texttt{result = say\_hello("Alice")}，再
+\texttt{print(result)}，螢幕上除了打招呼那行字，還會多印一行 \texttt{None}。這件事現在
+知道就好，\texttt{None} 完整的用法留到後面章節再細講。
+
+\section{一次送回不只一個值}
+\label{sec:function-multi-return}
+
+有時候一個函式一次要報告的資訊不只一項。舉例來說，如果你想寫一個函式，一次幫你找出一份
+成績清單裡最低分跟最高分，這兩個數字都是這次呼叫的成果，你不會想為了拿到兩個值就得呼叫
+兩次函式（一次找最低、一次找最高，等於把清單重複掃過兩遍）。Python 允許
+\texttt{return} 後面用逗號隔開好幾個值，一次全部送回去。
+
+\begin{code}{python}{用 return 一次送回多個值}
+def function_name(parameter):
+    return value1, value2
+\end{code}
+
+\begin{example}{python}{(score-range.py) 一次找出成績清單的最低分跟最高分}
+def score_range(scores):
+    return min(scores), max(scores)
+
+
+lowest, highest = score_range([88, 72, 95, 60, 100])
+print(lowest)
+print(highest)
+\end{example}
+
+\iosample{}{60 \\ 100 \\}
+
+呼叫端 \texttt{lowest, highest = score\_range(...)} 這一行，用逗號隔開兩個變數名稱，
+一次接住函式送回來的兩個值：第一個對應 \texttt{lowest}，第二個對應 \texttt{highest}，
+順序跟 \texttt{return} 裡寫的順序一致。
+
+如果不特地用兩個變數去接，直接把回傳值印出來，會看到什麼？
+
+\begin{example}{python}{(score-range-tuple.py) 不拆開接、直接印出回傳值}
+def score_range(scores):
+    return min(scores), max(scores)
+
+
+print(score_range([88, 72, 95, 60, 100]))
+\end{example}
+
+\iosample{}{(60, 100) \\}
+
+答案是一組用圓括號包起來的東西：\texttt{(60, 100)}。這代表
+\texttt{return min(scores), max(scores)} 這一行做的事，其實是先把 \texttt{min(scores)}
+跟 \texttt{max(scores)} 兩個值打包成一份小包裹，再把整份包裹送回去；呼叫端寫
+\texttt{lowest, highest = ...} 的時候，Python 才把這份包裹拆開，按照順序分別塞進兩個
+變數。這份「打包起來的東西」有一個正式名字叫 tuple，完整的規則留到第 \ref{ch:tuples} 章再詳細介紹，
+這裡你只要記得「函式可以一次送回不只一個值，呼叫端也可以用同樣數量的變數一次接住」就好。
+
+如果呼叫端接的變數數量跟函式實際送回來的值不一樣多，會怎麼樣？
+
+\begin{example}{python}{(score-range-broken.py) 接的變數數量對不上}
+def score_range(scores):
+    return min(scores), max(scores)
+
+
+lowest, highest, average = score_range([88, 72, 95, 60, 100])
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "score-range-broken.py", line 5, in <module>
+    lowest, highest, average = score_range([88, 72, 95, 60, 100])
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: not enough values to unpack (expected 3, got 2)
+\end{verbatim}
+
+這裡想用三個變數接住只送回了兩個值的包裹，Python 沒辦法幫你補出第三個值，只好丟出
+\texttt{ValueError}，訊息直翻是「可以拆開的值不夠：預期 3 個，實際拿到 2 個」。這跟
+\texttt{TypeError} 不一樣：不是型別不對，是數量對不上。
+
+\keypoint{\texttt{return} 後面用逗號隔開好幾個值，可以一次把多個結果送回呼叫端；呼叫端
+只要用同樣數量、逗號隔開的變數名稱去接，就會依照順序各自對應。這其實是同一套「打包再拆開」
+的機制，正式規則會在第 \ref{ch:tuples} 章介紹 tuple 時完整說明。}
+
+\begin{drills}[label=drills:function-multi-return]
+\item 有一個函式 \texttt{def minmax(nums): return min(nums), max(nums)}，如果呼叫
+\texttt{small, big = minmax([4, 9, 1, 7])}，\texttt{small} 跟 \texttt{big} 各會是
+多少？
+\item 承上題，如果改成只用一個變數接：\texttt{result = minmax([4, 9, 1, 7])}，
+\texttt{print(result)} 會印出什麼？
+\item 如果 \texttt{minmax} 函式呼叫時只給一個數字的清單，例如 \texttt{minmax([5])}，
+拆開接的兩個變數 \texttt{small}、\texttt{big} 會不會相等？
+\end{drills}
+
+\section{一次餵進不只一項資訊：positional 引數}
+\label{sec:function-positional}
+
+前面的函式都只需要一項資訊，但很多時候一個函式需要好幾項資訊才能做完一件事，比如描述
+一隻寵物，至少要知道牠是什麼動物、叫什麼名字。這種時候，只要在 \texttt{def} 的括號裡
+用逗號隔開多個參數即可；呼叫的時候依照\textbf{同樣的順序}把引數一個個放進去，Python 會
+按照位置把引數對應到參數，這種方式叫做 positional（位置）引數。
+\index{positional 引數}
+
+\begin{code}{python}{定義並呼叫一個帶多個 positional 參數的函式}
+def function_name(param1, param2):
+    code
+
+function_name(arg1, arg2)
+\end{code}
+
+\begin{example}{python}{(describe-pet.py) 描述一隻寵物}
+def describe_pet(animal_type, pet_name):
+    print(f"I have a pet {animal_type} named {pet_name}.")
+
+
+describe_pet("dog", "Rex")
+\end{example}
+
+\iosample{}{I have a pet dog named Rex. \\}
+
+因為是依照順序對應，第一個引數 \texttt{"dog"} 對到第一個參數 \texttt{animal\_type}，
+第二個引數 \texttt{"Rex"} 對到第二個參數 \texttt{pet\_name}。這也代表順序如果寫反了，
+Python 不會幫你檢查「這個字看起來不像動物名稱」，它只管照順序對應，其他的事一概不管。
+
+\begin{example}{python}{(describe-pet-swapped.py) 引數順序寫反了}
+def describe_pet(animal_type, pet_name):
+    print(f"I have a pet {animal_type} named {pet_name}.")
+
+
+# 引數順序寫反了：第一個位置現在對應到 animal_type
+describe_pet("Rex", "dog")
+\end{example}
+
+\iosample{}{I have a pet Rex named dog. \\}
+
+程式沒有跳出任何紅字錯誤，正常執行到底，但印出來的內容完全不合理：「I have a pet Rex」。
+這種「沒有報錯，但結果荒謬」的情形，比丟出例外訊息的錯誤更容易被忽略，如果你不特別留意
+輸出內容，很可能以為程式一切正常，實際上已經錯了。
+
+\keypoint{positional 引數的對應完全靠順序，Python 不會替你檢查「這個引數放在這個位置合
+不合理」。引數一多，順序寫反是很容易發生、卻又不會報錯的錯誤，讀完下一節你會看到另一種
+可以避開這個問題的呼叫方式。}
+
+\section{用名字指定：keyword 引數}
+\label{sec:function-keyword}
+
+如果不想冒著順序寫反的風險，或是引數一多、光靠位置很難一眼看出誰對應誰，Python 讓你可以
+改用參數的名字來指定引數，順序就不再重要了，這種方式叫做 keyword（關鍵字）引數，寫法是
+在呼叫時用 \texttt{參數名稱=值} 的形式。
+\index{keyword 引數}
+
+\begin{code}{python}{用 keyword 引數呼叫函式}
+function_name(param1=value1, param2=value2)
+\end{code}
+
+\begin{example}{python}{(describe-pet-keyword.py) 用參數名稱呼叫}
+def describe_pet(animal_type, pet_name):
+    print(f"I have a pet {animal_type} named {pet_name}.")
+
+
+describe_pet(pet_name="Rex", animal_type="dog")
+\end{example}
+
+\iosample{}{I have a pet dog named Rex. \\}
+
+雖然呼叫的時候 \texttt{pet\_name} 寫在 \texttt{animal\_type} 前面，跟函式定義的參數
+順序不一樣，結果依然正確，因為 Python 是照名字對應，不是照位置。
+
+\stylepoint{引數一多、或是好幾個引數型別相同（例如都是字串）容易搞混順序的時候，習慣用
+keyword 引數會讓呼叫端更好讀、也更不容易在順序上出錯，這是比較 Python 慣用的寫法，尤其
+是在呼叫別人寫的函式、你記不清楚參數順序的時候特別好用。}
+
+\section{省略引數：default 參數值}
+\label{sec:function-params}
+
+如果一個函式大部分時候都會用同一個值呼叫，只有少數情況才需要換成別的，每次呼叫都把這個
+值重複打一遍很麻煩。這種時候可以在定義函式的時候，替參數設一個預設值，呼叫時如果省略這個
+引數，就自動套用預設值；想要不同的值，照樣可以在呼叫時自己指定。
+\index{default 參數值}
+
+\begin{code}{python}{定義帶預設值的參數}
+def function_name(param1, param2=default_value):
+    code
+\end{code}
+
+\begin{example}{python}{(describe-pet-default.py) 大部分的寵物都是狗}
+def describe_pet(pet_name, animal_type="dog"):
+    print(f"I have a pet {animal_type} named {pet_name}.")
+
+
+describe_pet("Rex")
+describe_pet("Whiskers", "cat")
+\end{example}
+
+\iosample{}{I have a pet dog named Rex. \\ I have a pet cat named Whiskers. \\}
+
+第一次呼叫只給了 \texttt{pet\_name}，\texttt{animal\_type} 就自動套用了預設值
+\texttt{"dog"}；第二次呼叫額外給了第二個引數 \texttt{"cat"}，蓋掉了預設值。
+
+留意這個範例裡參數的順序：有預設值的 \texttt{animal\_type} 被放在沒有預設值的
+\texttt{pet\_name} 後面，這不是隨便排的，是 Python 語法的硬性規定。
+
+\begin{example}{python}{(describe-pet-default-broken.py) 預設值參數放錯位置}
+def describe_pet(animal_type="dog", pet_name):
+    print(f"I have a pet {animal_type} named {pet_name}.")
+\end{example}
+
+\begin{verbatim}
+  File "describe-pet-default-broken.py", line 1
+    def describe_pet(animal_type="dog", pet_name):
+                                        ^^^^^^^^
+SyntaxError: parameter without a default follows parameter with a default
+\end{verbatim}
+
+這段錯誤甚至在函式被呼叫之前、程式一讀到這行定義就發作了：\texttt{SyntaxError} 代表
+Python 光是「讀」這行程式碼的規則就過不了關，訊息直翻是「一個沒有預設值的參數，出現在
+一個有預設值的參數後面」。
+
+\keypoint{有預設值的參數，一定要放在沒有預設值的參數後面。原因不難想：如果
+\texttt{describe\_pet(animal\_type="dog", pet\_name)} 這樣的定義是合法的，那呼叫
+\texttt{describe\_pet("Rex")} 時，Python 沒辦法判斷 \texttt{"Rex"} 這個唯一的引數，
+到底該對應到有預設值的 \texttt{animal\_type}，還是該去填沒有預設值、非給不可的
+\texttt{pet\_name}。為了避免這種歧義，Python 乾脆直接禁止這樣寫。}
+
+\begin{drills}[label=drills:function-params]
+\item 承 \texttt{describe-pet-default.py}：如果呼叫 \texttt{describe\_pet(animal\_type="bird",
+pet\_name="Tweety")}，用的是 keyword 引數，兩個都自己指定了值，輸出會是什麼？
+\item 如果呼叫 \texttt{describe\_pet("Max", "cat")}，用的是 positional 引數，
+\texttt{animal\_type} 會是 \texttt{"cat"} 還是保留預設值 \texttt{"dog"}？
+\item 有一個函式定義成
+\texttt{def make\_coffee(size, sugar=True, milk=False):}，如果只想指定
+\texttt{milk=True}、\texttt{size} 跟 \texttt{sugar} 都用預設值/正常給，你會怎麼呼叫這個
+函式？（提示：\texttt{size} 沒有預設值，一定要給。）
+\end{drills}
+
+\section{收下不確定個數的引數：\texttt{*args}}
+\label{sec:function-args}
+
+到目前為止，你寫的每一個函式，都有一件事是事先講好的：它會收到幾項資訊。
+\texttt{describe\_pet} 就是要兩項，多給少給都會出事。但你其實一直在用一個不是這樣的
+函式——\texttt{print}。你可以寫 \texttt{print("hello")}，也可以寫
+\texttt{print("hello", "world", 123)}，它照單全收，從來不抱怨。這種函式是怎麼寫出來的？
+
+答案是在參數名稱前面加一個星號。加了星號的參數，會把呼叫時給的所有引數通通收成一包，
+不管給了幾個。
+
+\begin{code}{python}{收下不確定個數的引數}
+def function_name(*parameter_name):
+    code that uses parameter_name
+\end{code}
+
+\begin{example}{python}{(total-price.py) 把任意個數的價格加總起來}
+def total_price(*prices):
+    total = 0
+    for price in prices:
+        total = total + price
+    return total
+
+
+print(total_price(100))
+print(total_price(100, 250, 80))
+print(total_price())
+\end{example}
+
+\iosample{}{100 \\ 430 \\ 0 \\}
+
+同一個 \texttt{total\_price}，第一次呼叫給一個價格、第二次給三個、第三次一個都不給，
+三次都正常執行。函式主體裡的 \texttt{prices}，就是那一包被收起來的引數，可以直接放進
+\texttt{for} 迴圈一個一個處理。第三次呼叫沒給任何引數，那一包是空的，迴圈一次都不會跑，
+\texttt{total} 維持一開始的 \texttt{0}——「零個」也算合法，不會報錯。
+
+星號收進來的那一包，型別叫做 tuple。tuple 是下一章的主題，這裡你只要先知道兩件事：它可以
+放進 \texttt{for} 迴圈一個一個走過去，也可以用 \texttt{len()} 數出裡面有幾個東西。剩下的
+細節留到第 \ref{ch:tuples} 章。
+
+\keypoint{星號寫在\textbf{參數名稱前面}，意思是「把呼叫時給的引數通通收成一包」。
+\texttt{args} 只是這個參數最常見的慣例名字，不是關鍵字——叫 \texttt{prices}、
+\texttt{items}、\texttt{numbers} 都完全可以，取一個講得出它裝什麼的名字反而更好。}
+
+這個寫法有一個新手幾乎都會踩一次的誤解：既然它可以收下一堆東西，那我把一個現成的 list
+整包丟進去，應該也一樣吧？
+
+\begin{example}{python}{(show-all-wrong.py) 把一個 list 整包傳進去}
+def show_all(*items):
+    print(items)
+    print(len(items))
+
+
+show_all("apple", "banana")
+show_all(["apple", "banana"])
+\end{example}
+
+\iosample{}{('apple', 'banana') \\ 2 \\ (['apple', 'banana'],) \\ 1 \\}
+
+前兩行是預期中的結果：兩個引數被收成一包，裡面有兩個東西。但後兩行不太對勁——
+\texttt{(['apple', 'banana'],)} 是「一包裡面裝著一個 list」，\texttt{len()} 數出來是
+\texttt{1} 不是 \texttt{2}。原因是第二次呼叫只給了\textbf{一個}引數，那個引數剛好是一個
+list，星號老老實實地把「這一個東西」收成一包，它沒辦法知道你其實是想把 list 裡面的兩個
+元素分開來給它。
+
+那如果真的手上就是一個 list，想把裡面的東西拆開來餵進去呢？這件事有專門的寫法，就在
+下一節。
+
+\begin{drills}[label=drills:function-args]
+\item 承 \texttt{total-price.py}：呼叫 \texttt{total\_price(10, 20)} 會回傳什麼？
+\item 如果把 \texttt{total\_price} 的定義改成 \texttt{def total\_price(prices):}
+（拿掉星號），再呼叫 \texttt{total\_price(100, 250, 80)}，會發生什麼事？
+（提示：回頭看第 \ref{sec:function-param-basic} 節那個引數數量對不上的錯誤訊息。）
+\end{drills}
+
+\section{收下不確定名字的引數：\texttt{**kwargs}}
+\label{sec:function-kwargs}
+
+一個星號收下的是「一堆沒有名字的值」。但你在第 \ref{sec:function-keyword} 節學過，引數也可以帶名字
+（\texttt{animal\_type="dog"} 這種寫法）。如果連「會收到哪些名字」都事先不知道呢？這時候
+用兩個星號。
+
+\begin{code}{python}{收下不確定名字的引數}
+def function_name(**parameter_name):
+    code that uses parameter_name
+\end{code}
+
+\begin{example}{python}{(build-profile.py) 收下任意個欄位，組成一份資料}
+def build_profile(**fields):
+    profile = {}
+    for key, value in fields.items():
+        profile[key] = value
+    return profile
+
+
+print(build_profile(name="Amy", city="Taipei"))
+print(build_profile(name="Ben", city="Tainan", age=30))
+\end{example}
+
+\iosample{}{\{'name': 'Amy', 'city': 'Taipei'\} \\ \{'name': 'Ben', 'city': 'Tainan', 'age': 30\} \\}
+
+兩個星號收進來的那一包，是一個 dict——這個你在第 \ref{ch:dict-set} 章已經完整學過了，
+引數的名字變成 key，引數的值變成 value，所以主體裡可以直接用 \texttt{.items()} 走訪它。
+第一次呼叫給了兩個欄位、第二次給三個，函式完全不用改。
+
+\keypoint{一個函式如果同時要用一般參數、\texttt{*} 參數、\texttt{**} 參數，
+兩個星號的那一個一定放在最後面，因為它是「剩下所有帶名字的引數」的收容所，後面不可能還有
+別的東西。}
+
+\subsection*{反過來用：把一包拆開餵進去}
+
+真正容易混淆的來了。同樣是這兩個符號，寫在\textbf{呼叫端}的時候，做的事情剛好相反——不是
+把散的收成一包，而是把一包拆成散的。上一節結尾那個「手上就是一個 list」的問題，答案就在
+這裡。
+
+\begin{example}{python}{(unpack-call.py) 把 list 與 dict 拆開餵進參數}
+def describe_pet(animal_type, pet_name):
+    print(f"I have a {animal_type} named {pet_name}.")
+
+
+pet_list = ["cat", "Mochi"]
+pet_dict = {"animal_type": "dog", "pet_name": "Lucky"}
+
+describe_pet(pet_list[0], pet_list[1])
+describe_pet(*pet_list)
+describe_pet(**pet_dict)
+\end{example}
+
+\iosample{}{I have a cat named Mochi. \\ I have a cat named Mochi. \\ I have a dog named Lucky. \\}
+
+前兩行輸出一模一樣，這正是重點：\texttt{describe\_pet(*pet\_list)} 跟自己動手寫
+\texttt{describe\_pet(pet\_list[0], pet\_list[1])} 是同一件事，只是不用一個一個把索引
+打出來。一個星號放在呼叫端的 list 前面，意思是「把這個 list 攤開，一個元素對應一個
+位置引數」。
+
+第三行則是 dict 版本：\texttt{describe\_pet(**pet\_dict)} 等於
+\texttt{describe\_pet(animal\_type="dog", pet\_name="Lucky")}，dict 的每一組 key/value
+被攤成一個 keyword 引數。這也是為什麼 \texttt{pet\_dict} 的 key 必須剛好叫
+\texttt{animal\_type} 跟 \texttt{pet\_name}——它們要對得上函式的參數名字。
+
+\keypoint{同一個星號，位置不同意思剛好相反：寫在 \texttt{def} 的\textbf{參數}前面是
+「把散的收成一包」，寫在呼叫時的\textbf{引數}前面是「把一包拆成散的」。判斷的方法很單純，
+看它出現在哪一邊——定義那一行，還是呼叫那一行。}
+
+\begin{drills}[label=drills:function-varargs]
+\item 有一個函式 \texttt{def show(*args): print(len(args))}。分別呼叫
+\texttt{show(1, 2, 3)} 與 \texttt{show([1, 2, 3])}，各會印出什麼？
+\item 承上題，如果想讓 \texttt{show([1, 2, 3])} 也印出 \texttt{3}，呼叫時要怎麼改？
+\item 有一個函式 \texttt{def greet(greeting, name): print(greeting, name)}，
+以及一個 dict \texttt{info = \{"greeting": "Hi", "name": "Amy"\}}。
+要怎麼用一行呼叫，把 \texttt{info} 裡的兩個值餵給 \texttt{greet}？
+\end{drills}
+
+\section{為什麼要拆函式？}
+\label{sec:function-why}
+
+到這裡你已經知道函式的所有基本零件：怎麼定義、怎麼傳引數、怎麼送回值。但你可能會問：
+明明不用函式，一路把程式碼從頭寫到尾也能跑，為什麼要多繞這一圈？看一段沒有函式、但重複
+做了三次幾乎一樣的事的程式碼，會比較容易感受到差別。
+
+\begin{example}{python}{(discount-before.py) 沒有函式，三段幾乎一樣的程式碼}
+price1 = 100
+discount1 = 0.9
+print(f"Discounted price: {price1 * discount1}")
+
+price2 = 250
+discount2 = 0.8
+print(f"Discounted price: {price2 * discount2}")
+
+price3 = 60
+discount3 = 0.95
+print(f"Discounted price: {price3 * discount3}")
+\end{example}
+
+\iosample{}{Discounted price: 90.0 \\ Discounted price: 200.0 \\ Discounted price: 57.0 \\}
+
+這段程式能動，但同一句「算出折扣後價格、印出來」的邏輯被抄了三遍。如果之後想改顯示格式
+（比如要四捨五入到整數），得記得同時改三個地方，只要漏改一處，三段的行為就會不一致，而且
+這種不一致往往要等到有人回報「奇怪，這裡的價格看起來跟別的地方格式不一樣」才會被發現。
+改寫成函式之後，同一段邏輯只需要寫一次：
+
+\begin{example}{python}{(discount-after.py) 用函式收起重複的邏輯}
+def show_discounted_price(price, discount):
+    print(f"Discounted price: {price * discount}")
+
+
+show_discounted_price(100, 0.9)
+show_discounted_price(250, 0.8)
+show_discounted_price(60, 0.95)
+\end{example}
+
+\iosample{}{Discounted price: 90.0 \\ Discounted price: 200.0 \\ Discounted price: 57.0 \\}
+
+輸出跟前一個版本一模一樣，但這次「怎麼算、怎麼顯示」的規則只出現在
+\texttt{show\_discounted\_price} 定義的那三行裡，之後三個呼叫端都是共用同一份規則。
+之後如果要改顯示格式，只要改函式定義那裡一次，三個呼叫端全部自動套用新規則，不會有改一個
+忘一個的風險。
+
+除了避免重複，拆函式還有一個更直接的好處：讓程式讀起來更像一份有意義的步驟清單。呼叫端
+寫著 \texttt{show\_discounted\_price(100, 0.9)}，光看名字就知道這行在做什麼，不用一路
+讀進函式主體的細節才搞懂意圖；細節被摺進函式裡面，只有真的需要修改邏輯的時候才需要打開來
+看。
+
+\stylepoint{看到同一段程式碼（或幾乎一樣、只有幾個值不同的程式碼）出現兩次以上，通常就是
+該考慮拆成函式的訊號：把不一樣的部分變成參數，一樣的部分變成函式主體。}
+
+\section{函式也是一種值：把函式傳來傳去}
+\label{sec:function-first-class}
+
+還記得第 \ref{ch:variables} 章的名字牌比喻嗎？\texttt{x = 5} 這一行做的事，是造一個值是 5 的物件，再把
+名字牌 \texttt{x} 貼上去，並不是把 5 複製一份塞進一個叫 \texttt{x} 的盒子。這件事其實對
+函式也成立：用 \texttt{def} 定義出來的函式本身也是一個物件，\texttt{def} 那一行裡寫的
+函式名稱，就是貼在這個函式物件上的第一張名字牌。既然函式也是物件，跟數字、字串、list 一樣，
+它就可以被指定給另一個變數、當作引數傳給另一個函式。
+
+\begin{example}{python}{(function-as-value.py) 把函式指定給另一個變數}
+def square(n):
+    return n * n
+
+
+operation = square
+print(operation(5))
+\end{example}
+
+\iosample{}{25 \\}
+
+留意這裡的 \texttt{operation = square} 沒有加括號。加了括號的 \texttt{square()} 是
+「呼叫這個函式，把結果拿回來」；沒有括號的 \texttt{square} 單獨寫，指的是函式物件本身，
+也就是那個貼著 \texttt{square} 這張名字牌的東西。\texttt{operation = square} 做的事，
+是把另一張名字牌 \texttt{operation} 也貼到同一個函式物件上，之後 \texttt{operation(5)}
+跟 \texttt{square(5)} 呼叫的其實是同一個函式，只是用了不同的名字牌喊它。
+
+如果不小心把括號加上去，會發生什麼事？
+
+\begin{example}{python}{(function-as-value-broken.py) 忘記拿掉括號}
+def square(n):
+    return n * n
+
+
+operation = square()
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "function-as-value-broken.py", line 5, in <module>
+    operation = square()
+                ^^^^^^^^
+TypeError: square() missing 1 required positional argument: 'n'
+\end{verbatim}
+
+\texttt{square()} 這樣寫是「立刻呼叫 square，把結果指定給 operation」，但
+\texttt{square} 需要一個引數 \texttt{n}，這裡卻一個都沒給，於是跟 \ref{sec:function-param-basic} 節看過的錯誤一樣，
+丟出 \texttt{TypeError}。這是分辨「函式物件本身」跟「呼叫函式、拿到的結果」最直接的方式：
+有沒有加括號。
+
+函式物件不只可以存進變數，還可以直接當作引數，傳給另一個函式使用：
+
+\begin{example}{python}{(apply-twice.py) 把函式當作引數傳給另一個函式}
+def apply_twice(func, value):
+    return func(func(value))
+
+
+def add_ten(n):
+    return n + 10
+
+
+print(apply_twice(add_ten, 5))
+\end{example}
+
+\iosample{}{25 \\}
+
+\texttt{apply\_twice} 的第一個參數 \texttt{func}，接住的是 \texttt{add\_ten} 這個函式
+物件本身，不是呼叫它拿到的結果。\texttt{apply\_twice} 主體裡的
+\texttt{func(func(value))} 先用 \texttt{value}（也就是 5）呼叫一次 \texttt{func}，
+算出 15，再拿 15 當引數呼叫一次 \texttt{func}，算出 25。整個過程 \texttt{apply\_twice}
+完全不需要知道傳進來的函式實際上在做加法還是別的運算，它只負責「呼叫兩次、把上一次的結果
+餵給下一次」，真正的邏輯是由呼叫端決定要傳哪一個函式進去。
+
+\keypoint{函式本身也是一個物件，函式名稱只是貼在這個物件上的一張名字牌。把函式指定給另一個
+變數、或當作引數傳給另一個函式，用的是同一套名字牌邏輯，只是這次貼名字牌的對象是一個函式
+物件，不是數字或字串。加不加括號差很多：不加括號指的是函式物件本身，加了括號才是「呼叫」
+它。}
+
+\begin{drills}[label=drills:function-first-class]
+\item 有 \texttt{def double(n): return n * 2}，如果寫
+\texttt{f = double; print(f(6))}，會印出什麼？
+\item 承 \texttt{apply-twice.py}：如果改成呼叫
+\texttt{apply\_twice(square, 3)}（\texttt{square} 是本節前面定義的平方函式），
+會印出什麼？（提示：先算 \texttt{square(3)}，再把結果拿去算一次 \texttt{square}。）
+\item 如果把 \texttt{apply\_twice(add\_ten, 5)} 不小心寫成
+\texttt{apply\_twice(add\_ten(), 5)}，會發生什麼事？
+\end{drills}
+
+\section{呼叫函式時，你的東西是被「借」走的}
+\label{sec:function-nametag}
+
+上一節看到函式物件本身可以被傳來傳去，這一節要看更常見的情況：呼叫函式時，傳進去的引數
+發生了什麼事。還記得第 \ref{ch:variables} 章講過的名字牌比喻嗎？\texttt{x = 5} 是造一個值是 5 的物件，把
+名字牌 \texttt{x} 貼上去；\texttt{y = x} 則是把另一張名字牌也貼到同一個物件上，兩張名字
+牌指的是同一個東西。
+
+第 \ref{ch:lists} 章你也看過，這件事在 list 上特別明顯：改動一個名字看到的內容，另一個指著同一個 list
+的名字也會跟著變。
+
+呼叫函式、傳引數的時候，發生的其實是同一件事：Python 是把引數對應的那個物件「借」給函式
+裡的參數這張名字牌，不是複製一份新的給它。
+
+\begin{example}{python}{(cart-append.py) 函式內對 list 動手腳，函式外看得到}
+def add_apple(cart):
+    cart.append("apple")
+
+
+my_cart = ["banana"]
+add_apple(my_cart)
+print(my_cart)
+\end{example}
+
+\iosample{}{['banana', 'apple'] \\}
+
+呼叫 \texttt{add\_apple(my\_cart)} 的時候，\texttt{my\_cart} 指著的那個 list 物件，被
+「借」給了函式裡的參數 \texttt{cart}：\texttt{cart} 跟外面的 \texttt{my\_cart} 現在是
+兩張名字牌，指著同一個物件。函式主體裡 \texttt{cart.append("apple")} 是對這個物件本身
+「動手腳」（原地修改），所以不管你是透過 \texttt{cart} 這張名字牌，還是外面的
+\texttt{my\_cart} 這張名字牌去看，看到的都是同一份改過的內容。
+
+但如果函式做的事情，是把參數整個重新賦值呢？
+
+\begin{example}{python}{(cart-reassign.py) 對參數重新賦值，函式外不受影響}
+def replace_cart(cart):
+    # 這行把 cart 這張名字牌重新貼到一個全新的 list 上，
+    # 跟外面的 my_cart 已經沒有關係了
+    cart = ["new list"]
+
+
+my_cart = ["banana"]
+replace_cart(my_cart)
+print(my_cart)
+\end{example}
+
+\iosample{}{['banana'] \\}
+
+這次 \texttt{my\_cart} 完全沒變。\texttt{cart = ["new list"]} 做的事，是把
+\texttt{cart} 這張名字牌從原本借來的物件上撕下來，重新貼到一個全新造出來的 list 上：這個
+動作只影響 \texttt{cart} 這張名字牌貼在哪裡，跟外面的 \texttt{my\_cart} 完全無關，
+\texttt{my\_cart} 從頭到尾都貼在它原本的那個物件上，沒有被撕過。
+
+下面這張圖把 \texttt{add\_apple(my\_cart)} 呼叫當下的狀態畫出來：\texttt{my\_cart} 跟
+函式裡的參數 \texttt{cart} 是兩張分開的名字牌，但貼的是同一個 list 物件，所以
+\texttt{cart.append("apple")} 改的東西，兩張名字牌都看得到。
+
+\begin{center}
+\begin{tikzpicture}
+\node[process] (myvar) at (0,2) {my\_cart（呼叫端）};
+\node[process] (param) at (4.6,2) {cart（函式參數）};
+\node[startend, minimum width=5.2cm] (obj) at (2.3,0)
+    {list 物件：\texttt{['banana', 'apple']}};
+\draw[diagarrow] (myvar.south) -- (obj.north -| myvar);
+\draw[diagarrow] (param.south) -- (obj.north -| param);
+\end{tikzpicture}
+\end{center}
+
+\keypoint{函式呼叫時，引數是把物件「借」給參數這張名字牌，不是複製一份給它。函式內對參數
+「動手腳」（例如 \texttt{.append()}、\texttt{.sort()} 這類原地修改的操作）會影響到函式
+外面看到的同一個物件；對參數「重新貼名字牌」（重新賦值，例如 \texttt{cart = ...}）則只是
+讓參數這張名字牌換個地方貼，不會影響函式外面原本的名字牌指向哪裡。}
+
+\section{可變預設參數陷阱}
+\label{sec:mutable-default}
+
+上一節的名字牌模型，可以直接解釋一個所有 Python 使用者遲早都會踩到的經典陷阱：如果一個
+函式的預設參數值是 list 這種可變（能被原地修改）的物件，會發生非常違反直覺的事。
+
+先看一個「有問題」的版本：一個函式接收一個商品名稱，把它加進購物車 list，如果呼叫時沒有
+自己帶購物車，就用預設值。
+
+\begin{code}{python}{危險寫法：可變物件當預設參數值}
+def function_name(item, cart=[]):
+    cart.append(item)
+    return cart
+\end{code}
+
+\begin{example}{python}{(shopping-cart-bug.py) 連續呼叫兩次，購物車卻黏在一起}
+def add_item(item, cart=[]):      # 危險：cart 只在 def 執行時被建立一次
+    cart.append(item)
+    return cart
+
+
+print(add_item("apple"))
+print(add_item("banana"))
+\end{example}
+
+\iosample{}{['apple'] \\{} ['apple', 'banana'] \\}
+
+這裡兩次呼叫都沒有自己帶 \texttt{cart}，理論上你可能會預期第二次呼叫應該也是拿到一個
+「全新的空購物車」，只裝著 \texttt{"banana"}，但實際看到的是 \texttt{['apple', 'banana']}，
+第一次呼叫加進去的 \texttt{"apple"} 竟然還留著。
+
+原因跟 \ref{sec:function-nametag} 節的名字牌模型完全一樣：\texttt{cart=[]} 這個預設值，只在 \texttt{def} 那
+一行被\textbf{執行的當下}造了一次 list 物件、把預設用的名字牌貼上去，這件事只發生一次，
+不是每次呼叫都重新造一個新的空 list。之後每一次呼叫，只要你沒有自己傳 \texttt{cart} 進
+去，用的都是同一個物件；而函式主體裡的 \texttt{cart.append(item)} 又是原地修改，於是每次
+呼叫都在同一個 list 上疊加內容，跟「每次呼叫都應該拿到一個乾淨的新盒子」的直覺完全相反。
+
+修法是把預設值換成 \texttt{None}，\texttt{None} 是不可變的，不會被意外累積內容，再讓
+函式自己在主體裡判斷：如果沒收到 \texttt{cart}，才自己造一個新的空 list。
+
+\begin{code}{python}{安全寫法：預設值用 None，函式內自己造新物件}
+def function_name(item, cart=None):
+    if cart is None:
+        cart = []
+    cart.append(item)
+    return cart
+\end{code}
+
+這裡的 \texttt{cart is None} 用 \texttt{is} 而不是 \texttt{==}，是因為 \texttt{None}
+在 Python 裡全世界只有一個，\texttt{is} 問的是「是不是同一個東西」，這是檢查一個值是不是
+\texttt{None} 時，Python 慣用的寫法。
+\index{is}
+
+\begin{example}{python}{(shopping-cart-fixed.py) 每次呼叫都拿到乾淨的購物車}
+def add_item(item, cart=None):
+    if cart is None:        # 每次呼叫都會檢查，並自己建立一個新的空 list
+        cart = []
+    cart.append(item)
+    return cart
+
+
+print(add_item("apple"))
+print(add_item("banana"))
+\end{example}
+
+\iosample{}{['apple'] \\{} ['banana'] \\}
+
+這次兩次呼叫互不影響，因為 \texttt{if cart is None} 這一行，每次沒收到 \texttt{cart}
+時都會重新執行 \texttt{cart = []}，也就是每次都貼一張新的名字牌到一個全新造出來的空 list
+上，不會再共用同一個物件。
+
+下面這張圖畫出「有問題」的版本（\texttt{cart=[]}）裡發生的事：\texttt{def} 那一行只在
+程式讀到它的當下執行一次，造出一個預設用的 list 物件；之後不管呼叫幾次、只要沒自己帶
+\texttt{cart}，用的都是同一個物件。
+
+\begin{center}
+\begin{tikzpicture}
+\node[process] (def) at (2.3,3.4) {\texttt{def} 執行時（只發生一次）};
+\node[startend, minimum width=5.6cm] (obj) at (2.3,1.9)
+    {預設 list 物件（一開始是 \texttt{[]}）};
+\node[process] (call1) at (0,0) {第一次呼叫\\\texttt{add\_item("apple")}};
+\node[process] (call2) at (4.6,0) {第二次呼叫\\\texttt{add\_item("banana")}};
+\draw[diagarrow] (def.south) -- (obj.north);
+\draw[diagarrow] (call1.north) -- (obj.south -| call1);
+\draw[diagarrow] (call2.north) -- (obj.south -| call2);
+\end{tikzpicture}
+\end{center}
+
+\keypoint{函式的預設參數值只在 \texttt{def} 執行的那一刻被建立一次，不是每次呼叫都重新
+建立。如果預設值是 list 這類可變物件，又在函式內對它做原地修改，不同次呼叫之間就會共用、
+累積同一個物件的內容，這是 Python 一個非常有名的坑。安全的寫法是把預設值換成
+\texttt{None}，再讓函式自己在主體裡判斷、自己建立新的物件。}
+
+\begin{drills}[label=drills:mutable-default]
+\item 承 \texttt{shopping-cart-bug.py}：如果再加一行
+\texttt{print(add\_item("orange"))}（第三次呼叫，一樣沒帶 \texttt{cart}），這一行會印出
+什麼？
+\item 承 \texttt{shopping-cart-bug.py}：如果第二次呼叫改成自己帶一個購物車，寫成
+\texttt{print(add\_item("banana", ["watermelon"]))}，這一行會印出什麼？（提示：這次有自己傳
+\texttt{cart} 進去，用的還是同一個共用物件嗎？）
+\item 承 \texttt{shopping-cart-fixed.py}：如果連續呼叫三次
+\texttt{add\_item("apple")}、\texttt{add\_item("banana")}、\texttt{add\_item("orange")}，
+分別 \texttt{print} 每一次的回傳值，三行輸出各會是什麼？
+\end{drills}
+
+\section{函式裡的世界跟函式外的世界：變數作用域}
+\label{sec:function-scope}
+
+到目前為止，你可能已經注意到一件事：函式裡面定義的變數，好像沒辦法在函式外面直接用。這不
+是巧合，是 Python 刻意設計的規則：一個變數「在哪裡看得到、在哪裡看不到」，這個範圍叫做
+作用域（scope）。
+\index{作用域}
+
+在函式主體裡定義的變數，叫做區域變數（local variable），「區域」的意思是，它只在這個
+函式執行的期間存在，函式一旦執行完畢、把值 \texttt{return} 出去，這個變數就消失了，外面
+沒有辦法再存取它。
+\index{區域變數}
+
+\begin{example}{python}{(order-total-scope.py) 函式外看不到函式內的變數}
+def calculate_total(price, quantity):
+    total = price * quantity
+    return total
+
+
+result = calculate_total(50, 3)
+print(result)
+print(total)
+\end{example}
+
+\begin{verbatim}
+150
+Traceback (most recent call last):
+  File "order-total-scope.py", line 8, in <module>
+    print(total)
+          ^^^^^
+NameError: name 'total' is not defined
+\end{verbatim}
+
+\texttt{print(result)} 正常印出了 \texttt{150}，\texttt{result} 是在函式外面定義的
+變數，接住了 \texttt{calculate\_total} 回傳的值。但緊接著的 \texttt{print(total)} 卻
+報錯了：\texttt{total} 是在 \texttt{calculate\_total} 主體裡定義的區域變數，函式一
+\texttt{return} 完就消失了，函式外面根本沒有一個叫 \texttt{total} 的名字存在過，Python
+當然找不到。這是這一章第二次看到 \texttt{NameError}，跟第 \ref{ch:introduction} 章看到的一樣，都是「這個
+名字，Python 找不到」的意思，差別只在於，這次不是打錯字，是你想用一個原本就不存在於這個
+範圍的變數。
+
+那函式外面的變數呢？函式外定義的變數叫做全域變數（global variable），跟區域變數的規則
+不一樣：函式\textbf{可以}讀取函式外面已經存在的全域變數，只是不能直接（不用特殊語法）在
+函式內修改它。
+\index{全域變數}
+
+\begin{example}{python}{(order-total-tax.py) 函式讀取函式外的變數}
+tax_rate = 0.05
+
+
+def calculate_total(price):
+    return price * (1 + tax_rate)
+
+
+print(calculate_total(100))
+\end{example}
+
+\iosample{}{105.0 \\}
+
+\texttt{tax\_rate} 是在函式外面定義的全域變數，\texttt{calculate\_total} 主體裡直接用
+了它，沒有另外當作參數傳進去，程式依然正常執行，這說明「函式外面看不到函式裡面」是單向的
+規則，不是完全隔絕：函式裡面看得到函式外面已經存在的東西，只是反過來不行。
+
+到這裡為止都還算符合直覺：「函式可以偷看外面，但不能直接動外面的東西」。但這條規則有一個
+非常容易誤解的地方，很值得單獨拿出來看：如果函式主體裡\textbf{有任何一行}打算對一個跟
+全域變數同名的名字賦值，Python 會把這個名字在整段函式主體裡都當成區域變數，就算那一行
+賦值寫在後面，前面想「先讀一下」都不行。
+
+\begin{example}{python}{(counter-broken.py) 想在函式裡直接更新全域變數}
+counter = 0
+
+
+def increment():
+    counter = counter + 1
+    print(counter)
+
+
+increment()
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "counter-broken.py", line 9, in <module>
+    increment()
+    ~~~~~~~~~^^
+  File "counter-broken.py", line 5, in increment
+    counter = counter + 1
+              ^^^^^^^
+UnboundLocalError: cannot access local variable 'counter' where it is not associated with a value
+\end{verbatim}
+
+這個錯誤第一次看到通常會很困惑：明明外面就有一個 \texttt{counter}，為什麼函式裡讀不到？
+原因是 \texttt{counter = counter + 1} 這一行，等號左邊出現了 \texttt{counter}，Python
+一看到函式主體裡有任何一行在對某個名字賦值，就會把這個名字在整段主體裡都當成區域變數，
+跟外面那個同名的全域變數是兩個完全不同的東西。
+
+問題是，右邊的 \texttt{counter + 1} 要先讀取 \texttt{counter} 目前的值才能算，可是這個
+「區域版本」的 \texttt{counter} 在這一行之前根本還沒被賦值過，於是 Python 丟出
+\texttt{UnboundLocalError}：「這個區域變數還沒有對應到任何值，不能讀取」。
+\index{UnboundLocalError}
+
+如果真的想在函式裡修改一個函式外面的全域變數，要用 \texttt{global} 這個關鍵字，明確告訴
+Python「這個名字不要當成新的區域變數，去對應外面那個全域變數」。
+\index{global}
+
+\begin{code}{python}{用 global 明確表示要修改函式外的變數}
+variable = initial_value
+
+
+def function_name():
+    global variable
+    variable = variable + 1
+\end{code}
+
+\begin{example}{python}{(counter-fixed.py) 用 global 修改函式外的變數}
+counter = 0
+
+
+def increment():
+    global counter
+    counter = counter + 1
+    print(counter)
+
+
+increment()
+increment()
+\end{example}
+
+\iosample{}{1 \\ 2 \\}
+
+有了 \texttt{global counter} 這一行，函式裡的 \texttt{counter} 不再被當成一個新的
+區域變數，而是明確對應到外面那個全域變數。兩次呼叫都直接修改同一個物件，所以第二次呼叫
+印出的是累加過的 \texttt{2}，不是每次都從頭開始的 \texttt{1}。
+
+\texttt{global} 雖然能解決問題，但多數 Python 教學（包括這本書）都不建議把它當成常用
+工具：一個函式如果偷偷改了外面某個變數，呼叫端光看函式怎麼被呼叫，很難猜到它還動了「看
+不見」的東西。更常見、也更清楚的做法，還是把需要的值當作參數傳進去、用 \texttt{return}
+把結果送出來，函式的行為只要看它接收什麼、送回什麼就懂，不用去猜它背後偷偷改了哪個全域
+變數。
+
+\stylepoint{看到函式需要用到 \texttt{global} 才能完成工作，通常是個訊號：這段邏輯改寫成
+「接收參數、回傳結果」的形式，會比讓函式直接動全域變數更容易讀懂、也更不容易出錯。}
+
+順帶一提：不同函式各自的區域變數是彼此獨立的，就算兩個函式都用了同一個變數名字（例如都
+叫 \texttt{total}），也不會互相干擾，每次呼叫函式，Python 都會替它準備一份全新、只屬於
+這次呼叫的區域變數空間。這也回應了 \ref{sec:function-nametag} 節的名字牌模型：區域變數消失的時候，它身上貼的
+名字牌被撕掉了，如果那個名字牌是唯一指向某個物件的名字牌，那個物件也就跟著找不到主人了。
+
+函式主體裡除了可以呼叫別的函式，其實也可以呼叫函式自己，這種寫法叫做遞迴。它能成立，
+靠的正是這一節講清楚的規則——每一次呼叫都有自己獨立的一份區域變數，所以同一個函式一層一層
+疊著呼叫下去，彼此的變數也不會打架。遞迴完整的討論（怎麼讓它停下來、什麼時候值得用它、
+什麼時候用迴圈更好）留到第 \ref{ch:recursion} 章。
+
+\begin{drills}[label=drills:scope]
+\item 承 \texttt{order-total-scope.py}：如果把最後一行 \texttt{print(total)} 刪掉，
+只留 \texttt{print(result)}，這支程式還會不會報錯？
+\item 有兩個函式 \texttt{def area(length): result = length * length; return result} 跟
+\texttt{def double(n): result = n * 2; return result}，如果依序呼叫
+\texttt{print(area(3))} 跟 \texttt{print(double(5))}，兩個函式各自的 \texttt{result}
+會不會互相干擾、印出錯誤的值？
+\item 有一段程式 \texttt{total = 100}，接著定義
+\texttt{def show(): print(total)}，最後呼叫 \texttt{show()}。這支程式會不會報錯？會印
+出什麼？（提示：函式主體裡有沒有任何一行對 \texttt{total} 賦值？）
+\item 如果把上一題的函式改成
+\texttt{def show(): total = total + 1; print(total)}，再呼叫 \texttt{show()}，會發生
+什麼事？
+\end{drills}
+
+\section{幫函式留下說明：docstring 簡短一瞥}
+\label{sec:function-docstring}
+
+函式名稱取得好，通常就能看出它在做什麼，但有些函式的用途沒辦法只靠名字說清楚，例如參數
+的單位、回傳值代表什麼。Python 讓你可以在函式主體的第一行，寫一段用三個引號包起來的
+說明文字，緊接在 \texttt{def} 那一行後面。
+
+\begin{example}{python}{(temp-convert.py) 附上說明文字的函式}
+def celsius_to_fahrenheit(celsius):
+    """Convert Celsius temperature to Fahrenheit."""
+    return celsius * 9 / 5 + 32
+
+
+print(celsius_to_fahrenheit(20))
+print(celsius_to_fahrenheit.__doc__)
+\end{example}
+
+\iosample{}{68.0 \\ Convert Celsius temperature to Fahrenheit. \\}
+
+這段三引號字串不會被當成程式的一部分執行，也不影響函式的回傳值，它單純是說明文字。但
+Python 會把它記住，存在函式的 \texttt{\_\_doc\_\_} 這個特殊屬性裡，之後不管是你自己用
+\texttt{print(函式名稱.\_\_doc\_\_)} 查詢，還是編輯器在你打字時跳出來的提示視窗，用的
+都是這段文字。
+
+這種寫在函式主體第一行的說明字串，有一個正式名字叫 docstring，完整的寫法規則（例如函式
+有好幾個參數時該怎麼分段說明）留到第 \ref{ch:modules} 章再細談，這裡你只要知道「函式可以帶一段自我介紹，
+而且 Python 有辦法把它查回來」就好。
+
+
+最後補一句這一章沒有走進去、但值得先知道的事：函式除了「被定義、被呼叫」之外，還有另一面
+——它本身也可以像資料一樣被傳來傳去、被塞進別的函式裡、甚至被包上一層改變行為。第
+\ref{sec:function-first-class} 節你已經摸到這件事的邊了，完整的討論留到第
+\ref{ch:advanced-functions} 章。
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:function-multi-return}~節}
+\begin{enumerate}
+\item \texttt{small} 是 \texttt{1}，\texttt{big} 是 \texttt{9}。
+\item 印出 \texttt{(1, 9)}，也就是兩個值打包起來、還沒被拆開的樣子。
+\item \texttt{small} 跟 \texttt{big} 都會是 \texttt{5}：清單裡只有一個數字，最小值跟
+最大值剛好是同一個數。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:function-params}~節}
+\begin{enumerate}
+\item 印出「I have a pet bird named Tweety.」。
+\item \texttt{animal\_type} 會是 \texttt{"cat"}，用 positional 引數呼叫時，第二個引數
+一樣會依順序蓋掉預設值。
+\item \texttt{make\_coffee(size, milk=True)}，只指定想改的 \texttt{milk}，
+\texttt{sugar} 用預設值，\texttt{size} 因為沒有預設值、一定要自己給。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:function-args}~節}
+\begin{enumerate}
+\item 回傳 \texttt{30}：兩個引數被收成一包，迴圈把 \texttt{10} 跟 \texttt{20} 加起來。
+\item 會丟出 \texttt{TypeError: total\_price() takes 1 positional argument but 3 were given}。
+拿掉星號之後，\texttt{prices} 就變回一個普通參數，只肯收一個引數，這裡卻給了三個。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:function-kwargs}~節}
+\begin{enumerate}
+\item \texttt{show(1, 2, 3)} 印出 \texttt{3}；\texttt{show([1, 2, 3])} 印出
+\texttt{1}——後者只給了一個引數（那個 list 本身），星號把「這一個東西」收成一包。
+\item 呼叫時在 list 前面加一個星號：\texttt{show(*[1, 2, 3])}，先把 list 拆成三個
+獨立的引數再餵進去，就會印出 \texttt{3}。
+\item \texttt{greet(**info)}：兩個星號把 dict 攤成
+\texttt{greeting="Hi"}、\texttt{name="Amy"} 兩個 keyword 引數，剛好對上函式的兩個參數
+名字。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:function-first-class}~節}
+\begin{enumerate}
+\item 印出 \texttt{12}：\texttt{f} 是貼在 \texttt{double} 這個函式物件上的另一張名字
+牌，\texttt{f(6)} 跟 \texttt{double(6)} 呼叫的是同一個函式。
+\item 印出 \texttt{81}：先算 \texttt{square(3)} 得到 \texttt{9}，再算
+\texttt{square(9)} 得到 \texttt{81}。
+\item 會在呼叫 \texttt{apply\_twice} 之前就先出錯：\texttt{add\_ten()} 在傳進
+\texttt{apply\_twice} 之前就已經被呼叫了，但 \texttt{add\_ten} 需要一個引數
+\texttt{n}，這裡沒給，丟出 \texttt{TypeError}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:mutable-default}~節}
+\begin{enumerate}
+\item 印出 \texttt{['apple', 'banana', 'orange']}，每次沒帶 \texttt{cart} 都在用同一個
+共用物件，內容持續疊加。
+\item 印出 \texttt{['watermelon', 'banana']}，這次自己傳了 \texttt{cart} 進去，用的是全新的
+\texttt{["watermelon"]} 這個物件，不是預設值共用的那個，所以不會看到第一次呼叫留下的
+\texttt{"apple"}。
+\item 依序印出 \texttt{['apple']}、\texttt{['banana']}、\texttt{['orange']}，因為每次呼叫
+都自己判斷、自己造一個新的空 list，彼此互不影響。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:function-scope}~節}
+\begin{enumerate}
+\item 不會報錯：\texttt{result} 是在函式外定義的變數，會正常印出 \texttt{150}；真正會
+觸發 \texttt{NameError} 的是嘗試在函式外存取函式內的區域變數 \texttt{total}，這裡已經
+被刪掉了。
+\item 不會互相干擾：每次呼叫函式，Python 都會替那次呼叫準備一份全新、獨立的區域變數
+空間，就算兩個函式都用了 \texttt{result} 這個名字，也是各自獨立的物件，
+\texttt{area(3)} 印出 \texttt{9}，\texttt{double(5)} 印出 \texttt{10}。
+\item 不會報錯，會印出 \texttt{100}：\texttt{show} 函式主體裡沒有任何一行對
+\texttt{total} 賦值，只有讀取，所以 Python 會直接去讀函式外面那個全域變數。
+\item 會丟出 \texttt{UnboundLocalError}：主體裡出現了 \texttt{total = total + 1}，
+Python 因此把整段主體裡的 \texttt{total} 都當成區域變數，但等號右邊要讀取
+\texttt{total} 的時候，這個區域版本還沒有被賦值過。
+\end{enumerate}

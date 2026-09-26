@@ -1,0 +1,1308 @@
+\chapter{檔案與例外處理}
+\label{ch:files-exceptions}
+
+這一章要教的，表面上是兩件不相干的事：讀寫檔案，還有處理錯誤。但骨子裡它們是同一套邏輯的
+兩面，所以我們把它們放進同一章，而且刻意用同一個順序講給你聽。
+
+前面九章你寫的每一支程式，只要視窗一關、程式一停，變數、清單、字典裡存的東西就通通消失，
+下次執行又是從頭開始。這一章第一段要解決的就是這件事：怎麼把資料寫進一個檔案裡，讓它撐過
+程式結束、撐過電腦重開機，下次程式再打開來還在原地。我們會先教怎麼讀一個已經存在的檔案，
+再教怎麼自己寫一個，也會教你怎麼一次同時打開兩個檔案、一邊讀一邊寫。
+
+只要程式開始跟外面的世界打交道，不管是打開一個檔案，還是之後章節會遇到的網路連線、使用者
+亂打的輸入，就一定會遇到「這件事可能失敗」的狀況：檔案可能根本不存在、路徑打錯字、硬碟臨時
+被拔掉。這一章的第二段就是在處理「失敗」這件事，而且會正式告訴你 Python 社群面對「可能失敗
+的操作」有一套特別的處理哲學，跟大多數人「先確認安全才動手」的直覺剛好相反。
+
+這就是這本書從第一章就預告過的兩個貫穿全書心智模型之一，這裡是它第一次完整登場，之後每一章
+遇到「可能出錯的操作」都會回頭呼應這裡教的東西。你也會學到同一段程式碼怎麼同時防範好幾種不
+同的失敗原因，以及不管成功或失敗都一定要做的收尾動作要怎麼寫。
+
+最後，這一章會把視角拉得更高：這套「先做、錯了再處理」的邏輯，其實不只是檔案操作專屬的做
+法。回頭看看第 \ref{ch:conditionals} 章講條件判斷、第 \ref{ch:dict-set} 章講字典查詢時，我們已經偷偷埋了兩個相關的伏筆，這一章
+最後一節會把它們一次收尾，讓你看到這一套邏輯貫穿的範圍，比你以為的更大。
+
+\section{讀一份檔案：\texttt{open()} 與 \texttt{read()}}
+\label{sec:reading-files}
+
+到目前為止，你程式裡用到的資料，不是你自己在程式碼裡打好的，就是使用者當下打進去的。程式
+一結束，這些東西就沒了。但現實世界裡，資料常常早就已經存在某個地方，例如電腦裡的一份文字
+檔，這一節要教你怎麼把這種已經存在的檔案讀進程式裡。
+
+想像你去一個有寄物櫃的地方寄放行李：櫃檯會給你一張號碼牌，之後你要拿行李，靠的是這張號碼
+牌，號碼牌本身不是行李。Python 的 \texttt{open()} 函式做的事很像：呼叫它會回傳一個「檔案
+物件」，你可以把它想成那張號碼牌，之後要讀檔案內容，都要透過這個物件進行操作，物件本身不是
+內容。
+\index{檔案物件}
+
+\begin{code}{python}{開檔並讀出全部內容}
+with open(filename) as file_object:
+    content = file_object.read()
+\end{code}
+
+\texttt{open(filename)} 打開檔案、回傳檔案物件；\texttt{read()} 才是真正把整份內容讀出來，變成
+一個字串。
+\index{open()}
+\index{read()}
+前面的 \texttt{with ... as ...:} 這個寫法，是在告訴 Python「這段縮排區塊做完之
+後，自動幫我把檔案關掉」。延續寄物櫃的比喻，就像「用完自動幫你把號碼牌繳回去、置物櫃自動關
+好」，你不用自己記得要不要去櫃檯歸還。你之後在很多情境都會看到 \texttt{with} 這個寫法，不只
+用在檔案上。
+\index{with ... as ...}
+
+\keypoint{\texttt{open()} 回傳的東西是一個代表「已經打開的這個檔案」的物件，不是檔案裡的
+文字內容本身，就像寄物櫃的號碼牌不是你的行李本身。真正要拿到檔案裡的文字，要另外呼叫
+\texttt{.read()} 之類的方法才行。}
+
+這裡有一個小提醒：範例裡 \texttt{open("shopping\_list.txt")} 這樣只寫檔名、沒有夾帶資料夾
+路徑，Python 預設會去「目前執行程式的那個資料夾」裡找，也就是你的 \texttt{.py} 檔案所在的
+那個資料夾。如果你把 \texttt{shopping\_list.txt} 放在別的資料夾，或者用編輯器從不同位置執行
+程式，\texttt{open()} 就可能找不到它。這一章後面談到「檔案可能不存在」時，這也是最常見的原因
+之一：檔案不一定真的不見了，很可能只是程式在錯的地方找。
+
+假設你的資料夾裡有一份 \texttt{shopping\_list.txt}，內容是一行一項要買的東西：
+
+\begin{verbatim}
+Milk
+Eggs
+Toast
+Apple
+\end{verbatim}
+
+\begin{example}{python}{(read-shopping-list.py) 讀一份購物清單}
+with open("shopping_list.txt") as shopping_list_file:
+    content = shopping_list_file.read()
+
+print(content)
+print("---")
+print(content.rstrip())
+\end{example}
+
+\iosample{}{Milk \\ Eggs \\ Toast \\ Apple \\~\\ --- \\ Milk \\ Eggs \\ Toast \\ Apple \\}
+
+第一次 \texttt{print(content)} 之後，「Apple」下面多了一行空白，這是因為
+\texttt{shopping\_list.txt} 這份檔案本身結尾就有一個看不見的換行符號，\texttt{read()} 把
+它原封不動讀進來，\texttt{print()} 自己又會再加一次換行，兩個疊在一起就變成一行空白。
+\texttt{content.rstrip()} 會把字串「結尾」的空白字元（包含換行）去掉，所以第二次印出來就
+乾淨俐落，沒有多餘的空行。
+\index{rstrip()}
+
+你可能已經在想：如果 \texttt{shopping\_list.txt} 這個檔名根本打錯字、或者這個檔案壓根不存
+在，\texttt{open()} 會怎樣？先賣個關子，這個問題我們晚一點會正式回來處理。
+
+\section{逐行讀取檔案}
+\label{sec:reading-lines}
+
+上一節整份讀出來很方便，但很多檔案的資料是「一行一筆」的形狀：一行一個名字、一行一筆紀錄，
+這時候你通常想要的是能一行一行分開處理，不是一大坨字串。
+
+\begin{code}{python}{逐行讀取檔案}
+with open(filename) as file_object:
+    for line in file_object:
+        process(line.rstrip())
+\end{code}
+
+檔案物件本身就是可以放進 \texttt{for} 迴圈裡的東西：每一輪迴圈，\texttt{line} 會是檔案裡的
+「下一行」，而且包含結尾那個看不見的換行符號，所以幾乎每次都要搭配 \texttt{rstrip()} 把它去
+掉。
+
+假設你有一份 \texttt{names.txt}，一行一個名字：
+
+\begin{verbatim}
+Alice
+Bob
+Taylor
+\end{verbatim}
+
+\begin{example}{python}{(greet-each-name.py) 跟名單裡每個人打招呼}
+with open("names.txt") as names_file:
+    for line in names_file:
+        name = line.rstrip()
+        print(f"Hello, {name}!")
+\end{example}
+
+\iosample{}{Hello, Alice! \\ Hello, Bob! \\ Hello, Taylor! \\}
+
+如果忘記呼叫 \texttt{rstrip()}，把上面的 \texttt{name = line.rstrip()} 改成
+\texttt{name = line}，輸出會在每句問候後面多出一堆空行，因為 \texttt{line} 裡其實藏著一個
+看不見的換行符號，用括號把每一行框起來就能看清楚它到底藏在哪裡：
+
+\begin{example}{python}{(show-hidden-newline.py) 看清楚每一行藏著的換行符號}
+with open("names.txt") as names_file:
+    for line in names_file:
+        print(f"[{line}]")
+\end{example}
+
+\begin{verbatim}
+[Alice
+]
+[Bob
+]
+[Taylor
+]
+\end{verbatim}
+
+方括號的結尾跑到了下一行，這就是那個藏在 \texttt{line} 裡、\texttt{rstrip()} 沒被呼叫就會
+一直跟著你的換行符號。
+
+除了逐行處理，Python 還有一個方法叫 \texttt{readlines()}，
+\index{readlines()}
+會一次把每一行變成一個字串，存進
+一個 list 裡回傳給你（例如 \texttt{names\_file.readlines()} 會得到
+\texttt{['Alice\textbackslash n', 'Bob\textbackslash n', 'Taylor\textbackslash n']}），跟
+\texttt{for line in file\_object} 做的事情類似，只是拿到的資料形狀不一樣，一個是「邊讀邊處
+理」，一個是「先整包存成 list，之後再慢慢用」。這裡先讓你認得這個名字，之後真正需要一次拿到
+所有行的 list 時，你會知道有這個選項。
+
+這裡值得多想一步：\texttt{for line in file\_object} 是一行一行來，處理完這一行才去拿下一行，
+同一時間電腦記憶體裡只需要放著「目前這一行」；\texttt{readlines()} 則是一口氣把整份檔案的每
+一行都讀出來、變成 list 存好，才把整個 list 交給你。
+
+檔案不大的時候兩者感覺不出差別，但如果檔案有幾百萬行，\texttt{readlines()} 要先把這麼多行全
+部塞進記憶體才能開始用，\texttt{for line in file\_object} 卻完全不需要，因為它從頭到尾都只
+處理「目前這一行」。這也是為什麼很多 Python 使用者的預設習慣是逐行處理，只有真的需要「一次
+拿到所有行的清單」（例如要整份倒著讀、或要跳來跳去存取指定的某幾行）才會特地呼叫
+\texttt{readlines()}。
+
+\begin{drills}[label=drills:reading-files]
+\item 假設 \texttt{fruits.txt} 的內容是：
+\begin{verbatim}
+Orange
+Banana
+\end{verbatim}
+這段程式執行後，螢幕上會印出什麼？
+\begin{verbatim}
+with open("fruits.txt") as fruits_file:
+    for line in fruits_file:
+        print(line)
+\end{verbatim}
+\item 如果把上面的 \texttt{print(line)} 改成 \texttt{print(line.rstrip())}，輸出會有什麼
+不同？
+\item \texttt{readlines()} 會把整份檔案的每一行變成 list 裡的一個元素。如果你要做的事情是
+「統計檔案總共有幾行」，你覺得用 \texttt{readlines()} 拿到的 list 直接算 \texttt{len()}，
+跟用 \texttt{for line in file\_object} 自己數一個計數器，哪一種寫起來比較直接？
+\end{drills}
+
+\section{把資料寫進檔案}
+\label{sec:writing-files}
+
+讀資料是把別人（或你自己之前）留下的東西拿進來，這一節反過來，讓你的程式自己在檔案裡留下
+東西，之後不管是你自己還是別的程式，都能再讀回來。
+
+在動手學新模式之前，先看一次如果用第~\ref{sec:reading-files}~節那種預設的讀取方式，硬要呼
+叫 \texttt{write()} 會發生什麼事：
+
+\begin{verbatim}
+with open("shopping_list.txt") as f:
+    f.write("new item\n")
+\end{verbatim}
+
+執行後：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "add-item-wrong-mode.py", line 2, in <module>
+    f.write("new item\n")
+io.UnsupportedOperation: not writable
+\end{verbatim}
+
+\texttt{open()} 沒有另外指定模式時，預設是唯讀（只能讀，不能寫）。這個檔案物件上雖然也有
+\texttt{write()} 這個方法可以呼叫，但作業系統一開始就是用「唯讀」的權限打開這份檔案，硬要
+寫入，就會被擋下來、丟出 \texttt{io.UnsupportedOperation}。
+\index{io.UnsupportedOperation}
+要真正能寫入檔案，得在
+\texttt{open()} 明確指定寫入用的模式，這就是這一節要教的事。
+
+這裡換一個更貼切的類比：白板。\texttt{'w'} 模式就像先把白板整個擦乾淨，才開始寫新的內容，
+不管白板上原本寫了什麼，通通不見。
+\index{'w' 模式}
+
+\begin{code}{python}{寫入模式開檔並寫入內容}
+with open(filename, "w") as file_object:
+    file_object.write(content)
+\end{code}
+
+跟 \texttt{print()} 不一樣，\texttt{write()} 不會自動幫你加上換行符號。想要換行，要自己在
+字串裡寫 \texttt{\textbackslash n}。
+\index{write()}
+
+\begin{example}{python}{(write-diary-entry.py) 把兩句話存進日記檔案}
+with open("diary.txt", "w") as diary_file:
+    diary_file.write("Today I learned how to open files")
+    diary_file.write("I also learned how to write files")
+
+with open("diary.txt") as diary_file:
+    print(diary_file.read())
+\end{example}
+
+\iosample{}{Today I learned how to open filesI also learned how to write files \\}
+
+兩次 \texttt{write()} 呼叫寫出來的字串直接黏在一起，中間完全沒有分隔，這就是「\texttt{write()}
+不會自動加換行」的具體長相。如果想讓它們分成兩行，要自己在第一句字串尾巴加上
+\texttt{\textbackslash n}，例如把第一個 \texttt{write()} 改成
+\texttt{diary\_file.write("Today I learned how to open files\textbackslash n")}。
+
+\texttt{'w'} 模式還有一個新手很容易踩到的坑：如果你之後又用 \texttt{'w'} 模式打開同一個檔
+案，不管上次寫了什麼，都會被整個清空重寫。很多人會誤以為 \texttt{'w'} 是「接著寫」，其實它
+每次打開都是先擦乾淨再寫。
+
+\begin{example}{python}{(overwrite-diary-mistake.py) 常見錯誤：以為 'w' 是「加寫」}
+with open("diary.txt", "w") as diary_file:
+    diary_file.write("Today I was busy and did not get anything done")
+
+with open("diary.txt") as diary_file:
+    print(diary_file.read())
+\end{example}
+
+\iosample{}{Today I was busy and did not get anything done \\}
+
+把這段程式接在剛才 \texttt{write-diary-entry.py} 之後執行，打開 \texttt{diary.txt} 就只剩
+下「Today I was busy and did not get anything done」這一句。「Today I learned how to
+open filesI also learned how to write files」已經被整個蓋
+掉，沒有任何警告，也救不回來。
+
+\keypoint{\texttt{'w'} 模式每次打開檔案，都會先把整個檔案清空，不管你原本寫了什麼。它的行為
+是「重寫」，不是「加寫」。如果你想在原有內容後面繼續添加，需要的是下一節要教的 \texttt{'a'}
+模式，不是 \texttt{'w'}。}
+
+\section{一次寫入 vs 逐行寫入：\texttt{writelines()} 與寫入迴圈}
+\label{sec:writing-styles}
+
+上一節看到的 \texttt{write-diary-entry.py}，兩次 \texttt{write()} 呼叫各自寫一句話。如果
+要寫進檔案的內容本來就是一份 list，例如處理過的購物清單，你有好幾種寫法可以選，這一節把常見
+的幾種放在一起比較。
+
+第一種寫法，是在迴圈裡逐項呼叫 \texttt{write()}：
+
+\begin{code}{python}{在迴圈裡逐項寫入}
+with open(filename, "w") as file_object:
+    for item in items:
+        file_object.write(item + "\n")
+\end{code}
+
+每一輪迴圈呼叫一次 \texttt{write()}，等於總共呼叫了跟清單長度一樣多次；因為 \texttt{write()}
+不會自動換行，每一輪都要自己接上 \texttt{\textbackslash n}。
+
+第二種寫法，是用檔案物件的另一個方法 \texttt{writelines()}，一次接收一份「字串構成的
+list」，把每一個字串依序寫進檔案：
+\index{writelines()}
+
+\begin{example}{python}{(write-cart-with-writelines.py) 用 writelines() 一次寫進整份清單}
+items = ["Milk\n", "Eggs\n", "Toast\n"]
+
+with open("cart.txt", "w") as cart_file:
+    cart_file.writelines(items)
+
+with open("cart.txt") as cart_file:
+    print(cart_file.read())
+\end{example}
+
+\iosample{}{Milk \\ Eggs \\ Toast \\}
+
+\texttt{writelines()} 這個名字容易讓人誤會它會自動幫每一行加上換行，其實不會。它做的事情就
+只是把 list 裡每一個字串照順序接在一起寫進檔案，跟 \texttt{write()} 一樣完全不會自動插入任何
+分隔符號。上面的例子如果把 \texttt{items} 換成 \texttt{["Milk", "Eggs", "Toast"]}（每個字串
+結尾都沒有 \texttt{\textbackslash n}），寫出來的 \texttt{cart.txt} 就會是「MilkEggsToast」
+黏成一坨，跟第~\ref{sec:writing-files}~節 \texttt{write-diary-entry.py} 踩到的坑一模一樣。
+
+第三種寫法，是先把整份清單組成一個大字串，只呼叫一次 \texttt{write()}：
+
+\begin{example}{python}{(write-cart-joined.py) 先組好整份內容，一次寫入}
+items = ["Milk", "Eggs", "Toast"]
+content = "\n".join(items) + "\n"
+
+with open("cart.txt", "w") as cart_file:
+    cart_file.write(content)
+
+with open("cart.txt") as cart_file:
+    print(cart_file.read())
+\end{example}
+
+\iosample{}{Milk \\ Eggs \\ Toast \\}
+
+三種寫法產生的結果完全一樣，差別在「什麼時候真的去動檔案」。迴圈裡逐項 \texttt{write()}，
+每一輪都跟檔案系統打一次交道；\texttt{writelines()} 跟「先 \texttt{join} 好、一次
+\texttt{write()}」則是先把要寫的內容準備好，只跟檔案系統打一次交道。
+
+對很小的檔案，這個差異感覺不出來；當清單長到成千上萬筆，每一輪都個別呼叫 \texttt{write()}
+累積起來的額外開銷就會比較明顯，這時候先準備好整份內容、一次寫入，通常比較有效率。但如果清
+單本身太大，大到記憶體放不下一整份組好的字串，逐項寫反而是唯一的選擇。這呼應
+第~\ref{sec:reading-lines}~節讀檔案時「逐行讀」跟「\texttt{readlines()} 一次全讀」的取捨，
+讀跟寫是同一個道理的兩面。
+
+\keypoint{\texttt{writelines()} 跟 \texttt{write()} 一樣，不會自動幫你在每一項之間加上換
+行或任何分隔符號。list 裡的每個字串要不要換行，得自己準備好。}
+
+\begin{drills}[label=drills:writing-styles]
+\item 如果 \texttt{write-cart-with-writelines.py} 裡的 \texttt{items} 沒有在每個字串結尾
+加 \texttt{\textbackslash n}（也就是寫成 \texttt{items = ["Milk", "Eggs", "Toast"]}），
+\texttt{writelines()} 寫出來的 \texttt{cart.txt} 內容會是什麼？
+\item 如果有一百萬行資料要寫進同一個檔案，你會選擇「迴圈裡逐項 \texttt{write()}」，還是「先
+組好一個超大字串再一次 \texttt{write()}」？兩種各自要注意什麼？
+\end{drills}
+
+\section{附加寫入：\texttt{'a'} 模式}
+\label{sec:appending-files}
+
+第~\ref{sec:writing-files}~節看到 \texttt{'w'} 模式的坑：每次打開都會清空重寫。如果你要的
+其實是「接著上次寫的地方繼續往下寫」，像日記一樣，今天寫的不該把昨天寫的洗掉，你要的是
+\texttt{'a'}（append，附加）模式。延續白板的類比，這就是「接著上次寫的地方，往下繼續寫，不
+擦掉原本的內容」。
+\index{'a' 模式}
+
+不需要重新學一套片語，把 \texttt{'w'} 換成 \texttt{'a'} 就好：
+
+\begin{example}{python}{(append-diary-entry.py) 用附加模式接續寫日記}
+diary_entry = "Today I learned how to write files"
+
+with open("diary.txt", "a") as diary_file:
+    diary_file.write(diary_entry + "\n")
+
+with open("diary.txt") as diary_file:
+    print(diary_file.read())
+\end{example}
+
+第一次執行（假設 \texttt{diary.txt} 原本不存在，\texttt{'a'} 模式會自動幫你新建一個）：
+
+\iosample{}{Today I learned how to write files \\}
+
+隔天你把 \texttt{diary\_entry} 改成另一句話，重新執行同一支程式（\texttt{diary.txt} 沒有
+被刪掉）：
+
+\iosample{}{Today I learned how to write files \\ Today I reviewed for loops \\}
+
+兩次執行的內容都留下來了。這就是 \texttt{'a'} 跟 \texttt{'w'} 唯一的差別：如果檔案已經存
+在，\texttt{'w'} 清空重寫，\texttt{'a'} 接著寫；如果檔案原本就不存在，兩者的行為其實一樣，
+都會自動幫你新建一個。
+
+\begin{drills}[label=drills:appending-files]
+\item 你想在使用者每次執行程式時都保留之前的紀錄，不要把上次寫的東西洗掉，該用哪個模式，
+\texttt{'w'} 還是 \texttt{'a'}？
+\item 你想確保每次執行都是全新的一份紀錄，不要保留上次的內容，該用哪個模式，\texttt{'w'}
+還是 \texttt{'a'}？
+\item 如果你用 \texttt{'a'} 模式打開一個原本根本不存在的檔案，會發生什麼事？跟 \texttt{'w'}
+模式遇到「檔案不存在」時的行為一樣嗎？
+\end{drills}
+
+\section{同時開兩個檔案：一次讀、一次寫}
+\label{sec:multiple-files}
+
+讀檔案、寫檔案分開學完之後，很多實際任務其實是「讀一份、依照內容做點加工、寫進另一份」，例
+如把一份購物清單轉成帶編號的檢查清單。你當然可以先用一個 \texttt{with} 讀完存進一個變數，讀
+完之後再另外用一個 \texttt{with} 把結果寫出去，但 Python 也允許你用同一個 \texttt{with}
+同時打開好幾個檔案，中間用逗號隔開。
+\index{with 逗號同時開多個檔案}
+
+\begin{code}{python}{同一個 with 打開兩個檔案}
+with open(source_filename) as source_file, open(target_filename, "w") as target_file:
+    for line in source_file:
+        target_file.write(processed_content)
+\end{code}
+
+逗號前後各是一次完整的 \texttt{open(...) as ...}，兩個檔案物件在同一個縮排區塊裡都用得到；
+區塊結束時，Python 會把兩個檔案都關掉，不用分別寫兩層 \texttt{with}。
+
+\begin{example}{python}{(number-shopping-list.py) 讀一份清單，寫出帶編號的檢查清單}
+number = 0
+
+with open("shopping_list.txt") as source_file, open("shopping_checklist.txt", "w") as target_file:
+    for line in source_file:
+        item = line.rstrip()
+        number += 1
+        target_file.write(f"{number}. {item}\n")
+
+with open("shopping_checklist.txt") as checklist_file:
+    print(checklist_file.read())
+\end{example}
+
+\iosample{}{1. Milk \\ 2. Eggs \\ 3. Toast \\ 4. Apple \\}
+
+\texttt{number} 變數用的是第 \ref{ch:loops} 章教過的「計數」寫法，每讀到一行就加 1；f-string 把數字跟項
+目接在一起組成一行文字。整段迴圈同時在做兩件事：一邊用 \texttt{source\_file} 逐行讀，一邊用
+\texttt{target\_file} 逐行寫，兩個檔案物件互不干擾。
+
+\keypoint{千萬不要把「\texttt{source\_filename}」跟「\texttt{target\_filename}」設成同一個檔案。\texttt{'w'} 模式的清空動作，
+發生在 \texttt{open()} 這一行執行的當下，不是等到第一次呼叫 \texttt{write()} 才清空。如果來
+源、目標是同一個檔案，目標那邊的 \texttt{open(filename, "w")} 一執行就把整個檔案清空了，等
+\texttt{for line in source\_file} 想讀取內容時，能讀到的只剩下空的檔案，什麼都讀不到，也就什麼
+都寫不出來。想「原地修改」一份檔案，正確做法是先讀出全部內容存進一個變數，確定來源檔案的
+\texttt{with} 區塊已經讀取完成，再另外開一次同一個檔名、用 \texttt{'w'} 模式寫回去。}
+
+\begin{drills}[label=drills:multiple-files]
+\item 如果把 \texttt{number-shopping-list.py} 裡的 \texttt{"shopping\_checklist.txt"} 也
+換成 \texttt{"shopping\_list.txt"}（跟來源檔案同一個檔名），執行後 \texttt{shopping\_list.txt}
+會變成什麼？
+\item 承上題，如果真的想把 \texttt{shopping\_list.txt} 原地改成帶編號的版本（讀跟寫都是同一
+個檔案），應該怎麼修改這段程式，才能避免上一題的問題？
+\end{drills}
+
+\section{Python 怎麼面對「可能失敗」：LBYL 與 EAFP}
+\label{sec:lbyl-vs-eafp}
+
+從第一節到現在，我們示範的檔案都乖乖存在，一切順利。但真實世界不會這麼聽話。檔案可能根本不
+存在、路徑打錯字，甚至檔案在你打開的那一刻剛好被別人搬走或刪掉。這一節要教你 Python 怎麼面
+對「這件事可能失敗」的狀況，而且會告訴你，Python 社群面對這種狀況的直覺，可能跟你原本以為
+的不太一樣。
+
+想像你去自動提款機領錢。大多數人的直覺是「先確認安全才行動」：出門前先打電話問銀行，帳戶裡
+還有沒有夠的錢，確定夠了才出門去領。這種「先檢查、確定安全才做」的習慣，有一個專門的名字，
+叫 LBYL（look before you leap，先看清楚再跳）。
+\index{LBYL}
+
+但你實際去操作提款機的時候，通常不會這樣：你直接把卡插進去、輸入金額，如果餘額真的不夠，
+提款機會直接告訴你「餘額不足」，你再想辦法，不會因為多打一通電話確認，事情就變得更好。
+Python 面對「可能失敗的操作」時，比較習慣的做法就是後面這一種：直接做，如果真的出了問題，
+程式會告訴你哪裡出錯，你再處理。這種「先做，錯了再處理」的習慣，也有專門的名字，叫 EAFP
+（easier to ask forgiveness than permission，先做了再說比先問許可容易）。
+\index{EAFP}
+
+開檔案的時候道理也一樣。如果完全不管檔案存不存在，直接打開一個不存在的檔案，會發生什麼事？
+
+\begin{example}{python}{(open-todo-list.py) 直接打開一個不存在的檔案}
+todo_file = open("todo.txt")
+print(todo_file.read())
+\end{example}
+
+假設資料夾裡根本沒有 \texttt{todo.txt} 這個檔案，執行後會看到：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "open-todo-list.py", line 1, in <module>
+    todo_file = open("todo.txt")
+FileNotFoundError: [Errno 2] No such file or directory: 'todo.txt'
+\end{verbatim}
+
+由下往上讀（呼應第 \ref{ch:introduction} 章教過的讀法）：最後一行 \texttt{FileNotFoundError} 就是 Python 專門
+用來表示「找不到檔案」的例外類型；後面 \texttt{[Errno 2] No such file or directory} 是作業
+系統層級更詳細的說明。程式沒有處理過這種情況，所以整支程式直接當掉。
+\index{FileNotFoundError}
+
+你原本的直覺可能是：那先檢查檔案在不在，確定存在才打開它，不就不會當掉了嗎？這是很合理的想
+法，寫成程式碼像這樣：
+
+\begin{code}{python}{LBYL：先檢查檔案在不在，才敢打開}
+import os
+
+if os.path.exists(filename):
+    with open(filename) as file_object:
+        content = file_object.read()
+else:
+    handle_missing_file()
+\end{code}
+
+\texttt{import os} 這一行，是在告訴 Python「我要用到 \texttt{os} 這批工具」。\texttt{os}
+是 Python 內建、專門處理作業系統與檔案路徑的一批現成程式碼，不用你自己寫，\texttt{import}
+就是把這批工具叫進來給你用；這裡你只需要先照著打就好，\texttt{import} 真正的運作方式，第
+\ref{ch:modules} 章會完整介紹。
+\index{import}
+\texttt{os.path.exists(filename)} 傳入一個檔名（路徑字串），檔案存在就回傳
+\texttt{True}，不存在就回傳 \texttt{False}，這就是為什麼上面可以直接把它放進 \texttt{if}
+裡判斷。
+\index{os.path.exists()}
+
+\begin{example}{python}{(check-file-before-reading.py) 先檢查再開檔}
+import os
+
+filename = "todo.txt"
+
+if os.path.exists(filename):
+    with open(filename) as todo_file:
+        print(todo_file.read())
+else:
+    print("This file was not found, skipping for now")
+\end{example}
+
+\iosample{}{This file was not found, skipping for now \\}
+
+這段程式確實不會當掉了。但它藏著一個容易被忽略的坑：\texttt{os.path.exists()} 檢查完、到真
+正呼叫 \texttt{open()} 之間，其實有一段很短暫的空檔，如果剛好在這個空檔裡，這個檔案被搬走、
+被刪掉，或者換了另一個程式在寫入，檢查時看到「存在」，真正打開時它卻已經不在了。
+
+單獨一個人在自己的電腦上跑這種小程式，這個空檔幾乎不會出問題；但只要牽涉到多個程式、多個人
+同時讀寫同一批檔案（例如伺服器上好幾個服務同時處理同一批上傳的檔案），這種「檢查完到動手之
+間狀態已經變了」的情況，就沒有想像中罕見。這就跟提款機的比喻一樣，先打電話問餘額，到真正插
+卡領錢之間，帳戶餘額也可能已經變了（例如剛好有一筆扣款進來），「檢查過」不代表「等一下動手
+時還是一樣的狀態」。
+
+現在改用 EAFP 的寫法，做的事情完全一樣，但邏輯反過來，不先問，直接做，失敗了再處理：
+
+\begin{code}{python}{EAFP：直接開檔，失敗了再處理}
+try:
+    with open(filename) as file_object:
+        content = file_object.read()
+except FileNotFoundError:
+    handle_missing_file()
+\end{code}
+
+\begin{example}{python}{(open-file-safely.py) 直接開檔，失敗了再處理}
+filename = "todo.txt"
+
+try:
+    with open(filename) as todo_file:
+        print(todo_file.read())
+except FileNotFoundError:
+    print("This file was not found, skipping for now")
+\end{example}
+
+\iosample{}{This file was not found, skipping for now \\}
+
+兩段程式做的事情一模一樣、印出來的結果也一模一樣，差別只在「怎麼面對可能失敗這件事」：LBYL
+先問、EAFP 先做。Python 比較習慣後者，原因不是 LBYL 有什麼錯，關鍵在於「檢查完到真正動手之
+間，狀態可能已經變了」這種坑，EAFP 完全不會踩到。不用先確認任何事，直接做，Python 會在真正
+失敗的那一刻老實告訴你發生了什麼事。
+
+EAFP 還有一個實際的好處：LBYL 常常等於把同一件事做兩次，先用 \texttt{os.path.exists()} 問
+一次「這個檔案存在嗎」，通過了才真的呼叫 \texttt{open()} 再問一次「這個檔案真的能打開嗎」
+（作業系統實際檢查的動作，兩次都要重新來一遍）。EAFP 只做一次：直接 \texttt{open()}，成功就
+是成功，失敗就用 \texttt{except} 接住，沒有「先問一次、真正做的時候再確認一次」這種重複的
+成本。
+
+\texttt{try} 後面接的縮排區塊，是「可能會失敗」的那段程式碼；\texttt{except} 後面接的
+\texttt{FileNotFoundError}，是「你想接住的那一種錯誤類型」。只有真的發生這一種錯誤，下面的
+區塊才會執行，其他種類的錯誤不會被這裡攔下來
+\index{try/except}
+（第~\ref{sec:try-except-else}~節的練習會讓你
+親眼看到這件事）。
+
+\keypoint{LBYL 檢查完到真正動手之間，永遠存在一個「狀態可能已經變了」的空檔，任何「先確認再
+行動」的邏輯都躲不掉這個坑，不只是 Python 才有這個問題。EAFP 直接做、失敗了再處理，剛好把這
+個空檔完全消掉，這是 Python 社群偏好 EAFP 的核心原因，不只是「比較潮」而已。}
+
+\section{try/except/else：把「只有成功才該做」的事分開放}
+\label{sec:try-except-else}
+
+上一節的 \texttt{except} 區塊，放的是「失敗了要做的事」。但如果想接著做一些「只有成功才該
+做」的事，例如剛剛讀到的內容還要拿去做進一步的處理，直接把這些程式碼也塞進 \texttt{try}
+區塊裡雖然能動，但不是 Python 建議的寫法。這一節教你第三塊：\texttt{else}。
+
+\begin{code}{python}{try/except/else}
+try:
+    value = operation_that_might_fail()
+except ExceptionType:
+    handle_failure()
+else:
+    do_something_on_success(value)
+\end{code}
+
+\texttt{else} 區塊只有在 \texttt{try} 裡的程式碼完全沒有出錯才會執行，如果 \texttt{try}
+裡出錯了，Python 會跳去執行 \texttt{except}，\texttt{else} 根本不會被碰到。
+\index{else（搭配 try/except）}把「依賴
+\texttt{try} 成功才該做的事」放進 \texttt{else}，而不是直接接著寫在 \texttt{try} 本體裡，
+是有意義的：\texttt{try} 的範圍應該盡量只包住「真正可能失敗、你想保護的那一小段」，範圍抓
+太大，之後如果在 \texttt{try} 裡不小心寫錯了別的東西，程式一樣會被 \texttt{except} 攔下
+來，卻讓人誤以為問題出在檔案讀取上，反而更難抓出真正的問題。
+
+\begin{example}{python}{(count-characters-in-file.py) 讀取檔案並統計字數}
+filename = "shopping_list.txt"
+
+try:
+    with open(filename) as file:
+        content = file.read()
+except FileNotFoundError:
+    print("Could not find this file, so character count is unavailable")
+else:
+    character_count = len(content.replace("\n", ""))
+    print(f"This file has {character_count} characters")
+\end{example}
+
+\iosample{}{This file has 18 characters \\}
+
+\keypoint{\texttt{try} 區塊要盡量「瘦」，只包住真正可能失敗的那幾行；任何「依賴這件事成功才
+該做」的後續處理，應該放進 \texttt{else}，不要直接寫在 \texttt{try} 本體裡。這樣未來如果那
+段後續程式碼本身出了 bug，才能一眼看出問題出在統計字數這一段，跟檔案讀取本身無關，不會被
+\texttt{except} 的訊息誤導。}
+
+\begin{drills}[label=drills:try-except]
+\item 把上面 \texttt{count-characters-in-file.py} 的 \texttt{filename} 換成
+\texttt{"names.txt"}（內容是第~\ref{sec:reading-lines}~節用過的三個名字），這段程式的輸
+出會是什麼？
+\item 如果把 \texttt{filename} 換成一個不存在的檔案，例如 \texttt{"todo.txt"}，輸出會是
+什麼？
+\item 假設有人把統計字數的邏輯改成這樣，放進了 \texttt{try} 本體，而不是 \texttt{else}：
+\begin{verbatim}
+try:
+    with open(filename) as file:
+        content = file.read()
+    number = int(content)
+    print(f"The number in the file is {number}")
+except FileNotFoundError:
+    print("Could not find this file")
+\end{verbatim}
+如果 \texttt{filename} 是 \texttt{"shopping\_list.txt"}（內容是英文單字組成的購物清單，
+不是數字），這段程式執行後會發生什麼事？\texttt{except FileNotFoundError} 接得住這個問題嗎？
+\end{drills}
+
+\section{同時處理多個 except：分別處理不同的失敗原因}
+\label{sec:multiple-except}
+
+上一節練習的第 3 題已經先讓你踩到這個坑：\texttt{try} 區塊裡如果做了不只一件可能失敗的事
+（先開檔案、再把內容轉成數字），只寫一個 \texttt{except FileNotFoundError} 只能接住「檔案
+不存在」這一種問題，內容轉數字失敗丟出的 \texttt{ValueError} 完全不會被接住，程式照樣當
+掉。這一節教你怎麼一次防範好幾種不同的失敗原因。
+
+寫法很像第 \ref{ch:conditionals} 章的 \texttt{if/elif} 鏈：一個 \texttt{try} 後面可以接好幾個 \texttt{except}，
+Python 由上往下依序比對，符合哪一個就執行哪一段，其餘全部跳過。
+
+\begin{code}{python}{try 後面接好幾個 except}
+try:
+    operation_that_might_fail()
+except ExceptionTypeA:
+    handle_a_failure()
+except ExceptionTypeB:
+    handle_b_failure()
+else:
+    do_something_on_success()
+\end{code}
+
+Python 從第一個 \texttt{except} 開始比對，實際發生的例外類型只要符合其中一個，就執行那一
+段，其餘的 \texttt{except} 全部跳過不看；如果一個都不符合，例外會繼續往外傳，程式跟完全沒寫
+\texttt{except} 時一樣，帶著 traceback 中止。
+
+假設有一份 \texttt{score.txt}，內容只有一個數字：
+
+\begin{verbatim}
+95
+\end{verbatim}
+
+另外還有一份格式打錯的 \texttt{bad\_score.txt}：
+
+\begin{verbatim}
+ninety-five points
+\end{verbatim}
+
+\begin{example}{python}{(read-score-multi-except.py) 讀取分數檔案，分別處理兩種可能的失敗}
+def read_score(filename):
+    try:
+        with open(filename) as score_file:
+            content = score_file.read()
+        score = int(content.strip())
+    except FileNotFoundError:
+        print(f"{filename} does not exist")
+    except ValueError:
+        print(f"The content in {filename} is not a valid number")
+    else:
+        print(f"The score read is {score}")
+
+read_score("score.txt")
+read_score("bad_score.txt")
+read_score("missing.txt")
+\end{example}
+
+\iosample{}{The score read is 95 \\ The content in bad\_score.txt is not a valid number \\ missing.txt does not exist \\}
+
+三次呼叫分別踩中三種情況：\texttt{score.txt} 內容是合法數字，\texttt{try} 裡兩行都順利，
+掉進 \texttt{else}；\texttt{bad\_score.txt} 內容是文字不是數字，\texttt{int()} 轉換失敗，丟出
+\texttt{ValueError}，被第二個 \texttt{except} 接住；\texttt{missing.txt} 根本不存在，
+\texttt{open()} 這一步就丟出 \texttt{FileNotFoundError}，被第一個 \texttt{except} 接
+住，後面 \texttt{int()} 轉換那一行根本不會被執行到。
+
+\keypoint{\texttt{except} 的比對順序由上往下，跟 \texttt{if/elif} 鏈一樣，只要前面一個
+\texttt{except} 已經接住了，後面的 \texttt{except} 就不會再被檢查。同一個 \texttt{try}
+裡如果有好幾個可能出錯的地方，把每一種例外類型各自寫成一個獨立的 \texttt{except}，可以讓
+你針對不同的失敗原因給出不同的處理方式，不用把它們全部混在一起、只給一種籠統的錯誤訊息。}
+
+這也代表 \texttt{except} 的擺放順序真的有影響，跟 \texttt{if/elif} 鏈的道理完全一樣。Python
+提供了一個範圍非常廣的例外類型，叫 \texttt{Exception}，幾乎所有你在這本書裡遇到過的例外類
+型（\texttt{FileNotFoundError}、\texttt{ValueError}、\texttt{KeyError} 之類）都算是它的一
+種。
+\index{Exception}如果不小心把 \texttt{except Exception:} 這種範圍很廣的寫法擺在前面，後面比較具體的
+\texttt{except} 就永遠沒有機會被執行到：
+
+\begin{example}{python}{(except-order-mistake.py) 常見錯誤：把範圍廣的例外類型寫在前面}
+def read_score(filename):
+    try:
+        with open(filename) as score_file:
+            content = score_file.read()
+        score = int(content.strip())
+    except Exception:
+        print("An error occurred")
+    except FileNotFoundError:
+        print(f"{filename} does not exist")
+
+read_score("missing.txt")
+\end{example}
+
+\iosample{}{An error occurred \\}
+
+\texttt{missing.txt} 真正丟出的是 \texttt{FileNotFoundError}，但因為 \texttt{except
+Exception:} 排在前面，Python 由上往下比對，第一個就符合了，直接執行「An error occurred」，後
+面那個寫得更精確的 \texttt{except FileNotFoundError} 永遠輪不到它上場，寫了也是白寫。
+\texttt{except} 的擺放順序，應該是範圍愈小、愈明確的類型放愈前面，範圍最廣的放最後（如果真
+的需要它的話）。
+
+\begin{drills}[label=drills:multiple-except]
+\item 如果把 \texttt{read-score-multi-except.py} 裡兩個 \texttt{except} 的順序對調（先寫
+\texttt{except ValueError}，再寫 \texttt{except FileNotFoundError}），呼叫
+\texttt{read\_score("missing.txt")} 的結果會不會改變？為什麼？
+\item 如果只留下 \texttt{except FileNotFoundError}，刪掉 \texttt{except ValueError}
+那一段，呼叫 \texttt{read\_score("bad\_score.txt")} 會發生什麼事？
+\item 如果把 \texttt{except-order-mistake.py} 裡兩個 \texttt{except} 的順序對調
+（\texttt{FileNotFoundError} 寫在前面，\texttt{Exception} 寫在後面），呼叫
+\texttt{read\_score("missing.txt")} 的輸出會變成什麼？
+\end{drills}
+
+\section{except 抓多種例外類型：用 tuple 一次接住好幾種}
+\label{sec:except-tuple}
+
+上一節兩種例外分開處理，各自印出不同訊息。但有時候你根本不在乎是哪一種原因失敗，只要「反正
+失敗了」就做同一件事，這時候每種例外分別寫一個 \texttt{except}、卻塞進一模一樣的處理內容，
+就顯得囉唆。Python 讓你把好幾種例外類型包成一個 tuple（第 \ref{ch:tuples} 章教過，好幾個值用逗號隔開、通
+常用括號包起來），放進同一個 \texttt{except}。
+\index{except 的 tuple 語法}
+
+\begin{code}{python}{except 用 tuple 一次接住好幾種例外}
+try:
+    operation_that_might_fail()
+except (ExceptionTypeA, ExceptionTypeB):
+    handle_either_failure()
+\end{code}
+
+括號裡用逗號列出好幾種例外類型，只要實際發生的例外符合其中任何一種，這個 \texttt{except}
+就會被觸發，處理內容完全共用同一段。
+
+\begin{example}{python}{(read-score-tuple-except.py) 用同一段處理接住兩種可能的失敗}
+def read_score(filename):
+    try:
+        with open(filename) as score_file:
+            content = score_file.read()
+        score = int(content.strip())
+    except (FileNotFoundError, ValueError):
+        print(f"Could not read a valid score from {filename}")
+    else:
+        print(f"The score read is {score}")
+
+read_score("score.txt")
+read_score("bad_score.txt")
+read_score("missing.txt")
+\end{example}
+
+\iosample{}{The score read is 95 \\ Could not read a valid score from bad\_score.txt \\ Could not read a valid score from missing.txt \\}
+
+這段程式跟上一節做的事情很像，差別在於：上一節兩種失敗給出不同訊息（分別知道是「檔案不存
+在」還是「內容不是數字」），這一節不在乎是哪一種原因，一律印出同一句「沒辦法讀到有效的分
+數」。要選哪一種寫法，取決於呼叫端之後拿到這個結果，需不需要分辨失敗的原因：
+
+\begin{itemize}
+\item 如果不同的失敗原因之後會有不同的後續動作（例如「檔案不存在」要建議使用者檢查路徑，
+「內容不是數字」要建議使用者檢查檔案格式），分開寫成兩個 \texttt{except} 比較好。
+\item 如果不管哪種原因、後續要做的事情都一樣，tuple 版本比較精簡，不用寫兩段一模一樣的處理
+內容。
+\end{itemize}
+
+寫 tuple 版本的 \texttt{except} 時，括號不能省。忘記加括號是這裡最容易踩到的坑：
+
+\begin{verbatim}
+except FileNotFoundError, ValueError:
+\end{verbatim}
+
+這樣寫，Python 直接在讀進這行程式碼的當下就報錯：
+
+\begin{verbatim}
+  File "read-score-tuple-except.py", line 5
+    except FileNotFoundError, ValueError:
+SyntaxError: multiple exception types must be parenthesized
+\end{verbatim}
+
+這是 \texttt{SyntaxError}（第 \ref{ch:introduction} 章認識過的「程式還沒開始執行、光讀就卡住」的錯誤類型），因
+為 Python 看到逗號、卻沒看到括號，會誤以為你想用一種很舊、現在已經不能用的寫法（把捕捉到的
+例外物件存進一個變數）。括號不能省。
+
+\keypoint{\texttt{except (TypeA, TypeB):} 括號裡的東西是一個 tuple，只要實際發生的例外符合
+裡面任何一種類型，就會被這個 \texttt{except} 接住。這跟寫兩個各自獨立的 \texttt{except}
+效果不完全一樣：tuple 版本只能對這幾種例外做「完全相同」的處理；如果不同例外類型需要不同的
+處理內容，還是要分開寫成好幾個 \texttt{except}。}
+
+\begin{drills}[label=drills:except-tuple]
+\item 把 \texttt{except (FileNotFoundError, ValueError):} 改寫成兩個各自獨立的
+\texttt{except}，但兩段都印出一模一樣的「Could not read a valid score」，這樣寫法跟 tuple 版本比起
+來，你覺得哪一種比較適合這個情境？為什麼？
+\item 如果把 tuple 的括號拿掉，寫成 \texttt{except FileNotFoundError, ValueError:}，你覺
+得會發生什麼事？動手試試看，跟你的猜測一不一樣？
+\end{drills}
+
+\section{finally：不論成功或失敗都要做的事}
+\label{sec:finally}
+
+\texttt{try/except}（搭配 \texttt{else}）已經處理了「成功」跟「失敗」兩條路。但有些事情，
+不管成功還是失敗，都想要它一定被執行，例如留一筆「這次操作結束了」的紀錄。這就是
+\texttt{finally} 要解決的事。
+
+\begin{code}{python}{try/except/finally}
+try:
+    operation_that_might_fail()
+except ExceptionType:
+    handle_failure()
+finally:
+    always_do_this()
+\end{code}
+
+\texttt{finally} 區塊不管 \texttt{try} 裡有沒有出錯、有沒有被 \texttt{except} 接住，永遠都
+會執行。
+\index{finally}就算 \texttt{except} 裡面本身又出了另一個錯，\texttt{finally} 也會在程式真正結束之
+前先跑一次。
+
+\begin{example}{python}{(read-file-with-finally.py) 不論成功或失敗都留一筆紀錄}
+filename = "shopping_list.txt"
+
+try:
+    with open(filename) as file:
+        content = file.read()
+    print(content)
+except FileNotFoundError:
+    print("This file was not found")
+finally:
+    print("This read operation has finished")
+\end{example}
+
+\iosample{}{Milk \\ Eggs \\ Toast \\ Apple \\~\\ This read operation has finished \\}
+
+如果把 \texttt{filename} 換成一個不存在的檔案，例如 \texttt{"todo.txt"}，結果會變成：
+
+\iosample{}{This file was not found \\ This read operation has finished \\}
+
+不管是哪一種結果，「This read operation has finished」這一行永遠都會印出來，這就是 \texttt{finally} 的意
+義：它不在乎 \texttt{try} 裡發生了什麼事，只在乎「這個收尾動作一定要做」。
+
+檔案的關閉這件事，第~\ref{sec:reading-files}~節教的 \texttt{with} 其實已經自動幫你處理掉
+了。\texttt{with} 背後的機制，精神上跟 \texttt{finally} 很像：不管區塊裡的程式順不順利，該
+做的收尾動作都會做。所以用 \texttt{with} 開檔案時，你不會常常需要自己額外再寫一個
+\texttt{finally} 去關檔案。但接下來你會看到，\texttt{finally} 真正常用的場合，是那些沒有用
+\texttt{with}、需要自己手動管理收尾動作的情境。
+
+什麼時候你會真的自己動手寫 \texttt{finally}？最常見的情境是：你手動呼叫 \texttt{open()}
+（不透過 \texttt{with}），因為某個理由需要在同一個變數上，貫穿好幾段程式碼一直用同一個檔案
+物件，這時候如果你不確定中間會不會出錯，一定要把「關閉檔案」這個動作放進 \texttt{finally}，
+才能保證不管中間出不出錯，檔案最後都會被正確關閉。
+
+\begin{example}{python}{(write-log-manually.py) 手動管理檔案開關，用 finally 保證一定會關閉}
+log_file = open("log.txt", "a")
+
+try:
+    log_file.write("Starting to process the shopping list\n")
+    with open("shopping_list.txt") as source_file:
+        content = source_file.read()
+    log_file.write("Read successful\n")
+finally:
+    log_file.close()
+
+print("Log written to log.txt")
+\end{example}
+
+\iosample{}{Log written to log.txt \\}
+
+\texttt{log\_file = open("log.txt", "a")} 這一行沒有搭配 \texttt{with}，所以 Python 不會
+自動幫你關閉它；中間的 \texttt{try} 區塊如果任何一行出錯（例如 \texttt{shopping\_list.txt}
+真的不存在），Python 會立刻跳出 \texttt{try}，但在程式真正往外傳遞這個錯誤之前，
+\texttt{finally} 裡的 \texttt{log\_file.close()} 一定會先執行一次，\texttt{log\_file} 不
+會被遺忘在「打開卻沒關閉」的狀態。
+
+這跟第~\ref{sec:reading-files}~節提過的「\texttt{with}
+自動關檔案」做的是同一件事，只是這裡改成自己手動做，因為 \texttt{log\_file} 這個檔案物件要
+橫跨好幾行程式碼繼續使用，沒辦法只用一段小小的 \texttt{with} 縮排區塊包住它。沒有明確關閉的
+檔案，占用的資源不會馬上釋放，長時間執行、開很多檔案的程式可能因此出問題，這也是為什麼前面
+幾節都建議優先用 \texttt{with}，只有像這裡「檔案要橫跨很長一段程式碼」這種不方便用
+\texttt{with} 的情境，才手動 \texttt{open()} 加 \texttt{finally} 管理。
+
+\texttt{finally} 保證一定會執行，這件事比很多人以為的還要徹底：就算 \texttt{try} 裡發生的
+錯誤，根本沒有被任何一個 \texttt{except} 接住，\texttt{finally} 還是會先執行一次，才讓這個
+錯誤繼續往外傳、讓程式中止。
+
+\begin{example}{python}{(convert-score-finally.py) finally 在例外沒被接住時依然先執行}
+def convert_to_number(text):
+    try:
+        number = int(text)
+        print(f"The converted number is {number}")
+    except FileNotFoundError:
+        print("File not found")
+    finally:
+        print("Conversion process finished")
+
+convert_to_number("ninety-five")
+\end{example}
+
+執行後會先印出「Conversion process finished」，接著才是 Python 印出的 traceback，程式最終還是當掉：
+
+\begin{verbatim}
+Conversion process finished
+Traceback (most recent call last):
+  File "convert-score-finally.py", line 9, in <module>
+    convert_to_number("ninety-five")
+  File "convert-score-finally.py", line 3, in convert_to_number
+    number = int(text)
+ValueError: invalid literal for int() with base 10: 'ninety-five'
+\end{verbatim}
+
+\texttt{text} 傳入的是「ninety-five」，\texttt{int()} 沒辦法把它轉成數字，丟出的是
+\texttt{ValueError}；但這裡的 \texttt{except} 只接 \texttt{FileNotFoundError}，接不住
+\texttt{ValueError}，所以錯誤繼續往外傳。即使如此，\texttt{finally} 裡的
+\texttt{print("Conversion process finished")} 依然先執行了一次，這一行印出來之後，Python 才真正把這個沒被
+接住的錯誤往外送，最終讓整支程式中止並印出 traceback。這正是 \texttt{finally}「不論成功或
+失敗」裡最徹底的那一種情況：連例外都沒被接住，\texttt{finally} 照樣先跑。
+
+\keypoint{\texttt{finally} 保證一定執行的範圍，比 \texttt{except} 涵蓋的範圍更大：不管
+\texttt{try} 有沒有出錯、出的錯有沒有被某個 \texttt{except} 接住，\texttt{finally} 都會先
+執行過一次，才讓程式繼續往下（沒出錯，或錯誤被接住的情況），或是讓錯誤繼續往外傳、程式中止
+（錯誤沒被接住的情況）。}
+
+\begin{drills}[label=drills:finally]
+\item 把 \texttt{convert-score-finally.py} 的 \texttt{except FileNotFoundError:} 改成
+\texttt{except ValueError:}，呼叫 \texttt{convert\_to\_number("ninety-five")} 這次還會不會印
+出 traceback？「Conversion process finished」還會不會印出來？
+\item 如果 \texttt{write-log-manually.py} 裡的 \texttt{shopping\_list.txt} 其實不存在，這
+段程式最後 \texttt{log\_file} 會不會被正確關閉？為什麼？
+\end{drills}
+
+\section{自己丟出例外：\texttt{raise}}
+\label{sec:raise}
+
+到目前為止，例外都是 Python 幫你丟的：你打開一個不存在的檔案，它丟
+\texttt{FileNotFoundError}；你把一段不是數字的文字餵給 \texttt{int()}，它丟
+\texttt{ValueError}。但有些「不合理」是 Python 看不出來的——它不知道你的程式裡年齡不該是
+負數、成績不該超過一百分。 這種只有你才知道的規則，你可以自己丟一個例外出來。
+
+\begin{code}{python}{自己丟出一個例外}
+raise ExceptionType("說明這次為什麼出錯的訊息")
+\end{code}
+
+\begin{example}{python}{(set-age.py) 遇到不合理的值就丟出例外}
+def set_age(age):
+    if age < 0:
+        raise ValueError("age cannot be negative")
+    print(f"age is set to {age}")
+
+
+set_age(20)
+set_age(-3)
+\end{example}
+
+\begin{verbatim}
+age is set to 20
+Traceback (most recent call last):
+  File "set-age.py", line 8, in <module>
+    set_age(-3)
+    ~~~~~~~^^^^
+  File "set-age.py", line 3, in set_age
+    raise ValueError("age cannot be negative")
+ValueError: age cannot be negative
+\end{verbatim}
+
+第一次呼叫正常印出訊息；第二次傳進 \texttt{-3}，\texttt{raise} 這一行執行之後，函式立刻
+停下來，程式跟著中斷，畫面上出現的 traceback 跟 Python 自己丟的例外長得一模一樣——因為
+它本來就是同一種東西。 你選用的 \texttt{ValueError} 也不是新發明的，是第
+\ref{sec:multiple-except} 節就見過的那一個，意思是「型別對，但值不合理」。
+\index{raise}
+
+\keypoint{\texttt{raise} 是「主動宣告這裡出錯了」，跟 \texttt{return} 一樣會讓函式立刻
+結束，差別在 \texttt{return} 是正常交差、\texttt{raise} 是把問題往外丟。 括號裡的訊息會
+原封不動出現在 traceback 最後一行，所以要寫得夠具體——寫
+\texttt{"age cannot be negative"} 比寫 \texttt{"error"} 有用得多。}
+
+自己丟出來的例外，一樣可以被 \texttt{try}／\texttt{except} 接住，規則跟前面幾節完全相同。
+這才是 \texttt{raise} 真正的價值：函式負責「發現問題並老實說出來」，呼叫端負責「決定遇到
+問題要怎麼辦」，兩件事分開。
+
+\begin{example}{python}{(validate-ages.py) 自己丟的例外，自己接住}
+def set_age(age):
+    if age < 0:
+        raise ValueError("age cannot be negative")
+    return age
+
+
+for value in [20, -3, 45]:
+    try:
+        result = set_age(value)
+    except ValueError as error:
+        print("skipped:", error)
+    else:
+        print("accepted:", result)
+\end{example}
+
+\iosample{}{accepted: 20 \\ skipped: age cannot be negative \\ accepted: 45 \\}
+
+\texttt{except ValueError as error} 這個寫法你在第 \ref{sec:multiple-except} 節看過，
+\texttt{error} 接住的就是被丟出來的那個例外物件，直接 \texttt{print} 它會印出當初寫在括號
+裡的那句訊息。 整個迴圈沒有因為中間那筆壞資料而中斷，這正是第 \ref{sec:try-except-else}
+節那套「一筆失敗不該讓整批當機」的想法，只是這次連「失敗」的定義都是你自己訂的。
+
+\stylepoint{什麼時候該 \texttt{raise}、什麼時候該回傳一個特別的值（例如 \texttt{None}）？
+判準是「呼叫端如果忘記處理，出事比較好還是默默錯下去比較好」。 年齡是負數這種明顯不該
+發生的事，丟例外比較安全——忘記處理會當場炸給你看；如果默默回傳 \texttt{None}，錯誤會
+一路飄到很後面才爆，那時候就很難查了。 這正是這一章 EAFP 精神的另一面。}
+
+\begin{drills}[label=drills:raise]
+\item \texttt{set\_age(0)} 會不會丟出例外？為什麼？
+\item 如果把 \texttt{validate-ages.py} 的 \texttt{except ValueError} 改成
+\texttt{except TypeError}，跑起來會發生什麼事？
+\item 你要寫一個 \texttt{set\_score(score)}，規定分數必須介於 0 到 100 之間。 判斷條件
+該怎麼寫？
+\end{drills}
+
+\section{回頭看：EAFP 這套邏輯有多大}
+\label{sec:eafp-recap}
+
+這一節帶你回頭看幾個之前已經用過、但沒有完全解釋原因的地方，沒有新語法要學。你會看到，EAFP
+這套邏輯，遠比「檔案讀寫」這一件事還要大。
+
+還記得第 \ref{ch:dict-set} 章你學過用 dict 存資料、用 \texttt{[]} 查值嗎？如果想查一個可能不存在的 key，其
+實可以用今天學到的方式重新想這個問題：
+
+\begin{example}{python}{(dict-lookup-lbyl.py) 查電話簿：先檢查 key 在不在}
+phonebook = {"Alice": "0912-345-678", "Bob": "0933-222-111"}
+
+if "Taylor" in phonebook:
+    number = phonebook["Taylor"]
+else:
+    number = "Not found"
+
+print(number)
+\end{example}
+
+\iosample{}{Not found \\}
+
+\begin{example}{python}{(dict-lookup-eafp.py) 查電話簿：直接查，查不到再處理}
+phonebook = {"Alice": "0912-345-678", "Bob": "0933-222-111"}
+
+try:
+    number = phonebook["Taylor"]
+except KeyError:
+    number = "Not found"
+
+print(number)
+\end{example}
+
+\iosample{}{Not found \\}
+
+第 \ref{ch:dict-set} 章其實已經說過：與其每次查之前都先問「這個線索存在嗎？」，不如直接假設它存在，用
+\texttt{get()} 順便準備好一個備用答案，現在你知道，這句話講的正是 EAFP。
+
+\begin{example}{python}{(dict-lookup-get.py) 查電話簿：用 get() 一行搞定}
+phonebook = {"Alice": "0912-345-678", "Bob": "0933-222-111"}
+
+number = phonebook.get("Taylor", "Not found")
+print(number)
+\end{example}
+
+\iosample{}{Not found \\}
+
+三段程式做的事完全一樣、輸出也完全一樣，但份量差很多，這正是 EAFP 這套邏輯的價值所在：
+Python 常常會把「先做、錯了再處理」這件事包裝成更精簡的寫法，\texttt{get()} 就是一個很好的
+例子，它就是 EAFP 精神的另一種展現，只是 Python 把「查不到就用預設值」這個常見情境包成一個
+現成的方法，連 \texttt{try/except} 都不用自己寫。
+
+再往前翻，第 \ref{ch:variables} 章教型別轉換時，你已經看過 \texttt{int("hello")} 會丟出 \texttt{ValueError}，
+那時候還沒教 \texttt{try/except}，只能眼睜睜看著程式當掉，沒有別的辦法。現在你手上有完整的
+工具了，可以用同一套 EAFP 邏輯，把「使用者亂打的輸入」這種最貼近日常的情境也接住。
+
+\begin{example}{python}{(ask-age-eafp.py) 接住使用者打錯格式的輸入}
+text = input("Please enter your age: ")
+
+try:
+    age = int(text)
+except ValueError:
+    print("That is not a valid number, treating it as blank")
+    age = None
+
+if age is not None:
+    print(f"Your age is {age}")
+\end{example}
+
+輸入 \texttt{17}：
+
+\iosample{17 \\}{Your age is 17 \\}
+
+輸入 \texttt{seventeen}：
+
+\iosample{seventeen \\}{That is not a valid number, treating it as blank \\}
+
+\texttt{text} 是 \texttt{input()} 讀進來的字串，只要不是純數字，\texttt{int()} 就會丟出
+\texttt{ValueError}；\texttt{except} 接住它、印出提醒，順便把 \texttt{age} 設成
+\texttt{None}（第 \ref{ch:lists} 章認識過的「沒有值」的特殊值）；最後用 \texttt{if age is not None}
+判斷輸入到底有沒有成功轉換。這跟 LBYL 版本（自己寫一堆字串方法檢查「是不是每個字元都是數
+字」）比起來，程式碼更短，也不用自己重新發明 \texttt{int()} 內部早就做好的判斷邏輯。
+
+再回頭看第 \ref{ch:conditionals} 章。你當時學到一件事：Python 的 \texttt{if} 不只認 \texttt{True}／
+\texttt{False}，連數字、字串本身都可以直接放進 \texttt{if} 裡問「是不是有內容」，\texttt{0}
+跟空字串會被當成 \texttt{False}，非零、非空會被當成 \texttt{True}，不用特別寫
+\texttt{len(x) > 0}。這個「空的當 \texttt{False}」的邏輯，對 list、dict 這些容器一樣成立：
+
+\begin{example}{python}{(check-shopping-cart.py) 購物車空了沒}
+shopping_cart = []
+
+if shopping_cart:
+    print("The cart has items, starting checkout")
+else:
+    print("The cart is empty")
+\end{example}
+
+\iosample{}{The cart is empty \\}
+
+這跟 EAFP 不是同一個語法機制：\texttt{if shopping\_cart:} 用的不是 \texttt{try/except}，
+但背後在意的事情是一樣的：不要先小題大作地驗證狀態（例如特地寫
+\texttt{len(shopping\_cart) > 0} 確認「長度大於 0」），讓語言本身的行為直接替你簡化判斷。
+EAFP 是「先做，出錯了 Python 會告訴你」；空的當 \texttt{False} 則是「Python 自己就把『有沒
+有內容』這件事，直接兌換成一個你能拿來判斷的答案」。兩者機制不同，方向卻一致：不要繞遠路先
+確認，讓語言本身的行為替你簡化判斷。
+
+\stylepoint{從這一章往後，只要腦中冒出「要不要先檢查一下」的念頭，查字典前、開檔案前，甚至
+任何「這個東西有沒有內容」的判斷，都可以先反問自己一句：Python 有沒有更直接的寫法，讓程式
+直接做、讓它自己告訴你結果？\texttt{try/except}、\texttt{dict.get()}、\texttt{if items:}
+都是同一種精神的不同展現。}
+
+這一章教會你 Python 面對「事情可能會出錯」的兩種態度，也讓你看清楚 Python 比較偏好哪一種、
+為什麼，還讓你學會怎麼同時防範好幾種不同的失敗原因、怎麼保證收尾動作一定會被執行。之後每一
+章只要遇到可能失敗的操作，第 \ref{ch:debugging} 章讀懂錯誤訊息、以後接觸資料庫或網路連線，都會回頭用到這裡
+打下的地基。
+
+\begin{drills}[label=drills:eafp-recap]
+\item 下面這段程式是 LBYL 還是 EAFP？為什麼？
+\begin{verbatim}
+import os
+
+if os.path.exists("data.txt"):
+    with open("data.txt") as f:
+        print(f.read())
+\end{verbatim}
+\item 把下面這段 LBYL 風格的字典查詢，改寫成用 \texttt{try/except} 的 EAFP 風格：
+\begin{verbatim}
+scores = {"Alice": 90, "Bob": 85}
+if "Taylor" in scores:
+    score = scores["Taylor"]
+else:
+    score = 0
+\end{verbatim}
+\item 上一題的程式，如果改用 \texttt{get()} 寫，一行可以怎麼寫？
+\item 想像你要把 \texttt{ask-age-eafp.py} 改寫成 LBYL 風格：不用 \texttt{try/except}，改
+成先想辦法檢查這個字串「看起來像不像數字」，才呼叫 \texttt{int()}。你覺得自己寫的檢查邏
+輯，真的能完全覆蓋 \texttt{int()} 內建判斷的所有情況嗎（提示：想想看負數、前後夾帶空白這些
+情況）？
+\end{drills}
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:reading-lines}~節}
+\begin{enumerate}
+\item 會印出：
+\begin{verbatim}
+Orange
+
+Banana
+
+\end{verbatim}
+每一行結尾藏著的換行符號，加上 \texttt{print()} 自己又加一次換行，兩個疊在一起，讓每一行
+後面都多出一行空白。
+\item 不會再有多餘的空行，「Orange」直接接著「Banana」印出來，因為 \texttt{rstrip()} 把藏在
+\texttt{line} 結尾的換行符號去掉了。
+\item 開放性問題，兩種都可以：用 \texttt{readlines()} 拿到 list 之後直接 \texttt{len()}，
+程式碼短，但要先把整份檔案讀進記憶體；用 \texttt{for line in file\_object} 自己數計數器要多寫
+兩三行，但不用一次把整份檔案存進 list，檔案很大時比較省記憶體。這裡沒有標準答案，重點是能
+講出兩種寫法各自的取捨。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:writing-styles}~節}
+\begin{enumerate}
+\item \texttt{cart.txt} 會變成「MilkEggsToast」黏成一坨、沒有分行，因為 \texttt{writelines()}
+不會自動幫每個項目加換行，list 裡的字串結尾沒有 \texttt{\textbackslash n}，就完全不會有分
+行效果。
+\item 開放性問題：資料量很大時，通常會偏向「先組好一個大字串，一次 \texttt{write()}」，因
+為只跟檔案系統打一次交道，額外開銷比較小；但要注意這代表要先把一百萬行全部組成一個字串放進
+記憶體，如果這份字串大到記憶體放不下，就得改回「迴圈裡逐項 \texttt{write()}」，用比較多次
+的檔案操作換取比較低的記憶體用量。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:appending-files}~節}
+\begin{enumerate}
+\item \texttt{'a'}，附加模式才不會把之前的紀錄洗掉。
+\item \texttt{'w'}，寫入模式每次都會先清空，確保是全新的一份。
+\item 會自動新建一個空檔案，再開始寫入。這跟 \texttt{'w'} 模式的行為相同：兩者在「檔案原本
+不存在」這件事上行為一樣，差別只在「檔案已經存在」時，\texttt{'w'} 清空重寫，\texttt{'a'}
+接著寫。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:multiple-files}~節}
+\begin{enumerate}
+\item \texttt{shopping\_list.txt} 會變成空檔案，什麼內容都沒有。因為
+\texttt{open("shopping\_list.txt", "w")} 一執行就先把這個檔案清空，等 \texttt{for line
+in source\_file} 想讀取內容時，能讀到的只剩下空的檔案。
+\item 應該分成兩段：先用一個 \texttt{with open("shopping\_list.txt")} 把全部內容讀出來、
+處理好，存進一個變數（例如一份組好的 list 或字串），確定第一個 \texttt{with} 區塊已經結束、
+確定讀取完成，再另外用 \texttt{with open("shopping\_list.txt", "w")} 把處理好的結果寫回
+去，不能讓兩個 \texttt{open()} 同時對著同一個檔名。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:try-except-else}~節}
+\begin{enumerate}
+\item 會印出：This file has 14 characters（Alice、Bob、Taylor 三個名字接在一起，拿掉換行
+符號後總共 14 個字元）。
+\item 會印出：Could not find this file, so character count is unavailable。
+\item 程式會當掉，出現未被接住的 \texttt{ValueError}。\texttt{int(content)} 想把購
+物清單裡的文字內容轉成整數，這件事本身跟「檔案找不到」無關，\texttt{except FileNotFoundError} 只
+接 \texttt{FileNotFoundError} 這一種例外類型，不會接住 \texttt{ValueError}，程式會帶著一
+段 \texttt{ValueError} 的 traceback 直接中止。這正是把不相關的邏輯塞進 \texttt{try} 本
+體、不放進 \texttt{else} 的風險：一個跟檔案讀取無關的 bug，一樣會讓程式看起來像是「檔案操
+作」出了問題。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:multiple-except}~節}
+\begin{enumerate}
+\item 結果不會改變。\texttt{missing.txt} 不存在，\texttt{open()} 丟出的是
+\texttt{FileNotFoundError}，不管這個 \texttt{except} 寫在第一個還是第二個位置，只要
+Python 由上往下比對到符合的類型，就會執行對應的區塊；順序只在「同一個例外可能同時符合好幾
+個 \texttt{except}」時才會影響結果，這裡兩種例外類型完全不重疊，所以順序對調不影響輸出。
+\item 程式會當掉。\texttt{bad\_score.txt} 讓 \texttt{int()} 丟出 \texttt{ValueError}，但
+剩下的 \texttt{except} 只接 \texttt{FileNotFoundError}，接不住 \texttt{ValueError}，程式
+會帶著 \texttt{ValueError} 的 traceback 直接中止。
+\item 輸出會變成「missing.txt does not exist」。因為 \texttt{except FileNotFoundError}
+現在排在前面，Python 由上往下比對，先符合這個比較具體的類型，就不會再往下看到
+\texttt{except Exception}，這正是「範圍小的類型放前面」的正確順序。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:except-tuple}~節}
+\begin{enumerate}
+\item 開放性問題：這個情境裡兩種失敗的後續處理完全一樣（都只是印出同一句提醒），用 tuple
+版本比較精簡，不用寫兩段重複的內容；如果之後兩種失敗需要不同的後續動作，才會傾向拆成兩個獨
+立的 \texttt{except}。
+\item Python 在讀進這行程式碼的當下就會報 \texttt{SyntaxError}：
+\texttt{multiple exception types must be parenthesized}，因為沒有括號的
+\texttt{except Type, name:} 是 Python 舊版一種已經不能用的寫法，Python 看到逗號會誤以為
+你想用那種寫法，而不是列出好幾種例外類型。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:finally}~節}
+\begin{enumerate}
+\item 這次不會印出 traceback，因為 \texttt{except ValueError:} 接得住 \texttt{int("ninety-five")}
+丟出的 \texttt{ValueError}。輸出會先印「File not found」（訊息文字雖然跟實際情況不符，但
+這一段程式本來就只是示範捕捉行為，不代表訊息內容一定正確），接著印「Conversion process
+finished」，程式正常結束。
+\item 會被正確關閉。不管 \texttt{shopping\_list.txt} 存不存在，\texttt{try} 裡任何一行出
+錯，Python 都會先執行 \texttt{finally} 裡的 \texttt{log\_file.close()}，才讓錯誤繼續往外
+傳，這正是手動管理檔案開關時一定要把關閉動作放進 \texttt{finally} 的原因。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:raise}~節}
+\begin{enumerate}
+\item 不會。判斷條件是 \texttt{age < 0}，\texttt{0} 不小於 \texttt{0}，所以不成立，
+函式正常往下執行、印出訊息。
+\item \texttt{ValueError} 不會被 \texttt{except TypeError} 接住，所以跑到 \texttt{-3}
+那一輪時程式直接中斷、印出 traceback，後面的 \texttt{45} 完全不會被處理。
+\item \texttt{if score < 0 or score > 100:}，兩個條件任一成立就丟出 \texttt{ValueError}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:eafp-recap}~節}
+\begin{enumerate}
+\item LBYL，先用 \texttt{os.path.exists()} 檢查檔案在不在，確認過後才真正 \texttt{open()}，
+這正是「先檢查、確定安全才做」的邏輯。
+\item
+\begin{verbatim}
+scores = {"Alice": 90, "Bob": 85}
+try:
+    score = scores["Taylor"]
+except KeyError:
+    score = 0
+\end{verbatim}
+\item \texttt{score = scores.get("Taylor", 0)}
+\item 開放性問題：很難完全覆蓋。\texttt{int()} 本身能接受負數（\texttt{"-5"}）、正負號、
+前後夾帶空白（\texttt{" 5 "}）等好幾種合法格式，自己重新寫一套檢查邏輯很容易漏掉某些情況，
+或者太嚴格擋掉了原本合法的輸入。這正是 EAFP 的優勢：直接讓 \texttt{int()} 自己去判斷，不用
+自己重新發明一套判斷規則。
+\end{enumerate}

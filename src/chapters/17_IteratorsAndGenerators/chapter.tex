@@ -1,0 +1,1062 @@
+\chapter{Iterator 與 Generator}
+\label{ch:iterators-generators}
+
+這本書欠你五個解釋。不是那種「以後有機會再說」的客套話，是白紙黑字寫在前面某一章裡、
+說了「這個之後會回頭講」然後真的先跳過去的地方。這一章要一次還清。
+
+先看三段你一定認得的程式碼。第一段是第 \ref{ch:loops} 章走訪字串的寫法：
+
+\begin{code}{python}{第 \ref{ch:loops} 章：走訪一句話裡的每個字元}
+for char in sentence:
+    if char == " ":
+        space_count += 1
+\end{code}
+
+第二段是第 \ref{ch:files-exceptions} 章逐行讀檔案：
+
+\begin{code}{python}{第 \ref{ch:files-exceptions} 章：一行一行讀進來}
+with open("names.txt") as names_file:
+    for line in names_file:
+        print(line.rstrip())
+\end{code}
+
+第三段是第 \ref{ch:csv} 章跳過標題列那一行：
+
+\begin{code}{python}{第 \ref{ch:csv} 章：把標題列先讀掉}
+next(reader)
+\end{code}
+
+這三段做的其實是同一件事，而這本書從頭到現在都沒告訴你那件事是什麼。第
+\ref{ch:loops} 章第 \ref{sec:for-vs-while} 節那個學習要點是這樣說的：\texttt{range()}
+和直接走訪序列「\textbf{都會替你處理好}『這一輪走到哪、還有沒有下一輪』」——只說了有人
+替你處理，沒說那個人是誰。
+
+這一章就是回答這個問題：\textbf{替你處理的那個「誰」，到底是什麼？} 然後把答案變成你
+自己也做得出來的東西。
+
+這一章分四段推進：
+
+\begin{itemize}
+\item 第一段掀開 \texttt{for} 的蓋子。先把一個 \texttt{for} 迴圈手動拆開來跑一次，再
+把「一批東西」跟「真正一個一個交出來的那個東西」分成兩種角色
+（第 \ref{sec:what-for-does}～\ref{sec:iterable-vs-iterator} 節）。
+\item 第二段換你動手做一台。\texttt{yield} 這個關鍵字會把一個普通函式變成完全不同的
+東西，而第 \ref{ch:comprehensions} 章那個換成小括號拿到的神祕物件，其實就是它的一行版
+（第 \ref{sec:yield-basics}～\ref{sec:generator-expression} 節）。
+\item 第三段是這一章的重頭戲，一好一壞剛好是同一件事的正反兩面：不先算好省下了什麼，
+以及不先算好要付出什麼代價（第 \ref{sec:lazy-memory}～\ref{sec:one-shot} 節）。
+\item 第四段收尾。有一個標準函式庫模組整個就是在做這件事，你在第 \ref{ch:modules} 章
+已經跟它打過一次照面（第 \ref{sec:itertools-peek} 節）。
+\end{itemize}
+
+\section{\texttt{for} 底下到底發生什麼事}
+\label{sec:what-for-does}
+
+先講一個大家都排過的隊。去醫院、去郵局、去監理所，門口通常有一台機器，按一下吐一張
+號碼牌。這台機器有幾個特性，等一下每一個都會對應到程式裡的某個東西：
+
+\begin{itemize}
+\item 今天要辦事的那一批人，跟門口那台機器，是\textbf{兩個不同的東西}。
+\item 你按一下，它才吐一張；不按，它就靜靜站在那裡。
+\item 它\textbf{不會}一大早就把今天所有號碼牌都印好堆在櫃台上。
+\item 號碼發完了，它會明確告訴你「今天發完了」。
+\item 撕下來的號碼牌不會自己飛回機器裡。想從頭再來一輪，得換一台新的機器。
+\end{itemize}
+
+Python 的 \texttt{for} 迴圈底下，就藏著一台這樣的機器。它有三個零件，而這三個零件用到
+的語法你全部都學過了——真正新的只有三個名字。
+
+\subsection*{把一個 \texttt{for} 迴圈拆開來跑一次}
+
+下面這支程式跑了兩次同樣的事情。上半段是你平常會寫的；下半段一個 \texttt{for} 都沒有，
+全部手工完成。
+
+\begin{example}{python}{(for-by-hand.py) 同一件事，一次用 for，一次全手工}
+names = ["Alice", "Bob", "Taylor"]
+
+# 你平常寫的版本
+for name in names:
+    print(name)
+
+print("---")
+
+# 完全等價的手動版本
+it = iter(names)
+while True:
+    try:
+        name = next(it)
+    except StopIteration:
+        break
+    print(name)
+\end{example}
+
+\iosample{}{Alice \\ Bob \\ Taylor \\ --- \\ Alice \\ Bob \\ Taylor \\}
+
+兩段輸出一模一樣，一個字都不差。這就是這一節唯一要你相信的事：\textbf{你寫的
+\texttt{for}，Python 在底下做的就是下半段那件事，不多也不少。}
+
+下半段裡新出現的東西只有三個名字：
+
+\begin{itemize}
+\item \texttt{iter(names)}——跟那批東西要一台機器。
+\index{iter()}
+\item \texttt{next(it)}——按一下，拿走下一個。
+\item \texttt{StopIteration}——機器說「發完了」。
+\index{StopIteration}
+\end{itemize}
+
+其他零件你全都認識：\texttt{while True} 是第 \ref{ch:loops} 章第
+\ref{sec:while-basics} 節的無窮迴圈，\texttt{break} 是第 \ref{sec:break-search} 節的
+提早結束，\texttt{try}／\texttt{except} 是第 \ref{ch:files-exceptions} 章第
+\ref{sec:lbyl-vs-eafp} 節的先做再處理。手動版之所以比較長，不是因為它比較難，是因為
+\texttt{for} 把這五行濃縮成了一行。
+
+那台從 \texttt{names} 要來的機器，有個正式名字叫 \textbf{iterator}——它就是「真正負責
+一個一個把東西交出來」的那個東西。
+\index{iterator}
+
+\subsection*{一直按下去會怎樣}
+
+機器發完了會怎麼樣？直接按給你看。這次換一個更小的素材：字串 \texttt{"cat"} 只有三個
+字元，所以第四次一定會出事。
+
+\begin{example}{python}{(press-until-empty.py) 連按四次，第四次沒東西了}
+it = iter("cat")
+
+print(next(it))
+print(next(it))
+print(next(it))
+print(next(it))
+\end{example}
+
+\iosample{}{c \\ a \\ t \\}
+
+前三次乖乖吐出 \texttt{'c'}、\texttt{'a'}、\texttt{'t'}，第四次程式停了下來，畫面上出現：
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "press-until-empty.py", line 6, in <module>
+    print(next(it))
+          ~~~~^^^^
+StopIteration
+\end{verbatim}
+
+看到 \texttt{Traceback} 先不要緊張。\textbf{這一次不是你打錯字}，程式碼一個字都沒錯，
+這就是機器在說「今天的號碼發完了」。\texttt{StopIteration} 直譯就是「停止走訪」，它是
+Python 用來表達「沒有下一個了」的方式。
+
+那為什麼你平常寫 \texttt{for} 從來沒看過它？因為 \texttt{for} 每一輪都在替你接住它，
+接到了就默默結束迴圈——就是上一支程式那個 \texttt{except StopIteration: break}。
+
+\keypoint{一台 iterator 沒有「還有沒有下一個」可以問。Python \textbf{刻意不提供}那種
+先問一句再決定要不要拿的做法，它只給你一個動作：按下去。按到沒有了，它就丟
+\texttt{StopIteration} 告訴你。這正是第 \ref{ch:files-exceptions} 章第
+\ref{sec:lbyl-vs-eafp} 節那個 EAFP——先做，錯了再處理。那一節教的是「你寫程式時該用這
+種風格」，這裡能給你一句更強的：\textbf{連 Python 自己的 \texttt{for} 迴圈都是這樣做的}，
+它不先檢查，它先按，然後準備好接住那個「沒了」。}
+
+\subsection*{還一張欠條：\texttt{next(reader)} 到底是什麼}
+
+第 \ref{ch:csv} 章第 \ref{sec:csv-module-read} 節有一行程式，當時被稱作「一個小技巧」：
+\texttt{next(reader)} 放在 \texttt{for} 迴圈前面，就能把標題列先讀掉。你照著打了，但沒人
+告訴你它是什麼。
+
+現在可以說了：\texttt{reader} 本身就是一台這樣的機器，\texttt{next(reader)} 就是按它一下。
+第一張號碼牌（標題列）被你撕走了，剩下的才輪到 \texttt{for}。
+
+\begin{example}{python}{(skip-header.py) 現在看得懂這一行了}
+import csv
+
+with open("quiz_scores.csv") as f:
+    reader = csv.reader(f)
+    header = next(reader)
+    print("撕掉的第一張：", header)
+    for row in reader:
+        print(row)
+\end{example}
+
+\iosample{}{撕掉的第一張： ['name', 'score'] \\{} ['Alice', '88'] \\{} ['Bob', '76'] \\{} ['Taylor', '92'] \\{} ['Charlie', '65'] \\{} ['David', '79'] \\}
+
+用的還是第 \ref{ch:csv} 章那份 \texttt{quiz\_scores.csv}。這裡多做了一件事：把撕下來的
+那一張接住印出來，證明它真的沒有消失，只是不在 \texttt{for} 拿得到的地方了。
+
+最後把這一節的定位講清楚：\textbf{手動版你要看得懂，但不必自己寫}。日常寫 Python 沒有
+人會去手動 \texttt{iter} 加 \texttt{while True}，因為 \texttt{for} 已經幫你寫好了。手動版
+存在的唯一理由，是讓你看清楚那台機器長什麼形狀——看過一次之後，以後在別人的程式碼裡撞見
+\texttt{next(...)}，你就知道那是在按什麼。
+
+\begin{drills}[label=drills:what-for-does]
+\item 翻譯題：把下面這個迴圈改寫成手動版（用 \texttt{iter}、\texttt{next}、
+\texttt{while True} 與 \texttt{try}／\texttt{except StopIteration}）。
+\begin{verbatim}
+for score in [88, 76, 92]:
+    print(score * 2)
+\end{verbatim}
+\item 預測輸出：下面這段程式印出什麼？跑到哪一行會停下來、為什麼？
+\begin{verbatim}
+it = iter([10, 20])
+print(next(it))
+print(next(it))
+print(next(it))
+\end{verbatim}
+\end{drills}
+
+\section{兩種角色：一批東西，和一台發號機}
+\label{sec:iterable-vs-iterator}
+
+第 \ref{ch:lists} 章第 \ref{sec:list-comprehension} 節給過一句話定義：「\texttt{iterable}
+就是你可以放進 \texttt{for} 迴圈裡一個一個處理的東西，像 list、字串、\texttt{range()}
+都是。」第 \ref{ch:modules} 章也用過「可疊代物件」這個中文說法。
+\index{iterable（可疊代物件）}
+
+那句定義沒有錯，但它把兩個東西講成了一個。上一節你已經看到它們同時出現：\texttt{names}
+是一個，\texttt{iter(names)} 拿到的是另一個。這一節把它們正式分開。
+
+\begin{code}{python}{兩種角色，兩個內建函式}
+iterator = iter(iterable)
+item = next(iterator)
+\end{code}
+
+\textbf{iterable（可疊代物件）是那一批東西}——list、字串、\texttt{range()}、dict、set，
+你能放進 \texttt{for} 的都算。\textbf{iterator 是那台機器}，你只能對它做一件事：按一下。
+兩者的關係就是 \texttt{iter()} 這個函式：拿一批東西去要一台機器。
+
+\subsection*{對一份 list 直接按下去}
+
+分不清楚的話，Python 會直接告訴你。
+
+\begin{example}{python}{(next-on-a-list.py) 把一份 list 當成機器來按}
+names = ["Alice", "Bob"]
+
+print(next(names))
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "next-on-a-list.py", line 3, in <module>
+    print(next(names))
+          ~~~~^^^^^^^
+TypeError: 'list' object is not an iterator
+\end{verbatim}
+
+這句錯誤訊息本身就是這一節最好的教材：\texttt{'list' object is not an iterator}——
+「list 不是一台 iterator」。它是一批東西，不是負責發號的那台機器。要按之前，得先用
+\texttt{iter()} 跟它要一台。
+
+同一段話對 \texttt{range} 也成立：\texttt{next(range(5))} 一樣會得到
+\texttt{TypeError: 'range' object is not an iterator}。\texttt{range} 從第
+\ref{ch:loops} 章用到現在，你大概一直把它當成「一串數字」，這裡先記住它是「一批東西」
+這個身分，第 \ref{sec:lazy-memory} 節還會回頭找它算一次帳。
+
+\begin{example}{python}{(list-vs-iterator.py) 同一份資料連走兩趟，兩種角色差在哪}
+names = ["Alice", "Bob"]
+
+# 一批東西：想走幾次就走幾次
+for name in names:
+    print("第一趟", name)
+for name in names:
+    print("第二趟", name)
+
+print("---")
+
+# 一台發號機：只能用完一次
+it = iter(names)
+for name in it:
+    print("第一趟", name)
+for name in it:
+    print("第二趟", name)
+
+print("結束")
+\end{example}
+
+\iosample{}{第一趟 Alice \\ 第一趟 Bob \\ 第二趟 Alice \\ 第二趟 Bob \\ --- \\ 第一趟 Alice \\ 第一趟 Bob \\ 結束 \\}
+
+上半段兩趟都有輸出，下半段第二趟一行都沒有——中間那兩行「第二趟」直接不見了，程式卻
+一聲不吭地跑完了。
+
+\keypoint{一批東西可以被走很多次，一台發號機只能用完一次。同一份 list 你想 \texttt{for}
+幾次就幾次，是因為\textbf{每次 \texttt{for} 開跑，都會先替你跟它要一台全新的機器}——
+第一趟用掉的那台，跟第二趟用的不是同一台。你自己用 \texttt{iter()} 要來的那台則不會自動
+換新，用完就是用完了。這一條是第 \ref{sec:one-shot} 節那個坑的全部原因，這裡先講原理，
+那一節再演給你看。}
+
+\subsection*{你早就撞見過三台機器了}
+
+把這個分辨學會之後，前面幾章有三個「當時只能照著打」的地方會自動歸位。
+
+\begin{example}{python}{(three-machines.py) 檔案物件、csv.reader、map 的結果}
+import csv
+
+# 一、檔案物件本身就是一台發號機
+with open("quiz_scores.csv") as f:
+    print(next(f).rstrip())
+    print(next(f).rstrip())
+
+# 二、csv.reader 的結果也是
+with open("quiz_scores.csv") as f:
+    reader = csv.reader(f)
+    print(next(reader))
+
+# 三、map 的結果也是
+numbers = map(int, ["12", "5", "38"])
+print(next(numbers))
+print(list(numbers))
+\end{example}
+
+\iosample{}{name,score \\ Alice,88 \\{} ['name', 'score'] \\ 12 \\{} [5, 38] \\}
+
+三件事各講一句：
+
+\textbf{檔案物件}。第 \ref{ch:files-exceptions} 章第 \ref{sec:reading-lines} 節說「檔案
+物件本身就是可以放進 \texttt{for} 迴圈裡的東西」，機制就在這裡——它本身就是一台機器，
+所以你可以直接按它。
+
+\textbf{\texttt{csv.reader} 的結果}。所以上一節那個 \texttt{next(reader)} 才拿得走一列。
+
+\textbf{\texttt{map} 的結果}。第 \ref{ch:advanced-functions} 章第 \ref{sec:map-filter}
+節那個 \texttt{<map object at ...>}，就是一台你還沒去按的機器。那時候書上叫你用
+\texttt{list()} 包起來才看得到內容，並且明說「這種『先不急著算』的設計……完整的討論留到
+第 \ref{ch:iterators-generators} 章」——現在兌現：\texttt{list()} 做的事就是\textbf{一口氣
+把它按到底，把吐出來的東西全部收好}。上面最後兩行正是這件事拆成兩半：先手動按一下拿到
+\texttt{12}，剩下的才被 \texttt{list()} 掃光，所以拿到的是 \texttt{[5, 38]} 而不是三項。
+（\texttt{filter} 的結果、第 \ref{sec:zip-walk} 節那個 \texttt{<zip object at ...>}，
+全都是同一類東西。）
+
+\begin{drills}[label=drills:iterable-vs-iterator]
+\item 判斷題：下面兩行哪一行會報錯？報什麼錯？另一行印出什麼？
+\begin{verbatim}
+print(next("cat"))
+print(next(iter("cat")))
+\end{verbatim}
+\item 預測輸出：下面這段印出幾行？分別是什麼？
+\begin{verbatim}
+words = ["fig", "kiwi"]
+it = iter(words)
+for w in it:
+    print("A", w)
+for w in it:
+    print("B", w)
+\end{verbatim}
+\item 歸類題：下面五樣東西，哪些是「一批東西」（iterable）、哪些是「一台發號機」
+（iterator）？\texttt{[1, 2, 3]}、\texttt{"hello"}、用 \texttt{open()} 拿到的檔案物件、
+\texttt{csv.reader(f)} 的結果、\texttt{range(10)}。
+\end{drills}
+
+\section{自己做一台：\texttt{yield}}
+\label{sec:yield-basics}
+
+前兩節都在認識別人做好的機器。這一節換你做一台。
+
+做法出乎意料地簡單：\textbf{在一個函式裡寫一個 \texttt{yield}}。只要有這個字，這個函式
+就不再是「算完給你答案」的函式了——你呼叫它，拿到的不是答案，是一台機器。這種函式叫
+\textbf{generator function}，它產出的那台機器叫 \textbf{generator}（產生器）。
+\index{yield}
+\index{generator function（generator 函式）}
+
+\begin{code}{python}{generator function 的形狀}
+def generator_function(source):
+    for item in source:
+        yield transformed_item
+\end{code}
+
+跟你熟悉的函式比，形狀幾乎沒變，只有最後一行的 \texttt{return} 換成了 \texttt{yield}。
+但這兩個字的行為差很多：\textbf{\texttt{return} 一講完函式就結束了；\texttt{yield} 只是
+先停在這裡}，把手上這個值遞出去，等你下次按，它從停住的地方繼續往下跑。
+
+\subsection*{它到底什麼時候才真的執行}
+
+這件事光用講的沒有說服力，直接在函式裡塞幾個 \texttt{print}，看它們什麼時候才出現。
+
+\begin{example}{python}{(generator-steps.py) 在函式裡埋三個 print，看它什麼時候跑}
+def steps():
+    print("開始")
+    yield "第一個值"
+    print("中間")
+    yield "第二個值"
+    print("結束")
+
+
+print("--- 呼叫函式之前 ---")
+g = steps()
+print("--- 呼叫函式之後 ---")
+print(g)
+print("--- 開始走訪 ---")
+for value in g:
+    print(value)
+print("--- 走訪完了 ---")
+\end{example}
+
+\iosample{}{--- 呼叫函式之前 --- \\ --- 呼叫函式之後 --- \\ <generator object steps at 0x1056619c0> \\ --- 開始走訪 --- \\ 開始 \\ 第一個值 \\ 中間 \\ 第二個值 \\ 結束 \\ --- 走訪完了 --- \\}
+
+（那串十六進位數字是它在記憶體裡的位置，你跑出來的會跟這裡不一樣，不用管它。）
+
+這段輸出有三件事值得看：
+
+\textbf{第一，「呼叫函式之前」跟「呼叫函式之後」中間什麼都沒有。} \texttt{g = steps()}
+這一行明明呼叫了函式，函式裡第一行就是 \texttt{print("開始")}，畫面上卻連一個字都沒出現。
+因為呼叫 generator function 根本不會執行函式的內容，它只是\textbf{做一台機器交給你}。
+
+\textbf{第二，\texttt{print(g)} 印出 \texttt{<generator object steps at 0x...>}。} 這個
+畫面眼熟嗎？第 \ref{ch:advanced-functions} 章那個 \texttt{<map object at 0x...>}、第
+\ref{ch:comprehensions} 章那個 \texttt{<generator object <genexpr> at 0x...>}，一模一樣的
+形狀，一模一樣的意思：一台還沒被按過的機器。
+
+\textbf{第三，走訪的時候輸出是交錯的。} 「開始」印完就吐出第一個值，然後停住等你；你再
+按，「中間」才印出來。函式裡的程式碼不是一口氣跑完的，它\textbf{停在每個 \texttt{yield}
+那裡等你}。
+
+\subsection*{寫一個真的有用的}
+
+看懂機制之後，寫一個實際會用到的。第 \ref{ch:files-exceptions} 章你寫過「逐行讀檔案、
+每行 \texttt{strip()} 掉多餘空白」的迴圈。把那個迴圈的 \texttt{print} 換成
+\texttt{yield}，它就變成一台可以到處插進 \texttt{for} 裡的機器。
+
+假設有一份報名名單 \texttt{signups.txt}，是別人隨手貼進來的，前後有空白、中間還夾了一行空的：
+
+\begin{verbatim}
+  Alice
+Bob
+
+   Taylor
+\end{verbatim}
+
+\begin{example}{python}{(clean-lines.py) 一台專門吐乾淨資料的機器}
+def clean_lines(filename):
+    with open(filename) as f:
+        for line in f:
+            cleaned = line.strip()
+            if cleaned:
+                yield cleaned
+
+
+for name in clean_lines("signups.txt"):
+    print(f"[{name}]")
+\end{example}
+
+\iosample{}{[Alice] \\{} [Bob] \\{} [Taylor] \\}
+
+方括號是印出來確認前後真的沒有空白用的。這支程式的價值在於\textbf{它幾乎沒變}——函式
+裡那三行迴圈跟你第 \ref{ch:files-exceptions} 章寫過的一模一樣，唯一的改動是把
+\texttt{print(cleaned)} 換成 \texttt{yield cleaned}。而換完之後，「怎麼清資料」跟「清完
+要拿去做什麼」就分成了兩件事：以後你想印、想存成 list、想丟給 \texttt{sum} 算總和，都不
+必再動 \texttt{clean\_lines} 一根寒毛。
+
+用詞上順帶講一件事，以後讀文件會用得到：普通函式 \textbf{return（回傳）}一個值，
+generator 是 \textbf{yield（吐出）}值。這本書從這裡開始會一直照這個分別用詞。
+
+\subsection*{常見錯誤：呼叫了，卻沒有走訪}
+
+這是新手寫完第一個 generator function 之後最常撞的牆：程式跑完了，什麼事都沒發生，
+\textbf{而且不會報錯}。
+
+\begin{example}{python}{(forgot-to-loop.py) 呼叫了卻沒走訪，等於什麼都沒做}
+def shout(names):
+    for name in names:
+        print("處理中：", name)
+        yield name.upper()
+
+
+names = ["Alice", "Bob"]
+
+shout(names)
+print("跑完了，可是上面什麼都沒印")
+
+print(list(shout(names)))
+\end{example}
+
+\iosample{}{跑完了，可是上面什麼都沒印 \\ 處理中： Alice \\ 處理中： Bob \\{} ['ALICE', 'BOB'] \\}
+
+\texttt{shout(names)} 那一行單獨寫出來，就只是造了一台機器，然後把它丟了——函式裡的
+\texttt{print("處理中：", ...)} 一次都沒跑。要它真的動起來，得有人去按：放進 \texttt{for}、
+用 \texttt{list()} 收起來、丟給 \texttt{sum}，都算。最後那行 \texttt{list(shout(names))}
+一按到底，兩行「處理中」才姍姍來遲地出現。
+
+還有一個相關的手誤：\textbf{\texttt{yield} 打成 \texttt{return}}。那樣的話函式就變回
+普通函式了，跑到那一行吐出一個值就整個結束，不會有第二個值，也不會拿到任何機器。
+
+\begin{drills}[label=drills:yield-basics]
+\item 預測輸出：下面這段程式會印出哪幾行？順序是什麼？
+\begin{verbatim}
+def numbers():
+    print("a")
+    yield 1
+    print("b")
+    yield 2
+    print("c")
+
+for n in numbers():
+    print(n)
+\end{verbatim}
+\item 改寫題：把下面這個函式改寫成 generator function（去掉那份空清單與
+\texttt{append}，改用 \texttt{yield}）。改寫後，呼叫端要怎麼寫才拿得到
+\texttt{[2, 4, 6]}？
+\begin{verbatim}
+def doubled(items):
+    result = []
+    for n in items:
+        result.append(n * 2)
+    return result
+\end{verbatim}
+\item 抓蟲：有人寫了下面這段，執行後畫面上一個字都沒有，也沒有任何錯誤訊息。為什麼？
+怎麼修？
+\begin{verbatim}
+def greet(names):
+    for name in names:
+        yield f"Hello, {name}!"
+
+greet(["Alice", "Bob"])
+\end{verbatim}
+\end{drills}
+
+\section{接住小括號：generator expression}
+\label{sec:generator-expression}
+
+第 \ref{ch:comprehensions} 章第 \ref{sec:genexp-glimpse} 節結尾留了一句話：「至於
+generator 為什麼要設計成『先不動手』、這樣做換到了什麼好處、用它的時候要注意什麼，第
+\ref{ch:iterators-generators} 章會完整回答。」這一節開始認領。
+
+先把最直接的一句話講掉：\textbf{你在那一節換成小括號拿到的東西，就是上一節那台機器}——
+只是換成一行寫法，\texttt{yield} 被藏起來了。
+\index{generator expression}
+
+\subsection*{同一件事，兩種寫法}
+
+不用抽象比較，直接把兩種寫法擺在同一支程式裡。
+
+\begin{example}{python}{(two-ways.py) 有 yield 的四行版，跟一行版}
+scores = [88, 76, 92, 65, 79]
+
+
+def passed_scores(all_scores):
+    for score in all_scores:
+        if score >= 70:
+            yield score
+
+
+from_function = passed_scores(scores)
+from_genexp = (score for score in scores if score >= 70)
+
+print(from_function)
+print(from_genexp)
+print(list(from_function))
+print(list(from_genexp))
+\end{example}
+
+\iosample{}{<generator object passed\_scores at 0x1036f69b0> \\ <generator object <genexpr> at 0x103781150> \\{} [88, 76, 92, 79] \\{} [88, 76, 92, 79] \\}
+
+（兩串位置數字你跑出來都會不一樣。）
+
+兩邊印出來都是 \texttt{generator object}，收成 list 之後結果一模一樣。差別只有一個：
+上面那台機器有名字（\texttt{passed\_scores}，因為它是你定義的函式），下面那台叫
+\texttt{<genexpr>}，因為它根本沒有名字，是當場寫出來的。
+
+\textbf{一行版跟四行版做的是同一件事，形狀不同而已。} 這句話就是這一節存在的全部理由。
+
+順帶把第 \ref{ch:comprehensions} 章的定位升級一下：那一章對 generator expression 的要求
+是「你只要認得出來就好」。從這一節開始，標準提高了——\textbf{你要寫得出來}。
+
+\subsection*{什麼時候用哪一種}
+
+判準很簡單：\textbf{一行寫得完，就用小括號；需要多寫幾行邏輯，就寫成有 \texttt{yield}
+的函式。}
+
+「多寫幾行邏輯」最常見的情況，第 \ref{ch:comprehensions} 章第 \ref{sec:comp-limits} 節
+剛講過一次：\textbf{要接住錯誤的時候}。那一節的結論是「comprehension 裡放不進
+\texttt{try}／\texttt{except}，所以寫回 \texttt{for} 迴圈」。genexp 也是一樣的式子，一樣
+放不進去——但現在你多了第三條路。
+
+\begin{example}{python}{(clean-scores-yield.py) 一行塞不下的時候，寫成 yield 版}
+raw = ["88", "", "92分", "79"]
+
+
+def clean_scores(texts):
+    for text in texts:
+        try:
+            yield int(text)
+        except ValueError:
+            print("跳過壞資料:", repr(text))
+
+
+print(sum(clean_scores(raw)))
+\end{example}
+
+\iosample{}{跳過壞資料: '' \\ 跳過壞資料: '92分' \\ 167 \\}
+
+四筆資料裡兩筆是壞的，程式沒有倒，好的兩筆加起來是 167。這段程式碼有兩個好處疊在一起：
+它像 \texttt{try}／\texttt{except} 版一樣擋得住髒資料，又像 genexp 一樣可以直接餵給
+\texttt{sum}，中間不用先造出一份清單。第 \ref{sec:comp-limits} 節那條煞車在這裡有了
+下文——不是只能寫回迴圈，還可以把迴圈包成一台機器。
+
+\stylepoint{中括號還是小括號，取決於一件事：\textbf{你要不要留著那份結果}。只是要餵給
+下一步——丟給 \texttt{sum}、丟給 \texttt{for}、丟給 \texttt{max}——用小括號；要留著、
+要走第二次、要用索引拿第 3 個，用中括號。這條判準在第 \ref{sec:one-shot} 節會被補上
+另外半句，變成這一章給你的最終規則。}
+
+\begin{drills}[label=drills:generator-expression]
+\item 判斷題：有 \texttt{nums = [1, 2, 3]}。下面三行各自拿到什麼型別的東西？
+\begin{verbatim}
+a = [n * 2 for n in nums]
+b = (n * 2 for n in nums)
+c = sum(n * 2 for n in nums)
+\end{verbatim}
+\item 判斷題：你要從一份很長的紀錄檔裡，把每一行的日期欄位轉成整數，而那個欄位偶爾會是
+空的、轉型會失敗。這個工作該寫成一行小括號版，還是寫成有 \texttt{yield} 的函式？為什麼？
+\end{drills}
+
+\section{好處：不先算，就不用先佔位子}
+\label{sec:lazy-memory}
+
+到目前為止，這一章一直在講「它不先算」，但沒說過這樣做到底換到了什麼。這一節回答這件事。
+\index{惰性求值（lazy evaluation）}
+
+第 \ref{ch:files-exceptions} 章第 \ref{sec:reading-lines} 節已經給過你結論了：逐行讀比
+\texttt{readlines()} 省記憶體，所以「很多 Python 使用者的預設習慣是逐行處理」。那一段
+論證這裡不重講，只補上當時沒說的那一半——\textbf{檔案物件憑什麼辦得到}。答案上一節就
+出現了：它是一台機器，它從頭到尾手上只有一行。
+
+\subsection*{把你自己寫過的那支程式改一次}
+
+第 \ref{ch:csv} 章第 \ref{sec:csv-manual-average} 節那支 \texttt{average-quiz-score.py}
+是你親手打過的。它的第一個動作是 \texttt{lines = f.readlines()}，接著造一份空的
+\texttt{scores}、跑迴圈 \texttt{append}、再跑一個累加器迴圈把它們加起來。
+
+同一件事，現在可以寫成這樣：
+
+\begin{example}{python}{(total-lazy.py) 算總分，中間一份清單都不造}
+import csv
+
+with open("quiz_scores.csv") as f:
+    reader = csv.DictReader(f)
+    total = sum(int(row["score"]) for row in reader)
+
+print("Total:", total)
+\end{example}
+
+\iosample{}{Total: 400 \\}
+
+答案跟第 \ref{sec:csv-manual-average} 節那支程式一樣是 400，但兩者在記憶體裡發生的事完全
+不同：
+
+\begin{itemize}
+\item \textbf{舊寫法}：整份檔案讀進來 $\to$ 造出一份完整的字串清單 $\to$ 造出一份完整的
+數字清單 $\to$ 才開始算。\textbf{同一時間記憶體裡有三份東西。}
+\item \textbf{新寫法}：讀一行 $\to$ 轉成一個數字 $\to$ 加進總和 $\to$ 這一行就丟掉了，
+換下一行。\textbf{同一時間記憶體裡只有一行。}
+\end{itemize}
+
+老實說一句：這份成績檔只有五行，兩種寫法你感覺不出任何差別，跑起來也一樣快。
+
+真正的差別要靠放大數字才看得見。\textbf{如果這不是 5 行，是一份 500 萬行的紀錄檔呢？}
+舊寫法必須\textbf{先}把 500 萬個字串塞進記憶體，才能開始算第一筆；新寫法從頭到尾手上
+只有一行，500 萬行跟 5 行對它來說是同一回事。這就是那個結論的完整版本。
+
+（順帶一提，這支程式只算了總分。要平均的話還得知道有幾筆，而那件事在這種寫法下沒那麼
+順手——原因是下一節的主題。）
+
+\subsection*{你早就在用惰性了：\texttt{range}}
+
+第 \ref{sec:iterable-vs-iterator} 節埋了一句「\texttt{range} 是一批東西，不是機器」，
+現在把另一半補上：\texttt{range} 也是惰性的。
+
+\begin{example}{python}{(range-is-lazy.py) 一百萬個數字，其實一個都沒造出來}
+numbers = range(1000000)
+
+print(numbers)
+print(len(numbers))
+print(numbers[500000])
+
+for n in range(1000000000):
+    print(n)
+    break
+\end{example}
+
+\iosample{}{range(0, 1000000) \\ 1000000 \\ 500000 \\ 0 \\}
+
+\texttt{range(1000000)} 印出來還是 \texttt{range(0, 1000000)}，因為它\textbf{根本沒有造
+出一百萬個數字}。它手上只記著三件事：從哪開始、到哪結束、每次跳多少。你問它有幾個，它用
+減法算給你；你問它第 500000 個是什麼，它用加法算給你。
+
+最後那個十億次的迴圈瞬間就印出 \texttt{0} 然後 \texttt{break} 掉——十億這個數字對它毫無
+壓力，因為它一次只需要生一個。但如果你把同一個 \texttt{range} 寫成
+\texttt{list(range(1000000000))}，那就是另一回事了：那一行是在要求 Python 真的把十億個
+數字通通造出來擺好，你的電腦會很不開心。\textbf{這一行不要真的執行。}
+
+\keypoint{惰性不是為了跑得比較快，是為了\textbf{不用先把東西全部生出來}。如果你本來就
+要把每一項都走過一遍，兩種寫法的總工作量其實差不多，generator 省下的是
+\textbf{同一時間佔的位子}，不是總時間。所以不要把它當成萬用加速器——它解決的是「東西太
+多，記憶體放不下」這個問題，不是「跑太慢」那個問題。}
+
+也不是所有東西都惰性。最好記的反例是 \texttt{sorted()}：它非得把全部看過一遍不可，不然
+排不出順序，所以它一定會先把資料整份收下來。
+
+\begin{drills}[label=drills:lazy-memory]
+\item 問答題：下面兩種寫法，程式跑到一半時，同一時間記憶體裡各有幾份東西？
+\begin{verbatim}
+scores = [int(line.split(",")[1]) for line in lines]
+total = sum(scores)
+
+total = sum(int(line.split(",")[1]) for line in lines)
+\end{verbatim}
+\item 判斷題：你有一份 300 萬行的伺服器紀錄檔，要從裡面找出所有包含 \texttt{"ERROR"}
+的行，把它們寫進另一個檔案。你會用 \texttt{readlines()} 一次讀進來，還是逐行處理？為什麼？
+\end{drills}
+
+\section{代價：generator 只能走一次}
+\label{sec:one-shot}
+
+上一節把 generator 講得很好。這一節翻面。
+
+不先算好的東西，有一個躲不掉的代價：\textbf{算過的就沒了}。第
+\ref{sec:iterable-vs-iterator} 節的學習要點已經講過原理——一台發號機只能用完一次——
+這一節要演給你看，而且重點在演出它有多安靜。
+
+\subsection*{第二個迴圈，什麼都沒有}
+
+\begin{example}{python}{(walk-twice.py) 同一台機器，連跑兩個 for}
+scores = [88, 76, 92, 65, 79]
+passed = (score for score in scores if score >= 70)
+
+print("第一趟：")
+for score in passed:
+    print(score)
+
+print("第二趟：")
+for score in passed:
+    print(score)
+
+print("（第二趟到此結束）")
+\end{example}
+
+\iosample{}{第一趟： \\ 88 \\ 76 \\ 92 \\ 79 \\ 第二趟： \\ （第二趟到此結束） \\}
+
+「第二趟：」跟「（第二趟到此結束）」之間那一片空白，就是這一節的全部重點。
+
+注意它做了什麼、沒做什麼。第二個 \texttt{for} 迴圈\textbf{確實執行了}，Python 老老實實
+去按了那台機器，機器說沒有了，於是迴圈跑了零輪就結束。\textbf{沒有 traceback、沒有紅字、
+沒有任何警告}，只有一個安安靜靜跑完、什麼都沒做的迴圈。
+
+這種坑跟第 \ref{ch:comprehensions} 章第 \ref{sec:comp-dict-set} 節那個「大括號忘了冒號
+拿到 set」是同一類：\textbf{不報錯，只給你錯的東西}。而不報錯的錯，永遠是最難抓的。
+
+\subsection*{更陰險的版本：走到一半也算走過}
+
+上面那個至少還算好認——第二趟整個是空的。真正難抓的是這種：
+
+\begin{example}{python}{(half-eaten.py) 只問了一個問題，資料就少了一截}
+scores = (score for score in [65, 70, 88, 76, 92])
+
+print("有沒有人考 80 分以上？", any(score >= 80 for score in scores))
+print("剩下的資料：", list(scores))
+\end{example}
+
+\iosample{}{有沒有人考 80 分以上？ True \\ 剩下的資料： [76, 92] \\}
+
+原本五筆資料，走完一個 \texttt{any(...)} 之後只剩兩筆。為什麼？因為第
+\ref{ch:comprehensions} 章第 \ref{sec:reducing-builtins} 節教過，\texttt{any} 找到第一個
+成立的就停手——它按到 88 就得到答案了，前面的 65、70 已經被按掉，88 也被拿走了，機器就
+停在那裡。接下來 \texttt{list(scores)} 只能收到剩下的 76 跟 92。
+
+拿到的不是空的，是\textbf{少了前面幾筆的}。這種結果放進報表裡，你很可能一整天都不會發現。
+
+\subsection*{三件你不能對 generator 做的事}
+
+前兩個坑都不報錯。有兩件事倒是會直接罵你，正好可以擺在一起看。
+
+\begin{example}{python}{(no-len.py) 問它有幾項}
+scores = [88, 76, 92, 65, 79]
+passed = (score for score in scores if score >= 70)
+
+print(len(passed))
+\end{example}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "no-len.py", line 4, in <module>
+    print(len(passed))
+          ~~~^^^^^^^^
+TypeError: object of type 'generator' has no len()
+\end{verbatim}
+
+\texttt{has no len()}——它自己也不知道有幾項，因為它根本還沒算呢。要知道有幾項，就得先
+全部算完，那不就違背了它存在的意義？
+
+換成用索引拿第一項，一樣不行：
+
+\begin{code}{python}{想拿第 0 項}
+print(passed[0])
+\end{code}
+
+\begin{verbatim}
+Traceback (most recent call last):
+  File "no-index.py", line 4, in <module>
+    print(passed[0])
+          ~~~~~~^^^
+TypeError: 'generator' object is not subscriptable
+\end{verbatim}
+
+\texttt{not subscriptable} 就是「不能用中括號取值」。它只會照順序往前吐，沒辦法跳到第 3 個。
+
+第三件事就是前面那個：再走一次 \texttt{for}。而它\textbf{不會}罵你。
+
+\keypoint{generator 走完之後不會壞掉、不會報錯，它只是變成空的。你拿到的不是錯誤訊息，
+是一份空清單、一個 0、一個什麼都沒印的迴圈——\textbf{看起來像「資料沒讀到」，其實是
+「已經被讀掉了」}。（空清單在 \texttt{if} 裡還是 falsy，所以連 \texttt{if data:} 這種
+檢查都會安靜地跳過去。）下次你發現一段程式莫名其妙拿到空結果，先想想這份資料是不是已經
+被走過一次了。順帶釐清一件事：不是 \texttt{passed} 這個變數被清空了，是 \texttt{passed}
+指的那台機器已經走到底了——機器還在，只是裡面沒東西了。}
+
+\subsection*{怎麼救：兩條路}
+
+\textbf{第一條：重新拿一台。} generator function 再呼叫一次、genexp 再寫一次，就是全新的
+一台。這也正是 list 不需要你操心的原因——list 是一批東西，每次 \texttt{for} 開跑都會自己
+去要一台新的機器。
+
+\textbf{第二條：要走很多次就收成 list。}
+
+\begin{example}{python}{(rescue-with-list.py) 收成 list 之後，什麼都能做了}
+scores = [88, 76, 92, 65, 79]
+
+passed = list(score for score in scores if score >= 70)
+
+print(len(passed))
+print(passed[0])
+for score in passed:
+    print(score)
+for score in passed:
+    print(score)
+\end{example}
+
+\iosample{}{4 \\ 88 \\ 88 \\ 76 \\ 92 \\ 79 \\ 88 \\ 76 \\ 92 \\ 79 \\}
+
+外面套一層 \texttt{list()}，剛才不能做的三件事全都可以了：有 \texttt{len()}、可以索引、
+兩個 \texttt{for} 都有輸出。代價就是上一節講的那個——這四項現在真的躺在記憶體裡了。
+
+\stylepoint{這一章的最終判準，兩句話：\textbf{只走一次、資料可能很大、或根本不知道有多長，
+就用 generator；要走第二次、要 \texttt{len()}、要用索引，就老實用 list。} 這是第
+\ref{sec:generator-expression} 節那條「要不要留著結果」的完整版——那裡問的是你要不要，
+這裡告訴你不要的話會怎樣。}
+
+\begin{drills}[label=drills:one-shot]
+\item 預測輸出：下面這段印出什麼？
+\begin{verbatim}
+g = (n for n in [1, 2, 3])
+print(list(g))
+print(list(g))
+\end{verbatim}
+\item 抓蟲：下面這段程式，總分印得好好的，明細卻一行都沒有。為什麼？要怎麼修？
+\begin{verbatim}
+scores = (int(row["score"]) for row in rows)
+
+print("總分：", sum(scores))
+print("明細：")
+for score in scores:
+    print(score)
+\end{verbatim}
+\item 判斷題：你要從一份很大的檔案裡篩出符合條件的行，然後做兩件事：算出總共幾行，以及
+把它們全部印出來。這個需求該不該先收成 list？為什麼？
+\end{drills}
+
+\section{別人已經做好的機器：\texttt{itertools} 一瞥}
+\label{sec:itertools-peek}
+
+你在第 \ref{ch:modules} 章第 \ref{sec:collections-and-itertools} 節見過
+\texttt{itertools} 這個模組，當時挑的是 \texttt{product}——把兩批東西配對出所有組合。
+那一節說它是「專門處理『疊代』相關的各種小技巧」的模組，但那時候你還不知道「疊代」是
+什麼，所以只看得懂那一個例子。
+\index{itertools（count()／islice()／chain()）}
+
+現在你知道了，於是這個模組裡另外一批工具才真正講得通：\textbf{裡面每一個函式，吐出來的
+都是一台機器。} 這一節挑三個，每一個都能直接打掉你前面章節寫過的某段程式碼。
+
+定位先講死，跟第 \ref{ch:modules} 章完全一樣：\textbf{這一節不要求你記住任何一個函式的
+名字}，只要求你知道「遇到這類需求時，這個模組裡大概有現成的」，需要時查文件就好。前面
+六節是要精熟的，這一節不是。
+
+\subsection*{\texttt{islice}：在機器上直接切一段}
+
+第 \ref{ch:csv} 章那支 \texttt{average-quiz-score.py} 為了跳過標題列，寫的是
+\texttt{lines[1:]}——而要能寫 \texttt{[1:]}，就得先 \texttt{readlines()} 拿到一份完整的
+清單。上一節剛說過那樣要把整份檔案吃進記憶體。
+
+\texttt{islice} 可以直接在一台機器上切一段，不用先收成 list。
+
+\begin{example}{python}{(skip-header-islice.py) 不用 readlines 也能跳過標題列}
+from itertools import islice
+
+with open("quiz_scores.csv") as f:
+    for line in islice(f, 1, None):
+        print(line.strip())
+
+print("---")
+
+with open("quiz_scores.csv") as f:
+    for line in islice(f, 3):
+        print(line.strip())
+\end{example}
+
+\iosample{}{Alice,88 \\ Bob,76 \\ Taylor,92 \\ Charlie,65 \\ David,79 \\ --- \\ name,score \\ Alice,88 \\ Bob,76 \\}
+
+\texttt{islice(f, 1, None)} 是「從第 1 項開始，一直到沒有為止」，也就是跳過第 0 項；
+\texttt{islice(f, 3)} 只給一個數字，意思是「只要前 3 項」。切法跟你熟悉的切片幾乎一樣，
+差別在\textbf{它不需要先有一份清單}，直接架在檔案這台機器上就能用。
+
+\subsection*{\texttt{chain}：兩批東西接成一串走完}
+
+手上有兩份資料，想用一個 \texttt{for} 走完。你原本會寫 \texttt{class\_a + class\_b}——
+那會造出一份新的、把兩邊都裝進去的清單。\texttt{chain} 不造那份清單，它只是依序把兩邊
+的東西吐出來。
+
+\begin{example}{python}{(chain-two-classes.py) 兩班成績，一個迴圈走完}
+from itertools import chain
+
+class_a = [88, 76]
+class_b = [92, 65, 79]
+
+for score in chain(class_a, class_b):
+    print(score)
+
+print("Total:", sum(chain(class_a, class_b)))
+\end{example}
+
+\iosample{}{88 \\ 76 \\ 92 \\ 65 \\ 79 \\ Total: 400 \\}
+
+兩份清單只有五個數字時，這跟 \texttt{class\_a + class\_b} 沒什麼差。但如果接的是兩份很大
+的檔案，差別就是上一節那件事了：\texttt{+} 要先造出一份合併好的大清單，\texttt{chain}
+從頭到尾只在轉手。
+
+\subsection*{\texttt{count}：一台永遠不會發完的機器}
+
+最後一個純粹是為了把「惰性」推到極端。\texttt{count} 從某個數字開始一直往上數，
+\textbf{永遠不會停}。
+
+聽起來很危險，但一點問題也沒有——因為它本來就不打算把東西全部生出來。你只要記得替它封口。
+
+\begin{example}{python}{(endless-count.py) 用 islice 給無限的機器封口}
+from itertools import count, islice
+
+for n in islice(count(1), 5):
+    print(n)
+
+names = ["Alice", "Bob", "Taylor"]
+for number, name in zip(count(1), names):
+    print(number, name)
+\end{example}
+
+\iosample{}{1 \\ 2 \\ 3 \\ 4 \\ 5 \\ 1 Alice \\ 2 Bob \\ 3 Taylor \\}
+
+上半段用剛學會的 \texttt{islice} 只取前 5 個。下半段更實用：\texttt{zip} 走到短的那一份
+用完就停（第 \ref{ch:comprehensions} 章第 \ref{sec:zip-walk} 節那個坑），所以拿一台無限
+的機器跟一份三人的名單配對，剛好得到從 1 開始的編號——這是第 \ref{sec:enumerate} 節
+\texttt{enumerate} 的另一種寫法。
+
+\textbf{一個警告}：\texttt{list(count())} 會試著把無限多個數字全部造出來，直到把記憶體
+吃光為止。\textbf{這一行絕對不要真的執行。} 這正是上一節那條判準的極端案例——有些東西
+根本不知道有多長，那就只能惰性，沒有第二個選項。
+
+\subsection*{五張欠條，還完了}
+
+回到這一章的開場。當時說這本書欠你五個解釋，現在逐一對一下：
+
+\begin{enumerate}
+\item \texttt{for} 底下「這一輪走到哪、還有沒有下一輪」是誰在管？——是 \texttt{iter()}
+要來的那台 iterator，靠 \texttt{next()} 跟 \texttt{StopIteration} 運作。
+\item 為什麼檔案物件可以直接放進 \texttt{for}，而且逐行讀比 \texttt{readlines()} 省
+記憶體？——因為它本身就是一台 iterator，手上永遠只有一行。
+\item \texttt{next(reader)} 是什麼？——按一下那台機器，把第一列拿走。
+\item \texttt{<map object at 0x...>} 是什麼？為什麼要 \texttt{list()} 包起來？——一台
+你還沒按的機器；\texttt{list()} 是一口氣按到底。
+\item comprehension 換成小括號拿到的是什麼？為什麼要小心？——是一台 generator，
+小心的理由是它只能走一次。
+\end{enumerate}
+
+還有一件事這一章沒有講完，但已經露出形狀：什麼時候該惰性、什麼時候該老實。第
+\ref{ch:pythonic} 章會把「寫得像 Python」這件事整個收起來，這一章學到的判斷是其中一塊。
+
+\begin{drills}[label=drills:itertools-peek]
+\item 預測輸出：下面兩行各印出什麼？
+\begin{verbatim}
+from itertools import islice
+print(list(islice([10, 20, 30, 40, 50], 1, 4)))
+print(list(islice("abcdef", 2)))
+\end{verbatim}
+\item 判斷題：你要跳過一份 200 萬行檔案的前 3 行，剩下的逐行處理。用
+\texttt{f.readlines()[3:]} 還是用 \texttt{islice(f, 3, None)}？為什麼？
+\end{drills}
+
+\section*{練習解答}
+\addcontentsline{toc}{section}{練習解答}
+
+\paragraph{第~\ref{sec:what-for-does}~節}
+\begin{enumerate}
+\item 手動版是：\texttt{it = iter([88, 76, 92])} $\to$ \texttt{while True:} $\to$ 縮排一層
+\texttt{try: score = next(it)} $\to$ \texttt{except StopIteration: break} $\to$ 最後
+\texttt{print(score * 2)}。輸出跟原本的 \texttt{for} 一模一樣：\texttt{176}、
+\texttt{152}、\texttt{184}。
+\item 先印出 \texttt{10}、再印出 \texttt{20}，第三個 \texttt{next(it)} 停下來，丟出
+\texttt{StopIteration}。因為那台機器只有兩個值可以發，第三次按下去就是「發完了」。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:iterable-vs-iterator}~節}
+\begin{enumerate}
+\item 第一行報錯：\texttt{TypeError: 'str' object is not an iterator}——字串是一批東西，
+不是機器。第二行印出 \texttt{c}，因為 \texttt{iter("cat")} 先要來一台機器，才有得按。
+\item 印出兩行：\texttt{A fig} 跟 \texttt{A kiwi}。第二個迴圈一行都沒有，因為
+\texttt{it} 這台機器在第一個迴圈就被用完了，而且不會報錯。
+\item 「一批東西」：\texttt{[1, 2, 3]}、\texttt{"hello"}、\texttt{range(10)}。
+「一台發號機」：檔案物件、\texttt{csv.reader(f)} 的結果。（檔案物件比較特別，它同時
+兩種身分都算得上，但關鍵在於它\textbf{可以直接被 \texttt{next()} 按}，而且用完就沒了。）
+\end{enumerate}
+
+\paragraph{第~\ref{sec:yield-basics}~節}
+\begin{enumerate}
+\item 依序印出：\texttt{a}、\texttt{1}、\texttt{b}、\texttt{2}、\texttt{c}。函式裡的
+\texttt{print} 跟迴圈裡的 \texttt{print} 是交錯出現的，因為函式每次都停在 \texttt{yield}
+那裡等你按下一次。
+\item 改寫成：\texttt{def doubled(items):} $\to$ \texttt{for n in items:} $\to$
+\texttt{yield n * 2}。呼叫端要寫 \texttt{list(doubled([1, 2, 3]))} 才會拿到
+\texttt{[2, 4, 6]}；直接 \texttt{print(doubled([1, 2, 3]))} 只會印出一個
+\texttt{<generator object ...>}。
+\item 因為 \texttt{greet([...])} 只是造了一台機器就把它丟了，函式裡的程式碼一行都沒跑。
+要有人去按它才會動，例如 \texttt{for line in greet(["Alice", "Bob"]): print(line)}，
+或是 \texttt{print(list(greet(["Alice", "Bob"])))}。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:generator-expression}~節}
+\begin{enumerate}
+\item \texttt{a} 是 list（中括號，當場算好），\texttt{b} 是 generator（小括號，還沒算），
+\texttt{c} 是整數 \texttt{12}——因為 \texttt{sum} 已經把那台機器按到底、算出答案了。
+\item 寫成有 \texttt{yield} 的函式。轉型會失敗表示你需要 \texttt{try}／\texttt{except}，
+而一行小括號版跟 comprehension 一樣是式子，裡面放不進 \texttt{try}（第
+\ref{sec:comp-limits} 節那條煞車）。寫成函式就能一邊接住錯誤、一邊照樣 \texttt{yield}
+好的那幾筆。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:lazy-memory}~節}
+\begin{enumerate}
+\item 第一種寫法在 \texttt{sum} 開跑的那一刻，記憶體裡有 \texttt{lines} 跟
+\texttt{scores} 兩份完整的資料；第二種寫法從頭到尾只有「目前這一行」跟一個累加中的
+\texttt{total}。
+\item 逐行處理。300 萬行用 \texttt{readlines()} 要先整份塞進記憶體才能開始篩，而這個
+任務根本不需要「同時看到所有行」——看一行、判斷一行、寫一行就夠了。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:one-shot}~節}
+\begin{enumerate}
+\item 第一行印出 \texttt{[1, 2, 3]}，第二行印出 \texttt{[]}。第一個 \texttt{list(g)}
+已經把那台機器按到底了，第二次去按只會拿到空的——而且不會報錯。
+\item 因為 \texttt{sum(scores)} 已經把 \texttt{scores} 整台按到底了，輪到 \texttt{for}
+的時候一項都不剩。修法有兩條：先收成 list（\texttt{scores = [int(row["score"]) for row
+in rows]}），之後 \texttt{sum} 跟 \texttt{for} 都對著同一份 list；或是需要的時候各造一台
+新的 generator。
+\item 該。你要對同一份結果做兩件事——算數量跟印出來——那就是「要走第二次」，符合先收成
+list 的條件。除非那份結果大到裝不下，那就得改成一趟走完同時做兩件事（一邊印一邊數）。
+\end{enumerate}
+
+\paragraph{第~\ref{sec:itertools-peek}~節}
+\begin{enumerate}
+\item 第一行印出 \texttt{[20, 30, 40]}（從第 1 項切到第 4 項之前，跟切片一樣不含結尾）；
+第二行印出 \texttt{['a', 'b']}（只給一個數字就是「只要前 2 項」）。
+\item 用 \texttt{islice(f, 3, None)}。\texttt{readlines()[3:]} 要先把 200 萬行全部讀進
+記憶體造成一份清單，才能切掉前 3 行；\texttt{islice} 直接架在檔案這台機器上，讀一行處理
+一行，記憶體裡永遠只有一行。
+\end{enumerate}
