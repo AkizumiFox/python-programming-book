@@ -6,8 +6,14 @@
 
 % Encoding
 
+% XeLaTeX 用 fontspec 的 TU 編碼；載入 T1 會讓英文的粗體、斜體找不到字型
+% （Linux 上的 TeX Gyre Termes 會出現 Font shape `T1/...' undefined，退回預設字），
+% 所以只在 pdfLaTeX 下載入 inputenc／fontenc。
+\RequirePackage{iftex}
+\ifXeTeX\else
 \RequirePackage[utf8]{inputenc}
 \RequirePackage[T1]{fontenc}
+\fi
 \RequirePackage{eurosym}
 
 % Style

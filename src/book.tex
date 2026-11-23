@@ -5,13 +5,20 @@
 % ---------------------------------------------------------------
 \usepackage{fontspec}
 \usepackage{xeCJK}
-\setmainfont{Times New Roman}
-\setCJKmainfont{Songti TC}
-\setCJKsansfont{PingFang TC}
+% 作者在 macOS 上用 Times New Roman／Songti TC／PingFang TC；其他系統（例如 Linux）找不到時，
+% 改用 TeX Gyre Termes 與 Noto Serif／Sans CJK TC，同一份原始碼兩邊都能編。
+\IfFontExistsTF{Times New Roman}
+    {\setmainfont{Times New Roman}}
+    {\setmainfont{TeX Gyre Termes}}
+\IfFontExistsTF{Songti TC}
+    {\setCJKmainfont{Songti TC}}
+    {\setCJKmainfont{Noto Serif CJK TC}}
+\IfFontExistsTF{PingFang TC}
+    {\setCJKsansfont{PingFang TC}}
+    {\setCJKsansfont{Noto Sans CJK TC}}
 % 等寬字改用 Latin Modern Mono，跟 exp2 參考檔案的排版字體一致
-% （它不是系統字型，只存在 TeXLive 樹裡，所以要用 Path 明確指定檔案位置）。
+% （它不是系統字型，只在 TeX Live 樹裡；用「檔名＋副檔名」讓 XeTeX 透過 kpathsea 找，不寫死路徑）。
 \setmonofont{lmmono10-regular}[
-    Path = /usr/local/texlive/2024/texmf-dist/fonts/opentype/public/lm/,
     Extension = .otf,
     AutoFakeBold = 2.5,
 ]
@@ -20,7 +27,8 @@
 % 本書排版套件（packages/ 目錄）
 % ---------------------------------------------------------------
 \usepackage{sleek}
-\usepackage{sleek-theorems}
+% sleek-theorems.sty 不載入：本書沒有用到定理類環境，而它依賴的 thmtools 和 2026-11 以後的
+% LaTeX 核心衝突（\newtheorem{lem}[thm] 會報「\c@lem already defined」），載入的話整本書編不過。
 \usepackage{sleek-code}
 \usepackage{sleek-diagrams}
 % 注意：sleek-listings.sty 不載入——它是舊版 lstlistings/inconsolata 排版套件，
@@ -32,6 +40,12 @@
 \usepackage{titlesec}
 \titleformat{\chapter}{\normalfont\huge\bfseries}{第~\thechapter~章}{1em}{}
 \titlespacing*{\chapter}{0pt}{-20pt}{20pt}
+% 頁首與目錄標題中文化（預設是 CHAPTER 1. 和 CONTENTS）
+\renewcommand{\contentsname}{目錄}
+\renewcommand{\chaptermark}[1]{\markboth{第~\thechapter~章\quad #1}{}}
+% 行內程式碼（\texttt）不能斷行，段落裡出現較長的識別字時容易凸出右邊界；
+% 允許 TeX 多拉開一點字距來排版。
+\setlength{\emergencystretch}{3em}
 
 % 目錄的節編號欄位加寬：report 預設是 2.3em，放不下「10.10」這種兩位數章＋兩位數節的
 % 編號，會跟標題黏在一起（例如「10.10finally」）。放寬到 3em。
